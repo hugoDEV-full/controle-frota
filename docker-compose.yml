@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  controleveiculo:
+    build: .
+    container_name: controleveiculo
+    ports:
+      - "3000:3070"               # porta 3070 do container para a porta 3000 do host
+    volumes:
+      - .:/app:rw                 #  leitura e gravação
+      - node_modules:/app/node_modules  # Volume dependências
+    environment:
+      NODE_ENV: production        #  ambiente de produção
+      DB_SERVER: ${DB_SERVER}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_PORT: ${DB_PORT}
+    restart: unless-stopped       # Reinicia o container caso de falha
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"            # Limite CPU
+          memory: 1G              # Limite  memória
+        reservations:
+          cpus: "0.50"            # Reserva mínima de CPU
+          memory: 512M            # Reserva mínima de memória
+    logging:
+      driver: "json-file"         # Configuração de logs
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - controleveiculo_network         # Rede específica para o serviço
+
+networks:
+  controleveiculo_network:
+    driver: bridge
+
+volumes:
+  node_modules:                 # Volume para node_modules
