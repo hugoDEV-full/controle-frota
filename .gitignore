@@ -5,6 +5,9 @@ package-lock.json
 # pasta backup
 backup/
 uploads/
+#Comandos para criação de tabelas do banco
+
+comandos-criacao-tabelas.sql
 
 #  temporários
 *.log
