@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar Uso de Veículo</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>Registrar Uso do Veículo</h1>
+        <form action="/usar/<%= veiculo.id %>" method="POST" enctype="multipart/form-data" id="formUsoVeiculo">
+            <div class="mb-3">
+                <label for="motorista" class="form-label">Motorista</label>
+                <input type="text" class="form-control" id="motorista" name="motorista" required aria-label="Nome do Motorista" placeholder="Digite o nome do motorista">
+            </div>
+            <div class="mb-3">
+                <label for="km_inicial" class="form-label">Quilometragem Inicial</label>
+                <input type="number" class="form-control" id="km_inicial" name="km_inicial" required min="0">
+            </div>
+            <!--
+            <div class="mb-3">
+                <label for="km_final" class="form-label">Quilometragem Final</label>
+                <input type="number" class="form-control" id="km_final" name="km_final" >
+            </div>
+        -->
+            <!--
+            <div class="mb-3">
+                <label for="foto_km" class="form-label">Foto da Quilometragem final</label>
+                <input type="file" class="form-control" id="foto_km" name="foto_km" accept="image/*" required>
+                <img id="preview" src="#" alt="Pré-visualização" style="display: none; max-width: 200px; margin-top: 10px;">
+            </div>
+        -->
+            <div class="mb-3">
+                <label for="data_hora_inicial" class="form-label">Data e Hora Inicial</label>
+                <input type="datetime-local" class="form-control" id="data_hora_inicial" name="data_hora_inicial" required>
+            </div>
+            <!--
+            <div class="mb-3">
+                <label for="data_hora_final" class="form-label">Data e Hora Final</label>
+                <input type="datetime-local" class="form-control" id="data_hora_final" name="data_hora_final" >
+            </div>
+        -->
+            <button type="submit" class="btn btn-success" id="btnSubmit">Registrar Uso</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('km_inicial').addEventListener('input', function() {
+            document.getElementById('km_final').setAttribute('min', this.value);
+        });
+
+        document.getElementById('foto_km').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('preview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('formUsoVeiculo').addEventListener('submit', function() {
+            document.getElementById('btnSubmit').disabled = true;
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

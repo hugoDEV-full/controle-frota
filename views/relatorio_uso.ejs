@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatório de Uso de Veículos</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+  <style>
+   
+    #imgModal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      justify-content: center;
+      align-items: center;
+    }
+    #imgModal img {
+      max-width: 90%;
+      max-height: 90%;
+    }
+    #imgModal .close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: white;
+      font-size: 30px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-4">
+    <h1>Relatório de Uso de Veículos</h1>
+    <table class="table table-striped">
+      <thead>
+        <tr>
+          <th>Veículo</th>
+          <th>Motorista</th>
+          <th>KM Inicial</th>
+          <th>KM Final</th>
+          <th>Data de Início</th>
+          <th>Data de Fim</th>
+          <th>Foto de Quilometragem Final</th>
+          <th>Multas</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% usoVeiculos.forEach(uso => { %>
+          <tr>
+            <td><%= uso.placa %></td>
+            <td><%= uso.motorista %></td>
+            <td><%= uso.km_inicial %></td>
+            <td><%= uso.km_final %></td>
+            <td><%= new Date(uso.data_hora_inicial).toLocaleString() %></td>
+            <td>
+              <% if (uso.data_hora_final) { %>
+                <%= new Date(uso.data_hora_final).toLocaleString() %>
+              <% } else { %>
+                Não definido
+              <% } %>
+            </td>
+            <td>
+              <% if (uso.foto_km) { %>
+                <img src="/uploads/<%= uso.foto_km %>" alt="Foto Quilometragem" style="width: 100px; cursor: pointer;" onclick="openModal('/uploads/<%= uso.foto_km %>')">
+              <% } else { %>
+                Não disponível
+              <% } %>
+            </td>
+            <td>
+              <div>
+                <% if (uso.multas) { %>
+                  <p>Multas registradas: <span class="badge bg-danger"><%= uso.multas %></span></p>
+                <% } %>
+                <form action="/multar/<%= uso.id %>" method="POST">
+                  <input type="text" class="form-control" name="multas" placeholder="Descrição da multa" required>
+                  <button type="submit" class="btn btn-danger btn-sm mt-2">Registrar Multa</button>
+                </form>
+              </div>
+            </td>
+            <td>
+              <div class="d-flex gap-2">
+                <form action="/editar-uso/<%= uso.id %>" method="GET">
+                  <button type="submit" class="btn btn-warning btn-sm">Editar</button>
+                </form>
+                <form action="/excluir-uso/<%= uso.id %>" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este uso?');">
+                  <button type="submit" class="btn btn-danger btn-sm">Excluir Uso</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      <% for (let i = 1; i <= totalPages; i++) { %>
+        <a href="/relatorio-uso?page=<%= i %>" class="btn btn-link"><%= i %></a>
+      <% } %>
+    </div>
+    <a href="/" class="btn btn-secondary mt-4">Voltar para a Página Inicial</a>
+  </div>
+
+  <!-- Modal para exibir a imagem ampliada -->
+  <div id="imgModal">
+    <span class="close" onclick="closeModal()">&times;</span>
+    <img id="modalImg" src="" alt="Imagem Ampliada">
+  </div>
+
+  <script>
+    function openModal(imgSrc) {
+      var modal = document.getElementById("imgModal");
+      var modalImg = document.getElementById("modalImg");
+      modal.style.display = "flex";
+      modalImg.src = imgSrc;
+    }
+    function closeModal() {
+      var modal = document.getElementById("imgModal");
+      modal.style.display = "none";
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Editar Uso e Multas</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+  <script>
+    // Função para adicionar um novo campo de multa
+    function addFineField() {
+      var container = document.getElementById('novasMultas');
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.name = 'novasMultas[]';
+      input.className = 'form-control mt-2';
+      input.placeholder = 'Descrição da nova multa';
+      container.appendChild(input);
+    }
+    
+    // Função para excluir uma multa via criação dinâmica de formulário
+    function deleteFine(multaId) {
+      if (confirm('Excluir esta multa?')) {
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/excluir-multa/' + multaId;
+        document.body.appendChild(form);
+        form.submit();
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="container mt-4">
+    <h1>Editar Uso e Multas</h1>
+    <!-- Formulário para editar uso e multas -->
+    <form action="/editar-uso/<%= uso.id %>" method="POST" enctype="multipart/form-data">
+      <!-- Dados do Uso -->
+      <h3>Dados do Uso</h3>
+      <div class="mb-3">
+        <label for="motorista" class="form-label">Motorista</label>
+        <input type="text" class="form-control" id="motorista" name="motorista" value="<%= uso.motorista %>" required>
+      </div>
+      <div class="mb-3">
+        <label for="km_inicial" class="form-label">KM Inicial</label>
+        <input type="number" class="form-control" id="km_inicial" name="km_inicial" value="<%= uso.km_inicial %>" readonly>
+      </div>
+      <div class="mb-3">
+        <label for="km_final" class="form-label">KM Final</label>
+        <input type="number" class="form-control" id="km_final" name="km_final" value="<%= uso.km_final %>">
+      </div>
+      <div class="mb-3">
+        <label for="data_hora_inicial" class="form-label">Data e Hora Inicial</label>
+        <input type="datetime-local" class="form-control" id="data_hora_inicial" name="data_hora_inicial" 
+          value="<%= new Date(uso.data_hora_inicial).toISOString().slice(0,16) %>" readonly>
+      </div>
+      <div class="mb-3">
+        <label for="data_hora_final" class="form-label">Data e Hora Final</label>
+        <input type="datetime-local" class="form-control" id="data_hora_final" name="data_hora_final" 
+          value="<%= uso.data_hora_final ? new Date(uso.data_hora_final).toISOString().slice(0,16) : '' %>">
+      </div>
+      
+      <div class="mb-3">
+        <label for="foto_km" class="form-label">Foto de Quilometragem final</label>
+        <input type="file" class="form-control" id="foto_km" name="foto_km" readonly>
+        <% if (uso.foto_km) { %>
+          <p>Imagem atual:</p>
+          <img src="/uploads/<%= uso.foto_km %>" alt="Foto Quilometragem" class="img-fluid mt-2" style="max-width: 200px;">
+        <% } %>
+      </div> 
+      
+      <hr>
+      
+      <!-- Dados das Multas -->
+      <h3>Multas</h3>
+      <% if (multas && multas.length > 0) { %>
+        <% multas.forEach(function(multa, index) { %>
+          <div class="mb-3 d-flex align-items-center">
+            <div class="flex-grow-1">
+              <label class="form-label">Multa <%= index + 1 %></label>
+              <!-- Campo oculto para o ID da multa (para atualização) -->
+              <input type="hidden" name="multas_id[]" value="<%= multa.id %>">
+              <input type="text" class="form-control" name="multas_descricao[]" value="<%= multa.multa %>">
+            </div>
+            <!-- Botão para excluir esta multa  -->
+            <div class="ms-2">
+              <button type="button" class="btn btn-danger btn-sm" onclick="deleteFine(<%= multa.id %>)">Excluir</button>
+            </div>
+          </div>
+        <% }); %>
+      <% } else { %>
+        <p>Não há multas registradas.</p>
+      <% } %>
+      
+      <!-- Campos para novas multas -->
+      <div id="novasMultas"></div>
+      <button type="button" class="btn btn-secondary mb-3" onclick="addFineField()">Adicionar Nova Multa</button>
+      
+      <br>
+      <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+      <a href="/relatorio-uso" class="btn btn-secondary">Cancelar</a>
+    </form>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>  
+</html>
