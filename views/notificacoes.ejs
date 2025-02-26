@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Notificações - Troca de Óleo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body>
+  <div class="container mt-5">
+    <h1>Notificações - Troca de Óleo</h1>
+    
+    <% if(veiculos.length > 0) { %>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Placa</th>
+            <th>Nome</th>
+            <th>Km Atual</th>
+            <th>Última Troca de Óleo</th>
+            <th>Kms Desde Última Troca</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% veiculos.forEach(function(veiculo) { %>
+            <tr>
+              <td><%= veiculo.id %></td>
+              <td><%= veiculo.placa %></td>
+              <td><%= veiculo.nome %></td>
+              <td><%= veiculo.km %></td>
+              <td><%= veiculo.ultimaTrocaOleo %></td>
+              <td><%= veiculo.km - veiculo.ultimaTrocaOleo %></td>
+              <td>
+                <!-- Botão para marcar que a troca foi realizada -->
+                <form action="/troca-feita/<%= veiculo.id %>" method="POST" onsubmit="return confirm('Confirmar que a troca de óleo foi realizada?');">
+                  <button type="submit" class="btn btn-success btn-sm">Troca Realizada</button>
+                </form>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <div class="alert alert-info">
+        Nenhum veículo necessita de troca de óleo.
+      </div>
+    <% } %>
+    
+    <!-- Lista de notificações em tempo real -->
+    <h2 class="mt-4">Notificações em Tempo Real</h2>
+    <ul id="notificationList" class="list-group"></ul>
+    
+    <a href="/" class="btn btn-primary mt-3">Voltar</a>
+  </div>
+
+  <!-- Socket.IO -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    socket.on('oilChangeNotification', (veiculo) => {
+      const notificationList = document.getElementById('notificationList');
+      const li = document.createElement('li');
+      li.className = 'list-group-item list-group-item-warning';
+      li.innerText = `O veículo ${veiculo.nome} (Placa: ${veiculo.placa}) atingiu ${veiculo.km} km. Última troca: ${veiculo.ultimaTrocaOleo}. É necessário realizar a troca de óleo.`;
+      notificationList.appendChild(li);
+    });
+  </script>
+</body>
+</html>

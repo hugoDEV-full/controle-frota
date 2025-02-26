@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="UTF-8">
   <title>Login</title>
@@ -7,29 +8,43 @@
   <style>
     /* Definindo a imagem de fundo para toda a tela */
     body {
-      background-image: url('/uploads/frota.webp'); 
-      background-size: cover; 
-      background-position: center; 
-      background-attachment: fixed; 
-      height: 100vh; 
-      margin: 0; 
+      background-image: url('/uploads/frota.webp');
+      background-size: cover;
+      background-position: center;
+      background-attachment: fixed;
+      height: 100vh;
+      margin: 0;
       display: flex;
       justify-content: center;
       align-items: center;
-      color: #fff; 
+      color: #fff;
     }
-    
+
     .container {
-      background-color: rgba(0, 0, 0, 0.6); 
+      background-color: rgba(0, 0, 0, 0.6);
       padding: 30px;
       border-radius: 10px;
       width: 100%;
-      max-width: 400px; 
+      max-width: 400px;
     }
+
+    .logo-inova {
+  max-width: 100%;
+  width: 200px; /* Tamanho ideal */
+  height: auto;
+  background-color: #ffffff;
+  border-radius: 10px; /* Bordas mais suaves */
+  padding: 10px; /* Espaço interno para destacar o logo */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Sombra leve para destaque */
+}
   </style>
 </head>
+
 <body>
-  <div class="container">
+  <div class="container text-center">
+    <img src="https://www.inova.in/tmp/inova/logomarca.png" 
+         alt="Inova Comunicações Inteligentes" 
+         class="logo-inova mb-3">
     <h1>Login</h1>
     <form action="/login" method="POST">
       <div class="mb-3">
@@ -46,4 +61,5 @@
     <!-- <p>Não tem conta? <a href="/register">Registre-se</a></p> -->
   </div>
 </body>
+
 </html>
