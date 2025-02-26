@@ -85,10 +85,10 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 // Configuração de sessão e Passport
 app.use(session({
-    secret: process.env.SECRET_SESSION, // altere para uma chave segura
+    secret: process.env.SECRET_SESSION, 
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 30 * 60 * 1000 } // 30 minutos
+    cookie: { maxAge: 30 * 60 * 1000 } // 30 minutos inativa
 }));
 app.use(passport.initialize());
 app.use(passport.session());
