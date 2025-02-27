@@ -1,41 +1,54 @@
 version: '3.8'
 
 services:
-  controleveiculo:
+  controleveiculos:
     build: .
-    container_name: controleveiculo
+    container_name: controleveiculos
     ports:
-      - "3000:3070"               # porta 3070 do container para a porta 3000 do host
+      - "3070:3000"
     volumes:
-      - .:/app:rw                 #  leitura e gravação
-      - node_modules:/app/node_modules  # Volume dependências
+      - .:/app:rw
+      - node_modules:/app/node_modules
+    env_file: 
+      - .env  # Carrega variáveis do arquivo .env
     environment:
-      NODE_ENV: production        #  ambiente de produção
-      DB_SERVER: ${DB_SERVER}
-      DB_DATABASE: ${DB_DATABASE}
-      DB_USER: ${DB_USER}
-      DB_PASS: ${DB_PASS}
-      DB_PORT: ${DB_PORT}
-    restart: unless-stopped       # Reinicia o container caso de falha
+      NODE_ENV: production
+    restart: unless-stopped
     deploy:
       resources:
         limits:
-          cpus: "1.00"            # Limite CPU
-          memory: 1G              # Limite  memória
+          cpus: "1.00"
+          memory: 1G
         reservations:
-          cpus: "0.50"            # Reserva mínima de CPU
-          memory: 512M            # Reserva mínima de memória
+          cpus: "0.50"
+          memory: 512M
     logging:
-      driver: "json-file"         # Configuração de logs
+      driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
     networks:
-      - controleveiculo_network         # Rede específica para o serviço
+      - controleveiculos_network
+
+  mysql_controleveiculos:
+    image: mysql:8.0
+    container_name: mysql_controleveiculos
+    ports:
+      - "3367:3306"
+    env_file: 
+      - .env  # Carrega as variáveis para o MySQL também
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    restart: unless-stopped
+    networks:
+      - controleveiculos_network
 
 networks:
-  controleveiculo_network:
+  controleveiculos_network:
     driver: bridge
 
 volumes:
-  node_modules:                 # Volume para node_modules
+  node_modules:
