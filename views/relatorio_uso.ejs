@@ -6,126 +6,109 @@
   <title>Relatório de Uso de Veículos</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="/styles.css">
-  <style>
-   
-    #imgModal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.8);
-      justify-content: center;
-      align-items: center;
-    }
-    #imgModal img {
-      max-width: 90%;
-      max-height: 90%;
-    }
-    #imgModal .close {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      color: white;
-      font-size: 30px;
-      cursor: pointer;
-    }
-  </style>
- 
 </head>
-<body>
-  <div class="container mt-4">
-    <h1>Relatório de Uso de Veículos</h1>
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th>Veículo</th>
-          <th>Motorista</th>
-          <th>KM Inicial</th>
-          <th>KM Final</th>
-          <th>Data de Início</th>
-          <th>Data de Fim</th>
-          <th>Foto de Quilometragem Final</th>
-          <th>Multas</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% usoVeiculos.forEach(uso => { %>
+<body class="bg-light">
+  <div class="container-fluid mt-4">
+    <h1 class="text-center mb-4">Relatório de Uso de Veículos</h1>
+
+    <!-- Tabela Responsiva -->
+    <div class="table-responsive">
+      <table class="table table-striped table-hover">
+        <thead class="table-dark">
           <tr>
-            <td><%= uso.placa %></td>
-            <td><%= uso.motorista %></td>
-            <td><%= uso.km_inicial %></td>
-            <td><%= uso.km_final %></td>
-            <td><%= new Date(uso.data_hora_inicial).toLocaleString() %></td>
-            <td>
-              <% if (uso.data_hora_final) { %>
-                <%= new Date(uso.data_hora_final).toLocaleString() %>
-              <% } else { %>
-                Não definido
-              <% } %>
-            </td>
-            <td>
-              <% if (uso.foto_km) { %>
-                <img src="/uploads/<%= uso.foto_km %>" alt="Foto Quilometragem" style="width: 100px; cursor: pointer;" onclick="openModal('/uploads/<%= uso.foto_km %>')">
-              <% } else { %>
-                Não disponível
-              <% } %>
-            </td>
-            <td>
-              <div>
+            <th>Veículo</th>
+            <th>Motorista</th>
+            <th>KM Inicial</th>
+            <th>KM Final</th>
+            <th>Data de Início</th>
+            <th>Data de Fim</th>
+            <th>Foto de Quilometragem Final</th>
+            <th>Multas</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% usoVeiculos.forEach(uso => { %>
+            <tr>
+              <td><%= uso.placa %></td>
+              <td><%= uso.motorista %></td>
+              <td><%= uso.km_inicial %></td>
+              <td><%= uso.km_final %></td>
+              <td><%= new Date(uso.data_hora_inicial).toLocaleString() %></td>
+              <td>
+                <% if (uso.data_hora_final) { %>
+                  <%= new Date(uso.data_hora_final).toLocaleString() %>
+                <% } else { %>
+                  Não definido
+                <% } %>
+              </td>
+              <td>
+                <% if (uso.foto_km) { %>
+                  <img src="/uploads/<%= uso.foto_km %>" alt="Foto Quilometragem" class="img-thumbnail" style="width: 100px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#imageModal" onclick="updateModalImage('/uploads/<%= uso.foto_km %>')">
+                <% } else { %>
+                  <span class="text-muted">Não disponível</span>
+                <% } %>
+              </td>
+              <td>
                 <% if (uso.multas) { %>
-                  <p>Multas registradas: <span class="badge bg-danger"><%= uso.multas %></span></p>
+                  <p class="text-danger">Multas registradas: <span class="badge bg-danger"><%= uso.multas %></span></p>
                 <% } %>
                 <form action="/multar/<%= uso.id %>" method="POST">
-                  <input type="text" class="form-control" name="multas" placeholder="Descrição da multa" required>
-                  <button type="submit" class="btn btn-danger btn-sm mt-2">Registrar Multa</button>
+                  <input type="text" class="form-control form-control-sm mb-2" name="multas" placeholder="Descrição da multa" required>
+                  <button type="submit" class="btn btn-danger btn-sm w-100">Registrar Multa</button>
                 </form>
-              </div>
-            </td>
-            <td>
-              <div class="d-flex gap-2">
-                <form action="/editar-uso/<%= uso.id %>" method="GET">
-                  <button type="submit" class="btn btn-warning btn-sm">Editar</button>
-                </form>
-                <form action="/excluir-uso/<%= uso.id %>" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este uso?');">
-                  <button type="submit" class="btn btn-danger btn-sm">Excluir Uso</button>
-                </form>
-              </div>
-            </td>
-          </tr>
-        <% }); %>
-      </tbody>
-    </table>
-
-    <div class="pagination">
-      <% for (let i = 1; i <= totalPages; i++) { %>
-        <a href="/relatorio-uso?page=<%= i %>" class="btn btn-link"><%= i %></a>
-      <% } %>
+              </td>
+              <td>
+                <div class="d-flex gap-2">
+                  <a href="/editar-uso/<%= uso.id %>" class="btn btn-warning btn-sm">Editar</a>
+                  <form action="/excluir-uso/<%= uso.id %>" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este uso?');">
+                    <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
     </div>
-    <a href="/" class="btn btn-secondary mt-4">Voltar para a Página Inicial</a>
+
+    <!-- Paginação -->
+    <nav aria-label="Navegação de páginas">
+      <ul class="pagination justify-content-center">
+        <% for (let i = 1; i <= totalPages; i++) { %>
+          <li class="page-item <%= i === currentPage ? 'active' : '' %>">
+            <a class="page-link" href="/relatorio-uso?page=<%= i %>"><%= i %></a>
+          </li>
+        <% } %>
+      </ul>
+    </nav>
+
+    <div class="text-center">
+      <a href="/" class="btn btn-secondary mt-4">Voltar para a Página Inicial</a>
+    </div>
   </div>
 
-  <!-- Modal para exibir a imagem ampliada -->
-  <div id="imgModal">
-    <span class="close" onclick="closeModal()">&times;</span>
-    <img id="modalImg" src="" alt="Imagem Ampliada">
+  <!-- Modal Bootstrap para Exibir Imagem -->
+  <div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="imageModalLabel">Foto de Quilometragem</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+        </div>
+        <div class="modal-body text-center">
+          <img id="modalImage" src="" class="img-fluid">
+        </div>
+      </div>
+    </div>
   </div>
 
   <script>
-    function openModal(imgSrc) {
-      var modal = document.getElementById("imgModal");
-      var modalImg = document.getElementById("modalImg");
-      modal.style.display = "flex";
-      modalImg.src = imgSrc;
-    }
-    function closeModal() {
-      var modal = document.getElementById("imgModal");
-      modal.style.display = "none";
+    function updateModalImage(imgSrc) {
+      document.getElementById('modalImage').src = imgSrc;
     }
   </script>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
