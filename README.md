@@ -26,3 +26,9 @@ Edição e Exclusão de Veículos: Atualização e remoção de veículos existe
 Gerenciamento de Uso de Veículos:
 Edição e exclusão de registros de uso dos veículos.
 Registro, edição e exclusão de multas associadas ao uso dos veículos.
+
+![Captura de tela 2025-02-27 122849](https://github.com/user-attachments/assets/1ff2e351-70f0-49de-9416-c2fc6e7e8dee)
+
+![Captura de tela 2025-02-27 122859](https://github.com/user-attachments/assets/17b5d088-9465-4800-8542-1d299425e379)
+
+
