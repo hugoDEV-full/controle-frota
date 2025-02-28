@@ -32,10 +32,24 @@ const db = mysql.createConnection({
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME
 });
-db.connect((err) => {
-    if (err) throw err;
-    console.log('Conectado ao banco de dados!');
-});
+function connectToDatabase() {
+    db.connect((err) => {
+        if (err) {
+            console.error('Erro ao conectar ao banco de dados: ', err);
+            console.log('Tentando reconectar...');
+            setTimeout(connectToDatabase, 5000);  // Tenta reconectar após 5 segundos
+        } else {
+            console.log('Conectado ao banco de dados!');
+            // Inicia o servidor Express somente após conexão com o banco
+            const PORT = process.env.PORT || 3000;
+            app.listen(PORT, () => {
+                console.log(`Aplicação rodando na porta ${PORT}`);
+            });
+        }
+    });
+}
+
+connectToDatabase();
 
 // Middleware de autorização para administradores
 function isAdmin(req, res, next) {
@@ -648,8 +662,9 @@ app.get('/notificacoes', isAuthenticated, (req, res) => {
 io.on("connection", (socket) => {
     console.log("Cliente conectado via Socket.IO.");
 });
-
+/*
 // Inicia o servidor
 server.listen(port, () => {
     console.log(`Servidor rodando na porta ${port}`);
 });
+*/
