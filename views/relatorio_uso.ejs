@@ -37,10 +37,26 @@
               <td><%= uso.motorista %></td>
               <td><%= uso.km_inicial %></td>
               <td><%= uso.km_final %></td>
-              <td><%= new Date(uso.data_hora_inicial).toLocaleString() %></td>
+              <td><%= new Date(uso.data_hora_inicial).toLocaleString("pt-BR", { 
+                day: "2-digit", 
+                month: "2-digit", 
+                year: "numeric", 
+                hour: "2-digit", 
+                minute: "2-digit", 
+                second: "2-digit", 
+                hour12: false 
+              }) %></td>
               <td>
                 <% if (uso.data_hora_final) { %>
-                  <%= new Date(uso.data_hora_final).toLocaleString() %>
+                  <%= new Date(uso.data_hora_final).toLocaleString("pt-BR", { 
+                    day: "2-digit", 
+                    month: "2-digit", 
+                    year: "numeric", 
+                    hour: "2-digit", 
+                    minute: "2-digit", 
+                    second: "2-digit", 
+                    hour12: false 
+                  }) %>
                 <% } else { %>
                   Não definido
                 <% } %>
@@ -86,7 +102,6 @@
       </ul>
     </nav>
 
-    
   </div>
 
   <!-- Modal Bootstrap para Exibir Imagem -->
