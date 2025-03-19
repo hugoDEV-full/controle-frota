@@ -1020,7 +1020,7 @@ app.get('/service-worker.js', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'service-worker.js'));
 });
   
-// Código de registro do service worker (lembre: isso roda no browser!)
+/* Código de registro do service worker (lembre: isso roda no browser!)
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/service-worker.js')
@@ -1032,7 +1032,7 @@ if ('serviceWorker' in navigator) {
         });
     });
 }
-  
+  */
 /*
 // Código para iniciar o servidor com Socket.IO (opcional)
 // server.listen(port, () => {
