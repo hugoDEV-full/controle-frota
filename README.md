@@ -1,34 +1,88 @@
-## Sistema de Gerenciamento de Veículos
+# Sistema de Gerenciamento de Veículos
+
 ## Visão Geral
 
-Este sistema é desenvolvido em Node.js utilizando o framework Express e conecta-se a um banco de dados MySQL para gerenciar o uso de veículos. 
-Ele oferece funcionalidades de autenticação, controle de sessões, upload de imagens, registro de veículos, gerenciamento de multas e recuperação de senha. 
-O acesso às funcionalidades é controlado por meio de autenticação (usando Passport) e autorização baseada em papéis (roles).
+Esse sistema é um app de gerenciamento de frota feito em Node.js com Express e MySQL. Ele junta várias features: autenticação com Passport, controle de sessões, upload de imagens, registro e gerenciamento de veículos, controle de multas, recuperação de senha, notificações em tempo real e suporte a PWA pra funcionar offline e ser adicionado à tela inicial. Cada usuário só vê o que tem permissão pra ver, com autorização por roles.
 
-## Funcionalidades por Perfil de Usuário
+## Tecnologias
 
-## Usuário Comum
-Após efetuar o login, o usuário comum tem acesso às seguintes funcionalidades:
+- **Node.js & Express:** Server e APIs REST.
+- **MySQL:** Banco de dados relacional.
+- **Passport:** Autenticação local com email e senha.
+- **Express-session:** Gerenciamento de sessões.
+- **Multer:** Upload de imagens.
+- **Socket.IO:** Notificações em tempo real.
+- **Nodemailer:** Envio de emails (pra reset de senha e alertas de manutenção).
+- **PWA:** Service Worker e Manifest (offline e "Add to Home Screen").
+- **EJS:** Motor de template pra renderizar as views.
 
-Login/Logout: Acesso ao sistema com autenticação via email e senha.
-Recuperação de Senha: Solicitação e redefinição de senha via email.
-Perfil: Visualização das informações pessoais e dos registros de uso dos veículos.
-Uso de Veículos:
-Iniciar o uso de um veículo, informando dados como o motorista, quilometragem inicial.
-Finalizar uso de um veículo através da Edição de uso: Adicionar km final, upload de imagem do odômetro final, Data final.
-Relatório de Uso: Visualizar um relatório paginado do uso dos veículos, com informações sobre multas e outros detalhes.
+## Funcionalidades
 
-## Usuário Administrador (Admin)
-O usuário com role admin possui acesso a funcionalidades adicionais de gerenciamento, tais como:
+### Para Usuários Comuns
 
-Registro de Veículos: Cadastro de novos veículos no sistema.
-Edição e Exclusão de Veículos: Atualização e remoção de veículos existentes.
-Gerenciamento de Uso de Veículos:
-Edição e exclusão de registros de uso dos veículos.
-Registro, edição e exclusão de multas associadas ao uso dos veículos.
+Depois de logar, o usuário comum pode:
 
-![Captura de tela 2025-02-27 122849](https://github.com/user-attachments/assets/1ff2e351-70f0-49de-9416-c2fc6e7e8dee)
+- **Login/Logout:** Entrar e sair usando email e senha.
+- **Recuperação de Senha:** Solicitar e resetar a senha via email.
+- **Perfil:** Ver as próprias informações e o histórico de uso dos veículos.
+- **Uso de Veículos:**
+  - **Iniciar Uso:** Registrar o começo do uso, informando o motorista e o km inicial.
+  - **Finalizar Uso (Edição de Uso):** Adicionar o km final, enviar a foto do odômetro e definir a data final.
+- **Relatório de Uso:** Consultar um relatório paginado dos registros de uso, com detalhes sobre multas e outras infos.
 
-![Captura de tela 2025-02-27 122859](https://github.com/user-attachments/assets/17b5d088-9465-4800-8542-1d299425e379)
+### Para Administradores (Admin)
+
+Os admins têm acesso a funções extras, como:
+
+- **Registro de Veículos:** Adicionar novos veículos no sistema.
+- **Edição/Exclusão de Veículos:** Atualizar e remover veículos cadastrados.
+- **Gerenciamento de Uso de Veículos:**
+  - Editar e excluir registros de uso.
+  - Registrar, editar e excluir multas associadas.
+- **Manutenção Preventiva:**
+  - Receber alertas quando um veículo atingir 10.000 km depois da última troca de óleo.
+  - Marcar que a troca foi feita, atualizando os dados do veículo.
+- **Controle Total:** Acesso a todos os relatórios e funções administrativas.
+
+## Funcionalidades Extras
+
+- **Notificações & Manutenção Preventiva:**  
+  O sistema monitora o km dos veículos e, se a diferença entre o km atual e a última troca de óleo for igual ou maior que 10.000 km, manda uma notificação em tempo real via Socket.IO e dispara um email avisando que tá na hora da manutenção.
+
+- **PWA (Progressive Web App):**  
+  Tem um `manifest.json` e um `service-worker.js` pra funcionar offline e ser instalado na tela inicial, deixando o acesso muito mais rápido e imersivo, principalmente em mobile.
+
+- **Atualização de Localização via GPS:**  
+  Uma rota específica recebe atualizações de localização (latitude e longitude) dos veículos, usando CORS pra permitir requisições de domínios específicos — ideal pra integração com apps de monitoramento.
+
+- **Comunicação em Tempo Real:**  
+  O Socket.IO é usado pra enviar notificações instantâneas (como a necessidade de troca de óleo) sem precisar recarregar a página.
+
+## Como Rodar
+
+### Setup do Ambiente
+
+1. **Instalar Dependências:**  
+   Rode `npm install` pra instalar todas as libs necessárias.
+
+2. **Configurar Variáveis:**  
+   Preencha o arquivo `.env` com os dados do banco, secret da sessão, credenciais de email, etc.
+
+### Inicialização
+
+1. **Banco de Dados:**  
+   Garanta que o MySQL esteja rodando e que o DB (e as tabelas) estejam criados conforme esperado.
+
+2. **Rodar o App:**  
+   Execute `node app.js` ou `npm start` (conforme configurado no package.json).  
+   Depois, acesse `http://localhost:3000` pra testar localmente.
+
+### Testando
+
+- Use o navegador pra acessar as páginas de login, perfil e demais funcionalidades de uso dos veículos.
+- Se o app estiver configurado como PWA, adicione-o à tela inicial no seu mobile e teste também o modo offline.
+
+
+
 
 

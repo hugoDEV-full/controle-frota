@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrar Multa</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container mt-4">
+    <h1>Registrar Multa</h1>
+
+    <% if (mensagemErro) { %>
+      <div class="alert alert-warning">
+        <%= mensagemErro %>
+      </div>
+    <% } %>
+
+    <form action="/registrar-multa/<%= veiculo.id %>" method="POST">
+
+      <div class="mb-3">
+        <label for="data_multa" class="form-label">Data e Hora da Multa</label>
+        <input type="datetime-local" class="form-control" id="data_multa" name="data_multa" required>
+      </div>
+      <div class="mb-3">
+        <label for="multa" class="form-label">Descrição da Multa</label>
+        <input type="text" class="form-control" id="multa" name="multa" placeholder="Digite a descrição da multa" required>
+      </div>
+      <button type="submit" class="btn btn-danger">Registrar Multa</button>
+    </form>
+    <div class="mt-3">
+      <a href="/relatorio-multas" class="btn btn-secondary">Ver Relatório de Multas</a>
+      <a href="/" class="btn btn-secondary">Voltar para a Página Inicial</a>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
