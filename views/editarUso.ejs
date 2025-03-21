@@ -61,10 +61,10 @@
       </div>
       <div class="mb-3">
         <label for="data_hora_final" class="form-label">Data e Hora Final</label>
-        <input type="datetime-local" class="form-control" id="data_hora_final" name="data_hora_final"
-          value="<%= uso.data_hora_final ? new Date(new Date(uso.data_hora_final).getTime() - (new Date(uso.data_hora_final).getTimezoneOffset() * 60000)).toISOString().slice(0,16) : '' %>">
-
+        <input type="datetime-local" class="form-control" id="data_hora_final" name="data_hora_final" value="<%= (uso.data_hora_final ? new Date(uso.data_hora_final) : new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)))
+                  .toISOString().slice(0,16) %>">
       </div>
+
 
       <div class="mb-3">
         <label for="foto_km" class="form-label">Foto de Quilometragem final</label>
@@ -77,36 +77,9 @@
       </div>
 
       <hr>
-
-      <!-- Dados das Multas -->
-      <h3>Multas</h3>
-      <% if (multas && multas.length> 0) { %>
-        <% multas.forEach(function(multa, index) { %>
-          <div class="mb-3 d-flex align-items-center">
-            <div class="flex-grow-1">
-              <label class="form-label">Multa <%= index + 1 %></label>
-              <!-- Campo oculto para o ID da multa (para atualização) -->
-              <input type="hidden" name="multas_id[]" value="<%= multa.id %>">
-              <input type="text" class="form-control" name="multas_descricao[]" value="<%= multa.multa %>">
-            </div>
-            <!-- Botão para excluir esta multa  -->
-            <div class="ms-2">
-              <button type="button" class="btn btn-danger btn-sm" onclick="deleteFine(<%= multa.id %>)">Excluir</button>
-            </div>
-          </div>
-          <% }); %>
-            <% } else { %>
-              <p>Não há multas registradas.</p>
-              <% } %>
-
-                <!-- Campos para novas multas -->
-                <div id="novasMultas"></div>
-                <button type="button" class="btn btn-secondary mb-3" onclick="addFineField()">Adicionar Nova
-                  Multa</button>
-
-                <br>
-                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
-                <a href="/relatorio-uso" class="btn btn-secondary">Cancelar</a>
+    
+                  <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                  <a href="/relatorio-uso" class="btn btn-secondary">Cancelar</a>
     </form>
   </div>
 

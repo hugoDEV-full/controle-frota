@@ -1,4 +1,5 @@
 const express = require('express');
+const expressLayouts = require('express-ejs-layouts');
 const mysql = require('mysql2');
 const multer = require('multer');
 const path = require('path');
@@ -19,6 +20,7 @@ const { Server } = require('socket.io');
 const io = new Server(server);
 
 const port = 3000;
+
 
 // Se a pasta 'uploads' não existir, cria ela
 if (!fs.existsSync('uploads')) {
@@ -69,7 +71,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
     storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 50 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         if (file.mimetype.startsWith('image/')) {
             cb(null, true);
@@ -80,7 +82,7 @@ const upload = multer({
 });
 const uploadMultiple = multer({
     storage: storage,
-    limits: { fileSize: 5 * 1024 * 1024 },
+    limits: { fileSize: 1000 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         if (file.mimetype.startsWith('image/')) {
             cb(null, true);
@@ -93,6 +95,8 @@ const uploadMultiple = multer({
 // Configura o EJS e define a pasta das views
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+app.use(expressLayouts);
+app.set('layout', 'layout');
 // Libera acesso à pasta uploads e public
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(express.urlencoded({ extended: true }));
@@ -182,6 +186,41 @@ function checkOilChangeForVehicle(veiculo_id) {
 
 /* Rotas de autenticação */
 
+
+app.get('/', isAuthenticated, (req, res) => {
+    // Busca os veículos cadastrados
+    db.query('SELECT * FROM veiculos', (err, results) => {
+        if (err) throw err;
+        // Conta os veículos
+        db.query('SELECT COUNT(*) AS totalVeiculos FROM veiculos', (err, veiculosResult) => {
+            if (err) throw err;
+            // Conta as multas
+            db.query('SELECT COUNT(*) AS totalMultas FROM multas', (err, multasResult) => {
+                if (err) throw err;
+                // Conta os registros de uso
+                db.query('SELECT COUNT(*) AS totalUso FROM uso_veiculos', (err, usoResult) => {
+                    if (err) throw err;
+                    // Conta motoristas ativos (distintos)
+                    db.query('SELECT COUNT(DISTINCT motorista) AS totalMotoristasAtivos FROM uso_veiculos', (err, motoristasResult) => {
+                        if (err) throw err;
+                        res.render('dashboard', {
+                            title: 'Dashboard',
+                            layout: 'layout', // Define o layout a ser usado (layout.ejs)
+                            activePage: 'dashboard', // Página ativa para destaque no menu
+                            veiculos: results,
+                            user: req.user,
+                            totalVeiculos: veiculosResult[0].totalVeiculos,
+                            totalMultas: multasResult[0].totalMultas,
+                            totalUso: usoResult[0].totalUso,
+                            totalMotoristasAtivos: motoristasResult[0].totalMotoristasAtivos
+                        });
+                    });
+                });
+            });
+        });
+    });
+});
+
 // Tela de registro (só admin pode acessar)
 app.get('/register', isAdmin, (req, res) => {
     res.render('register');
@@ -189,8 +228,9 @@ app.get('/register', isAdmin, (req, res) => {
 
 // Tela de login
 app.get('/login', (req, res) => {
-    res.render('login');
+    res.render('login', { layout: 'login' }); //  layout exclusivo para login
 });
+
 
 // Faz o login
 app.post('/login', passport.authenticate('local', {
@@ -215,7 +255,7 @@ app.get('/logout', async (req, res, next) => {
 
 // Tela de esqueci minha senha
 app.get('/forgot-password', (req, res) => {
-    res.render('forgot-password');
+    res.render('forgot-password', { layout: 'forgot-password' });
 });
 app.post('/forgot-password', (req, res) => {
     const { email } = req.body;
@@ -243,9 +283,9 @@ app.post('/forgot-password', (req, res) => {
                 from: process.env.EMAIL_USER,
                 subject: 'Redefinição de Senha',
                 text: `Você pediu pra resetar sua senha.\n\n` +
-                      `Clica ou copia esse link no seu navegador:\n\n` +
-                      `http://${req.headers.host}/reset-password/${token}\n\n` +
-                      `Se não foi você, ignora esse email.\n`
+                    `Clica ou copia esse link no seu navegador:\n\n` +
+                    `http://${req.headers.host}/reset-password/${token}\n\n` +
+                    `Se não foi você, ignora esse email.\n`
             };
 
             transporter.sendMail(mailOptions, (err) => {
@@ -262,7 +302,7 @@ app.get('/reset-password/:token', (req, res) => {
     db.query("SELECT * FROM usuarios WHERE password_reset_token = ? AND password_reset_expires > ?", [token, Date.now()], (err, results) => {
         if (err) return res.status(500).send("Erro no servidor.");
         if (results.length === 0) return res.status(400).send("Token inválido ou expirado.");
-        res.render('reset-password', { token });
+        res.render('reset-password', { layout: 'reset-password', token });
     });
 });
 app.post('/reset-password/:token', (req, res) => {
@@ -285,7 +325,7 @@ app.post('/reset-password/:token', (req, res) => {
     });
 });
 
-/* Rotas protegidas (usuário autenticado) */
+
 
 app.get('/perfil', isAuthenticated, (req, res) => {
     res.render('perfil', { user: req.user });
@@ -304,7 +344,11 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
 */
 
 app.get('/relatorio-uso', isAuthenticated, (req, res) => {
-    res.render('relatorio_uso');
+    res.render('relatorio_uso', {
+        title: 'Relatório de uso de veículos',
+        layout: 'layout',
+        activePage: 'relatorio_uso' 
+    });
 });
 
 app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
@@ -313,24 +357,24 @@ app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
     let start = parseInt(req.query.start) || 0;
     let length = parseInt(req.query.length) || 10;
     let searchValue = req.query.search ? req.query.search.value : '';
-    
+
     // Parâmetros de ordenação
     let orderColumnIndex = req.query.order ? parseInt(req.query.order[0].column) : 0;
     let orderDir = req.query.order ? req.query.order[0].dir : 'asc';
-    
+
     // Mapeia os índices para as colunas do banco
     let columns = ['veiculos.placa', 'motorista', 'km_inicial', 'km_final', 'data_hora_inicial', 'data_hora_final', 'data_criacao'];
     let orderColumn = columns[orderColumnIndex] || 'data_hora_inicial';
-    
+
     // Monta a cláusula WHERE se tiver busca
     let whereClause = '';
     let params = [];
     if (searchValue) {
-      whereClause = `WHERE (veiculos.placa LIKE ? OR motorista LIKE ? OR km_inicial LIKE ? OR km_final LIKE ? )`;
-      const searchParam = '%' + searchValue + '%';
-      params.push(searchParam, searchParam, searchParam, searchParam);
+        whereClause = `WHERE (veiculos.placa LIKE ? OR motorista LIKE ? OR km_inicial LIKE ? OR km_final LIKE ? )`;
+        const searchParam = '%' + searchValue + '%';
+        params.push(searchParam, searchParam, searchParam, searchParam);
     }
-    
+
     // Consulta principal
     let sql = `
       SELECT uso_veiculos.*, 
@@ -345,76 +389,51 @@ app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
       ORDER BY ${orderColumn} ${orderDir}
       LIMIT ? OFFSET ?
     `;
-    
+
     params.push(length, start);
-    
+
     db.query(sql, params, (err, results) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).send("Erro na consulta");
-      }
-      let countSql = `SELECT COUNT(DISTINCT uso_veiculos.id) AS total FROM uso_veiculos
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Erro na consulta");
+        }
+        let countSql = `SELECT COUNT(DISTINCT uso_veiculos.id) AS total FROM uso_veiculos
                       JOIN veiculos ON uso_veiculos.veiculo_id = veiculos.id
                       LEFT JOIN multas ON uso_veiculos.id = multas.uso_id
                       ${whereClause}`;
-      db.query(countSql, params.slice(0, whereClause ? 4 : 0), (err, countResult) => {
-        if (err) {
-          console.error(err);
-          return res.status(500).send("Erro na consulta de contagem");
-        }
-        let totalRecords = countResult[0].total;
-        
-        // Total de registros sem filtro
-        db.query('SELECT COUNT(*) AS total FROM uso_veiculos', (err, totalResult) => {
-          if (err) {
-            console.error(err);
-            return res.status(500).send("Erro na consulta de contagem total");
-          }
-          let totalRecordsUnfiltered = totalResult[0].total;
-          res.json({
-            draw: draw,
-            recordsTotal: totalRecordsUnfiltered,
-            recordsFiltered: totalRecords,
-            data: results
-          });
-        });
-      });
-    });
-});
+        db.query(countSql, params.slice(0, whereClause ? 4 : 0), (err, countResult) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).send("Erro na consulta de contagem");
+            }
+            let totalRecords = countResult[0].total;
 
-app.get('/', isAuthenticated, (req, res) => {
-    // Busca os veículos cadastrados
-    db.query('SELECT * FROM veiculos', (err, results) => {
-        if (err) throw err;
-        // Conta os veículos
-        db.query('SELECT COUNT(*) AS totalVeiculos FROM veiculos', (err, veiculosResult) => {
-            if (err) throw err;
-            // Conta as multas
-            db.query('SELECT COUNT(*) AS totalMultas FROM multas', (err, multasResult) => {
-                if (err) throw err;
-                // Conta os registros de uso
-                db.query('SELECT COUNT(*) AS totalUso FROM uso_veiculos', (err, usoResult) => {
-                    if (err) throw err;
-                    // Conta motoristas ativos (distintos)
-                    db.query('SELECT COUNT(DISTINCT motorista) AS totalMotoristasAtivos FROM uso_veiculos', (err, motoristasResult) => {
-                        if (err) throw err;
-                        res.render('index', { 
-                            veiculos: results, 
-                            user: req.user,
-                            totalVeiculos: veiculosResult[0].totalVeiculos,
-                            totalMultas: multasResult[0].totalMultas,
-                            totalUso: usoResult[0].totalUso,
-                            totalMotoristasAtivos: motoristasResult[0].totalMotoristasAtivos
-                        });
-                    });
+            // Total de registros sem filtro
+            db.query('SELECT COUNT(*) AS total FROM uso_veiculos', (err, totalResult) => {
+                if (err) {
+                    console.error(err);
+                    return res.status(500).send("Erro na consulta de contagem total");
+                }
+                let totalRecordsUnfiltered = totalResult[0].total;
+                res.json({
+                    draw: draw,
+                    recordsTotal: totalRecordsUnfiltered,
+                    recordsFiltered: totalRecords,
+                    data: results
                 });
             });
         });
     });
 });
 
+
+
 app.get('/registrar-veiculo', isAuthenticated, isAdmin, (req, res) => {
-    res.render('registrar-veiculo');
+    res.render('registrar-veiculo', {
+        title: 'Registrar veículo',
+        layout: 'layout',
+        activePage: 'registrar-veiculo' 
+    });
 });
 app.post('/registrar-veiculo', isAuthenticated, isAdmin, (req, res) => {
     const { nome, placa, km, ultimaTrocaOleo, emUsoPor, modelo } = req.body;
@@ -435,68 +454,75 @@ app.post('/registrar-veiculo', isAuthenticated, isAdmin, (req, res) => {
 app.post('/multar/:uso_id', isAuthenticated, (req, res) => {
     const { uso_id } = req.params;
     const { multa } = req.body; // Descrição da multa
-  
+
     if (!multa) {
-      return res.status(400).send("Descrição da multa é obrigatória.");
+        return res.status(400).send("Descrição da multa é obrigatória.");
     }
-  
+
     // Busca o uso pra saber o motorista e o veículo
     db.query("SELECT * FROM uso_veiculos WHERE id = ?", [uso_id], (err, usoResult) => {
-      if (err) {
-        console.error("Erro ao buscar uso:", err);
-        return res.status(500).send("Erro ao buscar o uso.");
-      }
-      if (usoResult.length === 0) {
-        return res.status(404).send("Uso não encontrado.");
-      }
-      
-      const uso = usoResult[0];
-      const motoristaProvavel = uso.motorista;
-      const veiculo_id = uso.veiculo_id;
-  
-      // Insere a multa associando o uso e o motorista
-      db.query(
-        "INSERT INTO multas (veiculo_id, motorista, multa, uso_id) VALUES (?, ?, ?, ?)",
-        [veiculo_id, motoristaProvavel, multa, uso_id],
-        (err, result) => {
-          if (err) {
-            console.error("Erro ao registrar a multa:", err);
-            return res.status(500).send("Erro ao registrar a multa.");
-          }
-          res.redirect("/relatorio-uso");
+        if (err) {
+            console.error("Erro ao buscar uso:", err);
+            return res.status(500).send("Erro ao buscar o uso.");
         }
-      );
+        if (usoResult.length === 0) {
+            return res.status(404).send("Uso não encontrado.");
+        }
+
+        const uso = usoResult[0];
+        const motoristaProvavel = uso.motorista;
+        const veiculo_id = uso.veiculo_id;
+
+        // Insere a multa associando o uso e o motorista
+        db.query(
+            "INSERT INTO multas (veiculo_id, motorista, multa, uso_id) VALUES (?, ?, ?, ?)",
+            [veiculo_id, motoristaProvavel, multa, uso_id],
+            (err, result) => {
+                if (err) {
+                    console.error("Erro ao registrar a multa:", err);
+                    return res.status(500).send("Erro ao registrar a multa.");
+                }
+                res.redirect("/relatorio-uso");
+            }
+        );
     });
 });
-  
+
 // Rota pra mostrar o form de multa pra um veículo
 app.get('/registrar-multa/:veiculo_id', isAuthenticated, (req, res) => {
     const { veiculo_id } = req.params;
     // Busca os dados do veículo
     db.query("SELECT * FROM veiculos WHERE id = ?", [veiculo_id], (err, veiculoResult) => {
-      if (err) {
-        console.error("Erro ao buscar veículo:", err);
-        return res.status(500).send("Erro ao buscar o veículo.");
-      }
-      if (veiculoResult.length === 0) {
-        return res.status(404).send("Veículo não encontrado.");
-      }
-      const veiculo = veiculoResult[0];
-      res.render('registrarMulta', { veiculo, mensagemErro: null });
+        if (err) {
+            console.error("Erro ao buscar veículo:", err);
+            return res.status(500).send("Erro ao buscar o veículo.");
+        }
+        if (veiculoResult.length === 0) {
+            return res.status(404).send("Veículo não encontrado.");
+        }
+        const veiculo = veiculoResult[0];
+        res.render('registrarMulta', {
+            veiculo,
+            mensagemErro: null,
+            title: 'Registro de Multa',
+            layout: 'layout',
+            activePage: 'registrarMulta' 
+        });
     });
 });
-  
+
+
 app.post('/registrar-multa/:veiculo_id', isAuthenticated, (req, res) => {
     const { veiculo_id } = req.params;
     const { data_multa, multa } = req.body;
-  
+
     if (!data_multa || !multa) {
-      return res.status(400).send("Campos obrigatórios não preenchidos.");
+        return res.status(400).send("Campos obrigatórios não preenchidos.");
     }
-    
+
     // Converte a data da multa pra objeto Date
     const dataMulta = new Date(data_multa);
-  
+
     /* 
       Procura um uso do veículo que englobe o horário da multa:
       - Início do uso <= data da multa 
@@ -511,39 +537,39 @@ app.post('/registrar-multa/:veiculo_id', isAuthenticated, (req, res) => {
       ORDER BY data_hora_inicial DESC 
       LIMIT 1
     `;
-    
+
     db.query(queryUso, [veiculo_id, dataMulta, dataMulta], (err, usoResult) => {
-      if (err) {
-        console.error("Erro ao buscar uso do veículo:", err);
-        return res.status(500).send("Erro ao buscar o uso.");
-      }
-      
-      let motoristaProvavel = "Desconhecido";
-      let uso_id = null;
-      if (usoResult.length > 0) {
-        const uso = usoResult[0];
-        motoristaProvavel = uso.motorista;
-        uso_id = uso.id;
-      }
-      
-      if (!uso_id) {
-        return res.render('mensagemMulta', { 
-          mensagem: "Não rolou associar um motorista. Cadastre um uso pra esse período." 
-        });
-      }
-      
-      // Insere a multa com os dados informados
-      const insertQuery = "INSERT INTO multas (veiculo_id, motorista, data, multa, uso_id) VALUES (?, ?, ?, ?, ?)";
-      db.query(insertQuery, [veiculo_id, motoristaProvavel, data_multa, multa, uso_id], (err, result) => {
         if (err) {
-          console.error("Erro ao registrar a multa:", err);
-          return res.status(500).send("Erro ao registrar a multa.");
+            console.error("Erro ao buscar uso do veículo:", err);
+            return res.status(500).send("Erro ao buscar o uso.");
         }
-        res.redirect("/relatorio-multas");
-      });
+
+        let motoristaProvavel = "Desconhecido";
+        let uso_id = null;
+        if (usoResult.length > 0) {
+            const uso = usoResult[0];
+            motoristaProvavel = uso.motorista;
+            uso_id = uso.id;
+        }
+
+        if (!uso_id) {
+            return res.render('mensagemMulta', {
+                mensagem: "Não rolou associar um motorista. Cadastre um uso pra esse período."
+            });
+        }
+
+        // Insere a multa com os dados informados
+        const insertQuery = "INSERT INTO multas (veiculo_id, motorista, data, multa, uso_id) VALUES (?, ?, ?, ?, ?)";
+        db.query(insertQuery, [veiculo_id, motoristaProvavel, data_multa, multa, uso_id], (err, result) => {
+            if (err) {
+                console.error("Erro ao registrar a multa:", err);
+                return res.status(500).send("Erro ao registrar a multa.");
+            }
+            res.redirect("/relatorio-multas");
+        });
     });
 });
-  
+
 app.get('/relatorio-multas', isAuthenticated, (req, res) => {
     const query = `
       SELECT m.*, v.placa, u.data_hora_inicial, u.data_hora_final
@@ -553,14 +579,19 @@ app.get('/relatorio-multas', isAuthenticated, (req, res) => {
       ORDER BY m.data DESC
     `;
     db.query(query, (err, multasResult) => {
-      if (err) {
-        console.error("Erro ao buscar multas:", err);
-        return res.status(500).send("Erro ao buscar multas.");
-      }
-      res.render('relatorioMultas', { multas: multasResult });
+        if (err) {
+            console.error("Erro ao buscar multas:", err);
+            return res.status(500).send("Erro ao buscar multas.");
+        }
+        res.render('relatorioMultas', {
+            multas: multasResult,
+            title: 'Relatório de Multas',
+            layout: 'layout',
+            activePage: 'relatorioMultas' 
+        });
     });
 });
-  
+
 app.get('/editar-uso/:id', isAuthenticated, (req, res) => {
     const { id } = req.params;
     db.query('SELECT * FROM uso_veiculos WHERE id = ?', [id], (err, usoResult) => {
@@ -578,11 +609,18 @@ app.get('/editar-uso/:id', isAuthenticated, (req, res) => {
                 console.error('Erro ao buscar multas:', err);
                 return res.status(500).send('Erro ao buscar multas');
             }
-            res.render('editarUso', { uso, multas: multasResult });
+            res.render('editarUso', {
+                uso,
+                multas: multasResult,
+                title: 'Editar Uso',
+                layout: 'layout',
+                activePage: 'editarUso' 
+            });
         });
     });
 });
-  
+
+
 app.get('/usar/:id', isAuthenticated, (req, res) => {
     const { id } = req.params;
     // Busca os dados do veículo
@@ -605,12 +643,19 @@ app.get('/usar/:id', isAuthenticated, (req, res) => {
                     return res.status(500).send("Erro ao buscar o último uso.");
                 }
                 const kmInicial = usoResult.length > 0 ? usoResult[0].km_final : (veiculo.km || 0);
-                res.render('usar', { veiculo, kmInicial });
+                res.render('usar', {
+                    veiculo,
+                    kmInicial,
+                    title: 'Usar Veículo',
+                    layout: 'layout',
+                    activePage: 'usar'
+                    
+                });
             }
         );
     });
 });
-  
+
 app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
     const { id } = req.params; // ID do veículo
     const { motorista, km_inicial, km_final, data_hora_inicial, data_hora_final } = req.body;
@@ -706,7 +751,7 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
         );
     });
 });
-  
+
 // Rota pra editar uso, atualizar multas e imagem
 app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
     const { id } = req.params;
@@ -760,6 +805,11 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
                     }
                     if (kmFinalParsed < kmInicialValue) {
                         return res.status(400).send('km final não pode ser menor que km inicial');
+                    }
+                    // km_final não pode ultrapassar a autonomia de um tanque 
+                    const autonomiaUno = 500;
+                    if ((kmFinalParsed - kmInicialValue) > autonomiaUno) {
+                        return res.status(400).send(`O consumo excede a autonomia máxima de um tanque  (${autonomiaUno} km).`);
                     }
                 }
                 if (data_hora_final && data_hora_final !== '') {
@@ -846,7 +896,8 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
         });
     }
 });
-  
+
+
 // Rota pra marcar que a troca de óleo foi feita
 app.post('/troca-feita/:id', isAuthenticated, isAdmin, (req, res) => {
     const { id } = req.params;
@@ -860,7 +911,7 @@ app.post('/troca-feita/:id', isAuthenticated, isAdmin, (req, res) => {
         res.redirect('/notificacoes');
     });
 });
-  
+
 // Rota pra excluir uma multa
 app.post('/excluir-multa/:id', isAuthenticated, isAdmin, (req, res) => {
     const { id } = req.params;
@@ -872,7 +923,7 @@ app.post('/excluir-multa/:id', isAuthenticated, isAdmin, (req, res) => {
         res.redirect('back');
     });
 });
-  
+
 // Rota pra excluir uso e suas multas
 app.post('/excluir-uso/:id', isAuthenticated, isAdmin, (req, res) => {
     const { id } = req.params;
@@ -890,59 +941,59 @@ app.post('/excluir-uso/:id', isAuthenticated, isAdmin, (req, res) => {
         });
     });
 });
-  
+
 // Rota pra excluir múltiplos usos
 app.post('/excluir-multiplos-usos', isAuthenticated, isAdmin, (req, res) => {
     const { ids } = req.body;
-  
+
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ message: 'IDs inválidos.' });
+        return res.status(400).json({ message: 'IDs inválidos.' });
     }
-  
+
     db.beginTransaction(err => {
-      if (err) {
-        console.error('Erro ao iniciar transação:', err);
-        return res.status(500).json({ message: 'Erro na transação.' });
-      }
-  
-      const queryMultas = 'DELETE FROM multas WHERE uso_id IN (?)';
-      db.query(queryMultas, [ids], (err, resultMultas) => {
         if (err) {
-          console.error('Erro ao excluir multas:', err);
-          return db.rollback(() => {
-            res.status(500).json({ message: 'Erro ao excluir multas.' });
-          });
+            console.error('Erro ao iniciar transação:', err);
+            return res.status(500).json({ message: 'Erro na transação.' });
         }
-  
-        const queryUso = 'DELETE FROM uso_veiculos WHERE id IN (?)';
-        db.query(queryUso, [ids], (err, resultUso) => {
-          if (err) {
-            console.error('Erro ao excluir usos:', err);
-            return db.rollback(() => {
-              res.status(500).json({ message: 'Erro ao excluir usos.' });
-            });
-          }
-  
-          if (resultUso.affectedRows === 0) {
-            return db.rollback(() => {
-              res.status(404).json({ message: 'Nenhum registro encontrado.' });
-            });
-          }
-  
-          db.commit(err => {
+
+        const queryMultas = 'DELETE FROM multas WHERE uso_id IN (?)';
+        db.query(queryMultas, [ids], (err, resultMultas) => {
             if (err) {
-              console.error('Erro ao commitar transação:', err);
-              return db.rollback(() => {
-                res.status(500).json({ message: 'Erro ao finalizar exclusão.' });
-              });
+                console.error('Erro ao excluir multas:', err);
+                return db.rollback(() => {
+                    res.status(500).json({ message: 'Erro ao excluir multas.' });
+                });
             }
-            res.json({ message: 'Registros excluídos com sucesso.' });
-          });
+
+            const queryUso = 'DELETE FROM uso_veiculos WHERE id IN (?)';
+            db.query(queryUso, [ids], (err, resultUso) => {
+                if (err) {
+                    console.error('Erro ao excluir usos:', err);
+                    return db.rollback(() => {
+                        res.status(500).json({ message: 'Erro ao excluir usos.' });
+                    });
+                }
+
+                if (resultUso.affectedRows === 0) {
+                    return db.rollback(() => {
+                        res.status(404).json({ message: 'Nenhum registro encontrado.' });
+                    });
+                }
+
+                db.commit(err => {
+                    if (err) {
+                        console.error('Erro ao commitar transação:', err);
+                        return db.rollback(() => {
+                            res.status(500).json({ message: 'Erro ao finalizar exclusão.' });
+                        });
+                    }
+                    res.json({ message: 'Registros excluídos com sucesso.' });
+                });
+            });
         });
-      });
     });
 });
-  
+
 // Rota pra exibir a tela de edição do veículo
 app.get('/editar-veiculo/:id', isAuthenticated, (req, res) => {
     const id = req.params.id;
@@ -950,10 +1001,16 @@ app.get('/editar-veiculo/:id', isAuthenticated, (req, res) => {
         if (err || results.length === 0) {
             return res.status(404).send("Veículo não encontrado.");
         }
-        res.render('editar-veiculo', { veiculo: results[0] });
+        res.render('editar-veiculo', {
+            veiculo: results[0],
+            title: 'Editar Veículo',
+            layout: 'layout',
+            activePage: 'editar-veiculo'
+        });
+
     });
 });
-  
+
 // Rota pra atualizar dados do veículo
 app.post('/editar-veiculo/:id', isAuthenticated, isAdmin, (req, res) => {
     const id = req.params.id;
@@ -969,7 +1026,7 @@ app.post('/editar-veiculo/:id', isAuthenticated, isAdmin, (req, res) => {
         }
     );
 });
-  
+
 // Rota pra excluir veículo
 app.post('/excluir-veiculo/:id', isAuthenticated, isAdmin, (req, res) => {
     const id = req.params.id;
@@ -980,7 +1037,7 @@ app.post('/excluir-veiculo/:id', isAuthenticated, isAdmin, (req, res) => {
         res.redirect('/');
     });
 });
-  
+
 // Rota de notificações: mostra veículos que precisam trocar óleo
 app.get('/notificacoes', isAuthenticated, (req, res) => {
     const query = `
@@ -993,15 +1050,21 @@ app.get('/notificacoes', isAuthenticated, (req, res) => {
             console.error("Erro ao buscar notificações:", err);
             return res.status(500).send("Erro no servidor");
         }
-        res.render('notificacoes', { veiculos: results });
+        res.render('notificacoes', {
+            veiculos: results,
+            title: 'Notificações',
+            layout: 'layout',
+            activePage: 'notificacoes'
+        });
+
     });
 });
-  
+
 // Socket.IO: conexão com o cliente
 io.on("connection", (socket) => {
     console.log("Cliente conectado via Socket.IO.");
 });
-  
+
 // GPS - Configura CORS e rota pra atualizar localização
 const cors = require('cors');
 app.use(cors({ origin: 'https://rococo-kangaroo-21ce36.netlify.app' }));
@@ -1010,29 +1073,29 @@ app.post('/update-location', (req, res) => {
     console.log(`Veículo ${vehicleId}: Latitude ${latitude}, Longitude ${longitude}`);
     res.json({ status: 'ok', received: req.body });
 });
-  
+
 // Rotas pra servir o manifest e o service worker (PWA)
 app.get('/manifest.json', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
 });
-  
+
 app.get('/service-worker.js', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'service-worker.js'));
 });
-  
-/* Código de registro do service worker (lembre: isso roda no browser!)
+
+/* //Código de registro do service worker (lembre: isso roda no browser!)
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/service-worker.js')
-        .then(registration => {
-          console.log('Service Worker registrado com sucesso:', registration.scope);
-        })
-        .catch(error => {
-          console.error('Falha ao registrar o Service Worker:', error);
-        });
-    });
-}
-  */
+   window.addEventListener('load', () => {
+     navigator.serviceWorker.register('/service-worker.js')
+       .then(registration => {
+         console.log('Service Worker registrado com sucesso:', registration.scope);
+       })
+       .catch(error => {
+         console.error('Falha ao registrar o Service Worker:', error);
+       });
+   });
+} */
+
 /*
 // Código para iniciar o servidor com Socket.IO (opcional)
 // server.listen(port, () => {

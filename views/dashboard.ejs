@@ -1,0 +1,84 @@
+
+
+<div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <div>
+    <h1>Controle de Frota</h1>
+    <p>
+      Usuário: <strong><%= user.email %></strong> | Permissão: <strong><%= user.role %></strong>
+    </p>
+  </div>
+</div>
+
+<!-- Cards com estatísticas -->
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="card stat-card text-white bg-primary mb-3">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-truck"></i> Veículos</h5>
+        <p class="card-text display-6"><%= totalVeiculos || 0 %></p>
+        <p class="card-text">Total de veículos cadastrados</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card text-white bg-danger mb-3">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-exclamation-octagon"></i> Multas</h5>
+        <p class="card-text display-6"><%= totalMultas || 0 %></p>
+        <p class="card-text">Multas registradas</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card text-white bg-success mb-3">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-speedometer2"></i> Uso</h5>
+        <p class="card-text display-6"><%= totalUso || 0 %></p>
+        <p class="card-text">Registros de uso</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card stat-card text-white bg-warning mb-3">
+      <div class="card-body">
+        <h5 class="card-title"><i class="bi bi-people"></i> Motoristas</h5>
+        <p class="card-text display-6"><%= totalMotoristasAtivos || 0 %></p>
+        <p class="card-text">Motoristas em atividade</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Lista de Veículos -->
+<div class="mb-4">
+  <p>Escolha um veículo para registrar o uso:</p>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Veículo</th>
+        <th>Placa</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% veiculos.forEach(veiculo => { %>
+        <tr>
+          <td><%= veiculo.nome %></td>
+          <td><%= veiculo.placa %></td>
+          <td>
+            <a href="/usar/<%= veiculo.id %>" class="btn btn-primary">Registrar Uso</a>
+            <a href="/registrar-multa/<%= veiculo.id %>" class="btn btn-danger">Registrar Multas</a>
+            <a href="/editar-veiculo/<%= veiculo.id %>" class="btn btn-warning">Editar</a>
+            <form action="/excluir-veiculo/<%= veiculo.id %>" method="POST" style="display:inline;">
+              <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este veículo?');">Excluir</button>
+            </form>
+          </td>
+        </tr>
+      <% }); %>
+    </tbody>
+  </table>
+  <div class="d-flex gap-2">
+    <a href="/relatorio-uso" class="btn btn-secondary">Ver Relatório de Uso</a>
+    <a href="/registrar-veiculo" class="btn btn-success">Registrar Veículo</a>
+  </div>
+</div>

@@ -19,14 +19,10 @@
                 <label for="km_inicial" class="form-label">Quilometragem Inicial</label>
                 <input type="number" class="form-control" id="km_inicial" name="km_inicial" required min="0" value="<%= kmInicial %>" readonly>
             </div>
-            
-            
-         
             <div class="mb-3">
                 <label for="data_hora_inicial" class="form-label">Data e Hora Inicial</label>
-                <input type="datetime-local" class="form-control" id="data_hora_inicial" name="data_hora_inicial" required>
+                <input type="datetime-local" class="form-control" id="data_hora_inicial" name="data_hora_inicial" required readonly>
             </div>
-           
             <button type="submit" class="btn btn-success" id="btnSubmit">Registrar Uso</button>
             <div class="text-center">
                 <a href="/" class="btn btn-secondary mt-4">Voltar para a Página Inicial</a>
@@ -35,6 +31,13 @@
     </div>
 
     <script>
+        // Define a data e hora atual, ajustada para o horário local, como padrão no campo datetime-local
+        document.addEventListener("DOMContentLoaded", function() {
+            const now = new Date();
+            const tzOffset = now.getTimezoneOffset() * 60000; // offset em milissegundos
+            const localDatetime = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
+            document.getElementById("data_hora_inicial").value = localDatetime;
+        });
 
         // Impede múltiplos envios do formulário
         document.getElementById('formUsoVeiculo').addEventListener('submit', function() {
