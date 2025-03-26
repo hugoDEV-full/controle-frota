@@ -176,4 +176,5 @@
 - Local de partida e destino 
 - Finalidade do uso, se pessoal ou a trabalho.
 - Adicionar comprovante de abastecimento, informar quanto de reembolso o motorista precisa receber ao Admin e ao usuário 
+- Revisão de rotas (segurança), revisão rotas a respeito de role admin 
 
