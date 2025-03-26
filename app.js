@@ -186,6 +186,13 @@ function checkOilChangeForVehicle(veiculo_id) {
 
 /* Rotas de autenticação */
 
+// injetar active page global caso nao tenha 
+
+app.use((req, res, next) => {
+    res.locals.activePage = res.locals.activePage || '';
+    next();
+  });
+  
 
 app.get('/', isAuthenticated, (req, res) => {
     // Busca os veículos cadastrados
