@@ -1,4 +1,4 @@
-# Feito até 26/03/2025
+# Funcionalidades feitas até 26/03/2025
 
 # 1. Autenticação, Sessões e Recuperação de Senha
 
@@ -163,7 +163,7 @@
 
 # 12. O sistema gerencia usuários, veículos, registros de uso, multas e relatórios, promove consistência e segurança dos dados, notificações em tempo real e por e-mail.
 
-# Precisa fazer
+# Funcionalidades que ainda não tem 
 
 - Melhorar front end no que diz respeito a notificações de erro em edição de uso mais amigáveis ao usuário.
 - Ao ser alterado o km do veiculo automaticamente ser alterado o km inicial na edição.
