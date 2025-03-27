@@ -36,6 +36,8 @@
 
 ## 3.2 Edição de Veículo (/editar-veiculo/:id GET & POST)
 - Permite a atualização dos dados de um veículo existente, garantindo que o veículo realmente esteja cadastrado.
+- Um veículo pode ter o km alterado se não houver nenhum uso em andamento pra ele. 
+- Após a alteração do km do veículo, o km inicial do próximo uso será automaticamente atualizado com o valor km atual do veículo.
 
 ## 3.3 Exclusão de Veículo (/excluir-veiculo/:id POST)
 - Remove um veículo do sistema. Essa funcionalidade está restrita a administradores.
@@ -176,5 +178,6 @@
 - Local de partida e destino 
 - Finalidade do uso, se pessoal ou a trabalho.
 - Adicionar comprovante de abastecimento, informar quanto de reembolso o motorista precisa receber ao Admin e ao usuário 
+- Se a ultima troca de oleo nao tiver sido realizada, impede o uso do veiculo de forma normal e permite um de veiculo para trocar o oleo.
 - Revisão de rotas (segurança), revisão rotas a respeito de role admin 
 

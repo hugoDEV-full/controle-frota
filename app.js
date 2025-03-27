@@ -640,28 +640,18 @@ app.get('/usar/:id', isAuthenticated, (req, res) => {
             return res.status(404).send("Veículo não encontrado");
         }
         const veiculo = veiculoResult[0];
-        // Pega o último uso com km_final preenchido pra definir o km_inicial
-        db.query(
-            'SELECT km_final FROM uso_veiculos WHERE veiculo_id = ? AND km_final IS NOT NULL ORDER BY id DESC LIMIT 1',
-            [id],
-            (err, usoResult) => {
-                if (err) {
-                    console.error("Erro ao buscar último uso:", err);
-                    return res.status(500).send("Erro ao buscar o último uso.");
-                }
-                const kmInicial = usoResult.length > 0 ? usoResult[0].km_final : (veiculo.km || 0);
-                res.render('usar', {
-                    veiculo,
-                    kmInicial,
-                    title: 'Usar Veículo',
-                    layout: 'layout',
-                    activePage: 'usar'
-                    
-                });
-            }
-        );
+        // Define o kmInicial como o km atual do veículo, que já é o último km_final registrado
+        const kmInicial = veiculo.km || 0;
+        res.render('usar', {
+            veiculo,
+            kmInicial,
+            title: 'Usar Veículo',
+            layout: 'layout',
+            activePage: 'usar'
+        });
     });
 });
+
 
 app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
     const { id } = req.params; // ID do veículo
@@ -683,75 +673,65 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
         }
         const veiculo = veiculoResult[0];
 
-        // Depois, pega o último uso pra definir o km_inicial esperado
+        // Define o km_inicial esperado como o km atual do veículo
+        const expectedKmInicial = veiculo.km;
+        const kmInicialParsed = parseInt(km_inicial, 10);
+
+        if (kmInicialParsed !== expectedKmInicial) {
+            return res.status(400).send("Erro: O km inicial deve ser igual ao km atual do veículo.");
+        }
+
+        // Converte e valida o km_final
+        const kmFinalParsed = parseInt(km_final, 10);
+        const kmFinalValue = (km_final === '' || isNaN(kmFinalParsed)) ? null : kmFinalParsed;
+        if (kmFinalValue !== null && kmFinalValue < kmInicialParsed) {
+            return res.status(400).send("Erro: km final não pode ser menor que km inicial");
+        }
+
+        const dataHoraInicial = new Date(data_hora_inicial);
+        const dataHoraFinal = data_hora_final ? new Date(data_hora_final) : null;
+        const newEnd = dataHoraFinal ? dataHoraFinal : new Date('9999-12-31');
+
+        /* 
+          Checa se já existe um uso que se sobrepõe ao novo.
+          Verifica se:
+            - Uso existente começa antes do final do novo uso
+            - E se termina depois do início do novo uso (ou ainda tá rolando)
+        */
         db.query(
-            'SELECT km_final FROM uso_veiculos WHERE veiculo_id = ? AND km_final IS NOT NULL ORDER BY data_hora_inicial DESC LIMIT 1',
-            [id],
-            (err, usoResult) => {
+            `SELECT * FROM uso_veiculos 
+             WHERE (veiculo_id = ? OR motorista = ?)
+               AND (data_hora_inicial < ?)
+               AND ((data_hora_final IS NULL) OR (data_hora_final > ?))`,
+            [id, motorista, newEnd, dataHoraInicial],
+            (err, overlapResult) => {
                 if (err) {
-                    console.error("Erro ao buscar último uso:", err);
-                    return res.status(500).send("Erro ao buscar o último uso.");
+                    console.error("Erro na verificação de sobreposição:", err);
+                    return res.status(500).send("Erro interno");
                 }
-                const expectedKmInicial = usoResult.length > 0 ? usoResult[0].km_final : veiculo.km;
-                const kmInicialParsed = parseInt(km_inicial, 10);
-
-                if (kmInicialParsed !== expectedKmInicial) {
-                    return res.status(400).send("Erro: O km inicial deve ser igual ao km final do último uso ou ao km atual do veículo.");
+                if (overlapResult.length > 0) {
+                    return res.status(400).send("Erro: Já existe um uso nesse período.");
                 }
 
-                // Converte e valida o km_final
-                const kmFinalParsed = parseInt(km_final, 10);
-                const kmFinalValue = (km_final === '' || isNaN(kmFinalParsed)) ? null : kmFinalParsed;
-                if (kmFinalValue !== null && kmFinalValue < kmInicialParsed) {
-                    return res.status(400).send("Erro: km final não pode ser menor que km inicial");
-                }
-
-                const dataHoraInicial = new Date(data_hora_inicial);
-                const dataHoraFinal = data_hora_final ? new Date(data_hora_final) : null;
-                const newEnd = dataHoraFinal ? dataHoraFinal : new Date('9999-12-31');
-
-                /* 
-                  Checa se já existe um uso que se sobrepõe ao novo.
-                  Verifica se:
-                    - Uso existente começa antes do final do novo uso
-                    - E se termina depois do início do novo uso (ou ainda tá rolando)
-                */
+                // Insere o registro de uso
                 db.query(
-                    `SELECT * FROM uso_veiculos 
-                     WHERE (veiculo_id = ? OR motorista = ?)
-                       AND (data_hora_inicial < ?)
-                       AND ((data_hora_final IS NULL) OR (data_hora_final > ?))`,
-                    [id, motorista, newEnd, dataHoraInicial],
-                    (err, overlapResult) => {
-                        if (err) {
-                            console.error("Erro na verificação de sobreposição:", err);
-                            return res.status(500).send("Erro interno");
-                        }
-                        if (overlapResult.length > 0) {
-                            return res.status(400).send("Erro: Já existe um uso nesse período.");
-                        }
+                    'INSERT INTO uso_veiculos (veiculo_id, motorista, km_inicial, km_final, data_hora_inicial, data_hora_final, foto_km) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [id, motorista, km_inicial, kmFinalValue, dataHoraInicial, dataHoraFinal, foto_km],
+                    (err, result) => {
+                        if (err) throw err;
 
-                        // Insere o registro de uso
-                        db.query(
-                            'INSERT INTO uso_veiculos (veiculo_id, motorista, km_inicial, km_final, data_hora_inicial, data_hora_final, foto_km) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                            [id, motorista, km_inicial, kmFinalValue, dataHoraInicial, dataHoraFinal, foto_km],
-                            (err, result) => {
-                                if (err) throw err;
-
-                                // Se tiver km_final, atualiza o km do veículo e checa a troca de óleo
-                                if (kmFinalValue !== null) {
-                                    db.query('UPDATE veiculos SET km = ? WHERE id = ?', [kmFinalValue, id], (err, result2) => {
-                                        if (err) {
-                                            console.error("Erro ao atualizar km:", err);
-                                        } else {
-                                            console.log(`Veículo ${id} atualizado pra km=${kmFinalValue}`);
-                                            checkOilChangeForVehicle(id);
-                                        }
-                                    });
+                        // Se tiver km_final, atualiza o km do veículo e checa a troca de óleo
+                        if (kmFinalValue !== null) {
+                            db.query('UPDATE veiculos SET km = ? WHERE id = ?', [kmFinalValue, id], (err, result2) => {
+                                if (err) {
+                                    console.error("Erro ao atualizar km:", err);
+                                } else {
+                                    console.log(`Veículo ${id} atualizado pra km=${kmFinalValue}`);
+                                    checkOilChangeForVehicle(id);
                                 }
-                                res.redirect('/');
-                            }
-                        );
+                            });
+                        }
+                        res.redirect('/');
                     }
                 );
             }
@@ -759,7 +739,8 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
     });
 });
 
-// Rota pra editar uso, atualizar multas e imagem
+
+// Rota para editar uso, atualizar multas e imagem 
 app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
     const { id } = req.params;
     const { motorista, km_final, data_hora_final, multas_id, multas_descricao } = req.body;
@@ -814,9 +795,9 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
                         return res.status(400).send('km final não pode ser menor que km inicial');
                     }
                     // km_final não pode ultrapassar a autonomia de um tanque 
-                    const autonomiaUno = 500;
+                    const autonomiaUno = 700;
                     if ((kmFinalParsed - kmInicialValue) > autonomiaUno) {
-                        return res.status(400).send(`O consumo excede a autonomia máxima de um tanque  (${autonomiaUno} km).`);
+                        return res.status(400).send(`O consumo excede a autonomia máxima de um tanque (${autonomiaUno} km).`);
                     }
                 }
                 if (data_hora_final && data_hora_final !== '') {
@@ -870,6 +851,7 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
                                     console.error("Erro ao atualizar km do veículo:", err);
                                 } else {
                                     console.log(`Veículo ${veiculo_id} atualizado pra km=${kmFinalValue} via edição.`);
+                                    // Não atualiza o km_inicial para manter o valor original
                                     checkOilChangeForVehicle(veiculo_id);
                                 }
                             });
@@ -903,6 +885,7 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
         });
     }
 });
+
 
 
 // Rota pra marcar que a troca de óleo foi feita
@@ -1022,17 +1005,38 @@ app.get('/editar-veiculo/:id', isAuthenticated, (req, res) => {
 app.post('/editar-veiculo/:id', isAuthenticated, isAdmin, (req, res) => {
     const id = req.params.id;
     const { nome, placa, km, ultimaTrocaOleo, modelo } = req.body;
+
+    // Verifica se há algum uso em andamento para este veículo
     db.query(
-        "UPDATE veiculos SET nome = ?, placa = ?, km = ?, ultimaTrocaOleo = ?, modelo = ? WHERE id = ?",
-        [nome, placa, km, ultimaTrocaOleo, modelo, id],
-        (err) => {
+        "SELECT COUNT(*) AS count FROM uso_veiculos WHERE veiculo_id = ? AND (km_final IS NULL OR data_hora_final IS NULL)",
+        [id],
+        (err, result) => {
             if (err) {
-                return res.status(500).send("Erro ao atualizar veículo.");
+                console.error("Erro ao verificar uso em andamento:", err);
+                return res.status(500).send("Erro ao verificar uso em andamento.");
             }
-            res.redirect('/');
+            if (result[0].count > 0) {
+                // Bloqueia a atualização se houver uso em andamento
+                return res.status(400).send("Não é possível atualizar o veículo, pois há um uso em andamento.");
+            } else {
+                // Se não houver uso em andamento, atualiza normalmente
+                db.query(
+                    "UPDATE veiculos SET nome = ?, placa = ?, km = ?, ultimaTrocaOleo = ?, modelo = ? WHERE id = ?",
+                    [nome, placa, km, ultimaTrocaOleo, modelo, id],
+                    (err) => {
+                        if (err) {
+                            console.error("Erro ao atualizar veículo:", err);
+                            return res.status(500).send("Erro ao atualizar veículo.");
+                        }
+                        res.redirect('/');
+                    }
+                );
+            }
         }
     );
 });
+
+
 
 // Rota pra excluir veículo
 app.post('/excluir-veiculo/:id', isAuthenticated, isAdmin, (req, res) => {
