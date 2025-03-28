@@ -11,7 +11,7 @@ const session = require('express-session');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 require('dotenv').config();
-// time zone
+//time zone
 process.env.TZ = 'America/Sao_Paulo';
 // Configura o servidor HTTP e integra o Socket.IO
 const http = require('http');
@@ -1020,7 +1020,7 @@ app.get('/editar-veiculo/:id', isAuthenticated, (req, res) => {
 });
 
 // Rota para atualizar dados do veículo
-app.post('/editar-veiculo/:id', isAuthenticated, isAdmin, (req, res) => {
+app.post('/editar-veiculo/:id', isAuthenticated, (req, res) => {
     const id = req.params.id;
     const { nome, placa, km, ultimaTrocaOleo, modelo, justificativaKm } = req.body;
 
