@@ -245,7 +245,7 @@ app.use((req, res, next) => {
 
 
 app.get('/', isAuthenticated, (req, res) => {
-   // console.log("Usuário na dashboard (req.user):", req.user);
+    // console.log("Usuário na dashboard (req.user):", req.user);
     //console.log("Sessão completa (req.session):", req.session);
     db.query('SELECT * FROM veiculos', (err, results) => {
         if (err) throw err;
@@ -537,7 +537,7 @@ app.get('/registrar-multa/:veiculo_id', isAuthenticated, (req, res) => {
 });
 
 
-app.post('/registrar-multa/:veiculo_id', isAuthenticated,isAdmin, (req, res) => {
+app.post('/registrar-multa/:veiculo_id', isAuthenticated, isAdmin, (req, res) => {
     const { veiculo_id } = req.params;
     const { data_multa, multa } = req.body;
 
@@ -1061,19 +1061,47 @@ app.post('/editar-veiculo/:id', isAuthenticated, (req, res) => {
                                     return res.status(500).send("Erro ao atualizar veículo.");
                                 }
 
-                                // Se a quilometragem foi alterada, insere uma notificação com a justificativa
-                                if (parseInt(km, 10) !== currentKm) {
-                                    const mensagem = `Veículo com id ${id} teve a quilometragem alterada de ${currentKm} para ${km}. Justificativa: ${justificativaKm || 'Sem justificativa.'}`;
-                                    db.query(
-                                        "INSERT INTO notificacoes (mensagem, data_hora) VALUES (?, NOW())",
-                                        [mensagem],
-                                        (err) => {
-                                            if (err) {
-                                                console.error("Erro ao inserir notificação de km editado:", err);
-                                            }
+                                // Se a quilometragem foi alterada, insere uma notificação com a justificativa e o usuário responsável
+                                // Obtém ID e e-mail do usuário autenticado
+                                //const userId = req.user ? req.user.id : 'Desconhecido';
+                                const userEmail = req.user ? req.user.email : 'E-mail não disponível';
+
+                                // Primeiro, busque os detalhes do veículo no banco de dados
+                                db.query(
+                                    "SELECT placa, modelo FROM veiculos WHERE id = ?",
+                                    [id],
+                                    (err, results) => {
+                                        if (err) {
+                                            console.error("Erro ao buscar dados do veículo:", err);
+                                            return;
                                         }
-                                    );
-                                }
+
+                                        if (results.length === 0) {
+                                            console.warn("Veículo não encontrado no banco de dados.");
+                                            return;
+                                        }
+
+                                        const { placa, modelo } = results[0];
+
+                                        if (parseInt(km, 10) !== currentKm) {
+                                            const mensagem = `Usuário (${userEmail}) alterou a quilometragem do veículo ID ${id} (Placa: ${placa}, Modelo: ${modelo}) de ${currentKm} para ${km}. Justificativa: ${justificativaKm || 'Sem justificativa.'}`;
+
+                                            db.query(
+                                                "INSERT INTO notificacoes (mensagem, data_hora) VALUES (?, NOW())",
+                                                [mensagem],
+                                                (err) => {
+                                                    if (err) {
+                                                        console.error("Erro ao inserir notificação de km editado:", err);
+                                                    }
+                                                }
+                                            );
+                                        }
+                                    }
+                                );
+
+
+
+
                                 res.redirect('/');
                             }
                         );
@@ -1132,17 +1160,17 @@ app.get('/notificacoes', isAuthenticated, (req, res) => {
     });
 });
 
-app.post('/excluir-notificacao-alteracao-km/:id',isAuthenticated,isAdmin, async (req, res) => { 
+app.post('/excluir-notificacao-alteracao-km/:id', isAuthenticated, isAdmin, async (req, res) => {
     const { id } = req.params;
     db.query('DELETE FROM notificacoes WHERE id = ?', [id], (err, results) => {
-      if (err) {
-        console.error('Erro ao excluir notificação:', err);
-        return res.status(500).send('Erro ao excluir notificação.');
-      }
-      // Após a exclusão, redireciona para a página de notificações
-      res.redirect('/notificacoes');
+        if (err) {
+            console.error('Erro ao excluir notificação:', err);
+            return res.status(500).send('Erro ao excluir notificação.');
+        }
+        // Após a exclusão, redireciona para a página de notificações
+        res.redirect('/notificacoes');
     });
-  });
+});
 
 // Socket.IO: conexão com o cliente
 io.on("connection", (socket) => {
@@ -1160,11 +1188,11 @@ app.post('/update-location', (req, res) => {
 
 // Rotas pra servir o manifest e o service worker (PWA)
 //app.get('/manifest.json', (req, res) => {
-    //res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
+//res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
 //});
 
 //app.get('/service-worker.js', (req, res) => {
-   // res.sendFile(path.join(__dirname, 'public', 'service-worker.js'));
+// res.sendFile(path.join(__dirname, 'public', 'service-worker.js'));
 //});
 
 /* //Código de registro do service worker (lembre: isso roda no browser!)
