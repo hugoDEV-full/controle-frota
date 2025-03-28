@@ -139,7 +139,7 @@ passport.use(new LocalStrategy(
 
 // Serializa o usuário, armazenando apenas seu ID na sessão
 passport.serializeUser((user, done) => {
-    console.log("Serializando usuário:", user);
+    //console.log("Serializando usuário:", user);
     done(null, user.id);
 });
 
@@ -148,7 +148,7 @@ passport.deserializeUser((id, done) => {
     db.query("SELECT * FROM usuarios WHERE id = ?", [id], (err, results) => {
         if (err) return done(err);
         if (results.length === 0) return done(null, false);
-        console.log("Desserializando usuário:", results[0]);
+        //console.log("Desserializando usuário:", results[0]);
         return done(null, results[0]);
     });
 });
@@ -168,8 +168,8 @@ app.post('/login', (req, res, next) => {
             if (err) return next(err);
             req.logIn(user, (err) => {
                 if (err) return next(err);
-                console.log("Usuário logado com sucesso:", user);
-                console.log("Sessão após login:", req.session);
+                //console.log("Usuário logado com sucesso:", user);
+                //console.log("Sessão após login:", req.session);
                 return res.redirect('/');
             });
         });
