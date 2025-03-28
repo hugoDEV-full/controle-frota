@@ -103,15 +103,12 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Configuração das sessões e do Passport
 app.use(session({
-    secret: process.env.SECRET_SESSION, // Definida na variável de ambiente
+    secret: process.env.SECRET_SESSION,
     resave: false,
     saveUninitialized: false,
-    cookie: {
-        maxAge: 30 * 60 * 1000, // 30 minutos
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production' // Utiliza HTTPS em produção
-    }
+    cookie: { maxAge: 30 * 60 * 1000 } // 30 min inativos
 }));
 
 // Inicializa o Passport e vincula à sessão
@@ -247,8 +244,8 @@ app.use((req, res, next) => {
 
 
 app.get('/', isAuthenticated, (req, res) => {
-    console.log("Usuário na dashboard (req.user):", req.user);
-    console.log("Sessão completa (req.session):", req.session);
+   // console.log("Usuário na dashboard (req.user):", req.user);
+    //console.log("Sessão completa (req.session):", req.session);
     db.query('SELECT * FROM veiculos', (err, results) => {
         if (err) throw err;
         db.query('SELECT COUNT(*) AS totalVeiculos FROM veiculos', (err, veiculosResult) => {
