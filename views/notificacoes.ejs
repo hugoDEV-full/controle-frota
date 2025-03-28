@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="UTF-8">
   <title>Notificações - Troca de Óleo</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="/styles.css">
 </head>
+
 <body>
   <div class="container mt-5">
     <h1>Notificações - Troca de Óleo</h1>
-    
-    <% if(oilVehicles.length > 0) { %>
+
+    <% if(oilVehicles.length> 0) { %>
       <table class="table table-bordered">
         <thead>
           <tr>
@@ -26,52 +28,74 @@
         <tbody>
           <% oilVehicles.forEach(function(veiculo) { %>
             <tr>
-              <td><%= veiculo.id %></td>
-              <td><%= veiculo.placa %></td>
-              <td><%= veiculo.nome %></td>
-              <td><%= veiculo.km %></td>
-              <td><%= veiculo.ultimaTrocaOleo %></td>
-              <td><%= veiculo.km - veiculo.ultimaTrocaOleo %></td>
+              <td>
+                <%= veiculo.id %>
+              </td>
+              <td>
+                <%= veiculo.placa %>
+              </td>
+              <td>
+                <%= veiculo.nome %>
+              </td>
+              <td>
+                <%= veiculo.km %>
+              </td>
+              <td>
+                <%= veiculo.ultimaTrocaOleo %>
+              </td>
+              <td>
+                <%= veiculo.km - veiculo.ultimaTrocaOleo %>
+              </td>
               <td>
                 <!-- Botão para marcar que a troca foi realizada -->
-                <form action="/troca-feita/<%= veiculo.id %>" method="POST" onsubmit="return confirm('Confirmar que a troca de óleo foi realizada?');">
+                <form action="/troca-feita/<%= veiculo.id %>" method="POST"
+                  onsubmit="return confirm('Confirmar que a troca de óleo foi realizada?');">
                   <button type="submit" class="btn btn-success btn-sm">Troca Realizada</button>
                 </form>
               </td>
             </tr>
-          <% }); %>
+            <% }); %>
         </tbody>
       </table>
-    <% } else { %>
-      <div class="alert alert-info">
-        Nenhum veículo necessita de troca de óleo.
-      </div>
-    <% } %>
-    
-    <!-- Seção para Notificações de Alteração de Quilometragem -->
-    <section class="mt-5">
-      <h2>Notificações de Alteração de Quilometragem</h2>
-      <% if(kmNotifications && kmNotifications.length > 0) { %>
-        <ul class="list-group">
-          <% kmNotifications.forEach(function(notif) { %>
-            <li class="list-group-item">
-              <%= notif.mensagem %> 
-              - <small><%= new Date(notif.data_hora).toLocaleString() %></small>
-            </li>
-          <% }); %>
-        </ul>
       <% } else { %>
-        <p>Nenhuma notificação de alteração de quilometragem.</p>
-      <% } %>
-    </section>
-    
-    <!-- Lista de notificações em tempo real via Socket.IO -->
-    <section class="mt-5">
-      <h2>Notificações em Tempo Real</h2>
-      <ul id="notificationList" class="list-group"></ul>
-    </section>
-    
-    <a href="/" class="btn btn-primary mt-3">Voltar</a>
+        <div class="alert alert-info">
+          Nenhum veículo necessita de troca de óleo.
+        </div>
+        <% } %>
+
+          <!-- Seção para Notificações de Alteração de Quilometragem -->
+          <section class="mt-5">
+            <h2>Notificações de Alteração de Quilometragem</h2>
+            <% if(kmNotifications && kmNotifications.length> 0) { %>
+              <ul class="list-group">
+                <% kmNotifications.forEach(function(notif) { %>
+                  <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                      <%= notif.mensagem %>
+                        - <small>
+                          <%= new Date(notif.data_hora).toLocaleString() %>
+                        </small>
+                    </div>
+                    <form action="/excluir-notificacao-alteracao-km/<%= notif.id %>" method="POST"
+                      onsubmit="return confirm('Tem certeza que deseja excluir essa notificação?');" style="margin: 0;">
+                      <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                    </form>
+                  </li>
+                  <% }); %>
+              </ul>
+              <% } else { %>
+                <p>Nenhuma notificação de alteração de quilometragem.</p>
+                <% } %>
+          </section>
+
+
+          <!-- Lista de notificações em tempo real via Socket.IO -->
+          <section class="mt-5">
+            <h2>Notificações em Tempo Real</h2>
+            <ul id="notificationList" class="list-group"></ul>
+          </section>
+
+          <a href="/" class="btn btn-primary mt-3">Voltar</a>
   </div>
 
   <!-- Socket.IO -->
@@ -87,4 +111,5 @@
     });
   </script>
 </body>
+
 </html>

@@ -536,7 +536,7 @@ app.get('/registrar-multa/:veiculo_id', isAuthenticated, (req, res) => {
 });
 
 
-app.post('/registrar-multa/:veiculo_id', isAuthenticated, (req, res) => {
+app.post('/registrar-multa/:veiculo_id', isAuthenticated,isAdmin, (req, res) => {
     const { veiculo_id } = req.params;
     const { data_multa, multa } = req.body;
 
@@ -1131,6 +1131,17 @@ app.get('/notificacoes', isAuthenticated, (req, res) => {
     });
 });
 
+app.post('/excluir-notificacao-alteracao-km/:id',isAuthenticated,isAdmin, async (req, res) => { 
+    const { id } = req.params;
+    db.query('DELETE FROM notificacoes WHERE id = ?', [id], (err, results) => {
+      if (err) {
+        console.error('Erro ao excluir notificação:', err);
+        return res.status(500).send('Erro ao excluir notificação.');
+      }
+      // Após a exclusão, redireciona para a página de notificações
+      res.redirect('/notificacoes');
+    });
+  });
 
 // Socket.IO: conexão com o cliente
 io.on("connection", (socket) => {
