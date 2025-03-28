@@ -11,7 +11,8 @@ const session = require('express-session');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 require('dotenv').config();
-
+// time zone
+process.env.TZ = 'America/Sao_Paulo';
 // Configura o servidor HTTP e integra o Socket.IO
 const http = require('http');
 const app = express();
