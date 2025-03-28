@@ -103,43 +103,95 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Configuração das sessões e do Passport
 app.use(session({
-    secret: process.env.SECRET_SESSION,
+    secret: process.env.SECRET_SESSION, // Definida na variável de ambiente
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 30 * 60 * 1000 } // 30 min inativos
+    cookie: {
+        maxAge: 30 * 60 * 1000, // 30 minutos
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production' // Utiliza HTTPS em produção
+    }
 }));
+
+// Inicializa o Passport e vincula à sessão
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Configura a estratégia local do Passport
-passport.use(new LocalStrategy({ usernameField: 'email' }, (email, password, done) => {
-    db.query("SELECT * FROM usuarios WHERE email = ?", [email], (err, results) => {
-        if (err) return done(err);
-        if (results.length === 0) return done(null, false, { message: 'Usuário não encontrado.' });
-        const user = results[0];
-        bcrypt.compare(password, user.senha, (err, isMatch) => {
+// Configuração da estratégia local do Passport
+passport.use(new LocalStrategy(
+    { usernameField: 'email', passwordField: 'password' },
+    (email, password, done) => {
+        db.query("SELECT * FROM usuarios WHERE email = ?", [email], (err, results) => {
             if (err) return done(err);
-            if (isMatch) return done(null, user);
-            return done(null, false, { message: 'Senha incorreta.' });
+            if (results.length === 0) {
+                return done(null, false, { message: 'Usuário não encontrado.' });
+            }
+            const user = results[0];
+            bcrypt.compare(password, user.senha, (err, isMatch) => {
+                if (err) return done(err);
+                if (isMatch) return done(null, user);
+                return done(null, false, { message: 'Senha incorreta.' });
+            });
         });
-    });
-}));
+    }
+));
+
+// Serializa o usuário, armazenando apenas seu ID na sessão
 passport.serializeUser((user, done) => {
+    console.log("Serializando usuário:", user);
     done(null, user.id);
 });
+
+// Desserializa o usuário a partir do ID armazenado, consultando o banco
 passport.deserializeUser((id, done) => {
     db.query("SELECT * FROM usuarios WHERE id = ?", [id], (err, results) => {
         if (err) return done(err);
-        done(null, results[0]);
+        if (results.length === 0) return done(null, false);
+        console.log("Desserializando usuário:", results[0]);
+        return done(null, results[0]);
     });
 });
+
+// Middleware para garantir que o usuário esteja autenticado
 function isAuthenticated(req, res, next) {
     if (req.isAuthenticated()) return next();
     res.redirect('/login');
 }
 
+// Rota de login robusta com regeneração de sessão para evitar dados antigos
+app.post('/login', (req, res, next) => {
+    passport.authenticate('local', (err, user, info) => {
+        if (err) return next(err);
+        if (!user) return res.redirect('/login');
+        req.session.regenerate((err) => {
+            if (err) return next(err);
+            req.logIn(user, (err) => {
+                if (err) return next(err);
+                console.log("Usuário logado com sucesso:", user);
+                console.log("Sessão após login:", req.session);
+                return res.redirect('/');
+            });
+        });
+    })(req, res, next);
+});
+
+// Tela de login
+app.get('/login', (req, res) => {
+    res.render('login', { layout: 'login' }); // layout exclusivo para login
+});
+
+
+// Rota de logout que destrói a sessão
+app.get('/logout', (req, res, next) => {
+    req.logout((err) => {
+        if (err) return next(err);
+        req.session.destroy(() => {
+            console.log("Sessão encerrada. Usuário deslogado.");
+            res.redirect('/login');
+        });
+    });
+});
 /* Funções de notificação */
 
 // Manda um email avisando que o veículo precisa de troca de óleo
@@ -191,31 +243,28 @@ function checkOilChangeForVehicle(veiculo_id) {
 app.use((req, res, next) => {
     res.locals.activePage = res.locals.activePage || '';
     next();
-  });
-  
+});
+
 
 app.get('/', isAuthenticated, (req, res) => {
-    // Busca os veículos cadastrados
+    console.log("Usuário na dashboard (req.user):", req.user);
+    console.log("Sessão completa (req.session):", req.session);
     db.query('SELECT * FROM veiculos', (err, results) => {
         if (err) throw err;
-        // Conta os veículos
         db.query('SELECT COUNT(*) AS totalVeiculos FROM veiculos', (err, veiculosResult) => {
             if (err) throw err;
-            // Conta as multas
             db.query('SELECT COUNT(*) AS totalMultas FROM multas', (err, multasResult) => {
                 if (err) throw err;
-                // Conta os registros de uso
                 db.query('SELECT COUNT(*) AS totalUso FROM uso_veiculos', (err, usoResult) => {
                     if (err) throw err;
-                    // Conta motoristas ativos (distintos)
                     db.query('SELECT COUNT(DISTINCT motorista) AS totalMotoristasAtivos FROM uso_veiculos', (err, motoristasResult) => {
                         if (err) throw err;
                         res.render('dashboard', {
-                            title: 'Dashboard',
-                            layout: 'layout', // Define o layout a ser usado (layout.ejs)
-                            activePage: 'dashboard', // Página ativa para destaque no menu
+                            title: 'dashboard',
+                            layout: 'layout',
+                            activePage: 'dashboard',
                             veiculos: results,
-                            user: req.user,
+                            user: req.user, // Usuário proveniente da sessão
                             totalVeiculos: veiculosResult[0].totalVeiculos,
                             totalMultas: multasResult[0].totalMultas,
                             totalUso: usoResult[0].totalUso,
@@ -228,37 +277,7 @@ app.get('/', isAuthenticated, (req, res) => {
     });
 });
 
-// Tela de registro (só admin pode acessar)
-app.get('/register', isAdmin, (req, res) => {
-    res.render('register');
-});
 
-// Tela de login
-app.get('/login', (req, res) => {
-    res.render('login', { layout: 'login' }); //  layout exclusivo para login
-});
-
-
-// Faz o login
-app.post('/login', passport.authenticate('local', {
-    successRedirect: '/',
-    failureRedirect: '/login'
-}));
-
-// Faz o logout e destrói a sessão
-app.get('/logout', async (req, res, next) => {
-    try {
-        req.logout((err) => {
-            if (err) return next(err);
-            req.session.destroy(() => {
-                res.redirect('/login');
-            });
-        });
-    } catch (error) {
-        console.error('Erro no logout:', error);
-        res.redirect('/');
-    }
-});
 
 // Tela de esqueci minha senha
 app.get('/forgot-password', (req, res) => {
@@ -333,13 +352,13 @@ app.post('/reset-password/:token', (req, res) => {
 });
 
 
-
+/*
 app.get('/perfil', isAuthenticated, (req, res) => {
     res.render('perfil', { user: req.user });
 });
 app.get('/index2', isAuthenticated, (req, res) => {
     res.render('index2', { user: req.user });
-});
+}); */
 
 /* Rotas de uso, veículos, multas, etc. */
 // (A rota pra registrar uso do veículo tá comentada aqui, mas fica aí como referência)
@@ -354,7 +373,7 @@ app.get('/relatorio-uso', isAuthenticated, (req, res) => {
     res.render('relatorio_uso', {
         title: 'Relatório de uso de veículos',
         layout: 'layout',
-        activePage: 'relatorio_uso' 
+        activePage: 'relatorio_uso'
     });
 });
 
@@ -439,7 +458,8 @@ app.get('/registrar-veiculo', isAuthenticated, isAdmin, (req, res) => {
     res.render('registrar-veiculo', {
         title: 'Registrar veículo',
         layout: 'layout',
-        activePage: 'registrar-veiculo' 
+        activePage: 'registrar-veiculo',
+        user: req.user
     });
 });
 app.post('/registrar-veiculo', isAuthenticated, isAdmin, (req, res) => {
@@ -513,7 +533,7 @@ app.get('/registrar-multa/:veiculo_id', isAuthenticated, (req, res) => {
             mensagemErro: null,
             title: 'Registro de Multa',
             layout: 'layout',
-            activePage: 'registrarMulta' 
+            activePage: 'registrarMulta'
         });
     });
 });
@@ -594,7 +614,7 @@ app.get('/relatorio-multas', isAuthenticated, (req, res) => {
             multas: multasResult,
             title: 'Relatório de Multas',
             layout: 'layout',
-            activePage: 'relatorioMultas' 
+            activePage: 'relatorioMultas'
         });
     });
 });
@@ -621,7 +641,7 @@ app.get('/editar-uso/:id', isAuthenticated, (req, res) => {
                 multas: multasResult,
                 title: 'Editar Uso',
                 layout: 'layout',
-                activePage: 'editarUso' 
+                activePage: 'editarUso'
             });
         });
     });
@@ -1001,40 +1021,71 @@ app.get('/editar-veiculo/:id', isAuthenticated, (req, res) => {
     });
 });
 
-// Rota pra atualizar dados do veículo
+// Rota para atualizar dados do veículo
 app.post('/editar-veiculo/:id', isAuthenticated, isAdmin, (req, res) => {
     const id = req.params.id;
-    const { nome, placa, km, ultimaTrocaOleo, modelo } = req.body;
+    const { nome, placa, km, ultimaTrocaOleo, modelo, justificativaKm } = req.body;
 
-    // Verifica se há algum uso em andamento para este veículo
+    // Primeiro, obtém o km atual do veículo para comparar
     db.query(
-        "SELECT COUNT(*) AS count FROM uso_veiculos WHERE veiculo_id = ? AND (km_final IS NULL OR data_hora_final IS NULL)",
+        "SELECT km AS currentKm FROM veiculos WHERE id = ?",
         [id],
-        (err, result) => {
+        (err, resultVehicle) => {
             if (err) {
-                console.error("Erro ao verificar uso em andamento:", err);
-                return res.status(500).send("Erro ao verificar uso em andamento.");
+                console.error("Erro ao buscar dados do veículo:", err);
+                return res.status(500).send("Erro interno ao buscar dados do veículo.");
             }
-            if (result[0].count > 0) {
-                // Bloqueia a atualização se houver uso em andamento
-                return res.status(400).send("Não é possível atualizar o veículo, pois há um uso em andamento.");
-            } else {
-                // Se não houver uso em andamento, atualiza normalmente
-                db.query(
-                    "UPDATE veiculos SET nome = ?, placa = ?, km = ?, ultimaTrocaOleo = ?, modelo = ? WHERE id = ?",
-                    [nome, placa, km, ultimaTrocaOleo, modelo, id],
-                    (err) => {
-                        if (err) {
-                            console.error("Erro ao atualizar veículo:", err);
-                            return res.status(500).send("Erro ao atualizar veículo.");
-                        }
-                        res.redirect('/');
+            if (resultVehicle.length === 0) {
+                return res.status(404).send("Veículo não encontrado.");
+            }
+            const currentKm = parseInt(resultVehicle[0].currentKm, 10);
+
+            // Verifica se há algum uso em andamento para este veículo
+            db.query(
+                "SELECT COUNT(*) AS count FROM uso_veiculos WHERE veiculo_id = ? AND (km_final IS NULL OR data_hora_final IS NULL)",
+                [id],
+                (err, result) => {
+                    if (err) {
+                        console.error("Erro ao verificar uso em andamento:", err);
+                        return res.status(500).send("Erro ao verificar uso em andamento.");
                     }
-                );
-            }
+                    if (result[0].count > 0) {
+                        // Bloqueia a atualização se houver uso em andamento
+                        return res.status(400).send("Não é possível atualizar o veículo, pois há um uso em andamento.");
+                    } else {
+                        // Atualiza os dados do veículo
+                        db.query(
+                            "UPDATE veiculos SET nome = ?, placa = ?, km = ?, ultimaTrocaOleo = ?, modelo = ? WHERE id = ?",
+                            [nome, placa, km, ultimaTrocaOleo, modelo, id],
+                            (err) => {
+                                if (err) {
+                                    console.error("Erro ao atualizar veículo:", err);
+                                    return res.status(500).send("Erro ao atualizar veículo.");
+                                }
+
+                                // Se a quilometragem foi alterada, insere uma notificação com a justificativa
+                                if (parseInt(km, 10) !== currentKm) {
+                                    const mensagem = `Veículo com id ${id} teve a quilometragem alterada de ${currentKm} para ${km}. Justificativa: ${justificativaKm || 'Sem justificativa.'}`;
+                                    db.query(
+                                        "INSERT INTO notificacoes (mensagem, data_hora) VALUES (?, NOW())",
+                                        [mensagem],
+                                        (err) => {
+                                            if (err) {
+                                                console.error("Erro ao inserir notificação de km editado:", err);
+                                            }
+                                        }
+                                    );
+                                }
+                                res.redirect('/');
+                            }
+                        );
+                    }
+                }
+            );
         }
     );
 });
+
 
 
 
@@ -1049,27 +1100,40 @@ app.post('/excluir-veiculo/:id', isAuthenticated, isAdmin, (req, res) => {
     });
 });
 
-// Rota de notificações: mostra veículos que precisam trocar óleo
+// Rota de notificações: mostra veículos que precisam trocar óleo e notificações de alteração de quilometragem
 app.get('/notificacoes', isAuthenticated, (req, res) => {
-    const query = `
+    // Query para veículos que precisam trocar óleo
+    const oilQuery = `
       SELECT *, (km - ultimaTrocaOleo) AS kmDesdeUltimaTroca 
       FROM veiculos 
       WHERE (km - ultimaTrocaOleo) >= 10000
     `;
-    db.query(query, (err, results) => {
+    // Query para notificações de km editado
+    const notifQuery = `
+      SELECT * FROM notificacoes
+      ORDER BY data_hora DESC
+    `;
+    db.query(oilQuery, (err, oilResults) => {
         if (err) {
-            console.error("Erro ao buscar notificações:", err);
+            console.error("Erro ao buscar notificações de óleo:", err);
             return res.status(500).send("Erro no servidor");
         }
-        res.render('notificacoes', {
-            veiculos: results,
-            title: 'Notificações',
-            layout: 'layout',
-            activePage: 'notificacoes'
+        db.query(notifQuery, (err, notifResults) => {
+            if (err) {
+                console.error("Erro ao buscar notificações de km editado:", err);
+                return res.status(500).send("Erro no servidor");
+            }
+            res.render('notificacoes', {
+                oilVehicles: oilResults,
+                kmNotifications: notifResults,
+                title: 'Notificações',
+                layout: 'layout',
+                activePage: 'notificacoes'
+            });
         });
-
     });
 });
+
 
 // Socket.IO: conexão com o cliente
 io.on("connection", (socket) => {
@@ -1086,13 +1150,13 @@ app.post('/update-location', (req, res) => {
 });
 
 // Rotas pra servir o manifest e o service worker (PWA)
-app.get('/manifest.json', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
-});
+//app.get('/manifest.json', (req, res) => {
+    //res.sendFile(path.join(__dirname, 'public', 'manifest.json'));
+//});
 
-app.get('/service-worker.js', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'service-worker.js'));
-});
+//app.get('/service-worker.js', (req, res) => {
+   // res.sendFile(path.join(__dirname, 'public', 'service-worker.js'));
+//});
 
 /* //Código de registro do service worker (lembre: isso roda no browser!)
 if ('serviceWorker' in navigator) {

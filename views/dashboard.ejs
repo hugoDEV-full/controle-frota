@@ -3,9 +3,9 @@
 <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
   <div>
     <h1>Controle de Frota</h1>
-    <p>
-      Usuário: <strong><%= user.email %></strong> | Permissão: <strong><%= user.role %></strong>
-    </p>
+    <span class="navbar-text text-dark">
+      <i class="bi bi-person-circle"></i> <%= user ? user.email : 'Usuário' %> - <%= user ? user.role : 'Sem Permissão' %>
+    </span>
   </div>
 </div>
 

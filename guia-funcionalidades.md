@@ -141,16 +141,6 @@
 
 ---
 
-# 10. Integração com GPS e PWA
-
-## 10.1 Atualização de Localização (/update-location POST)
-- Recebe dados de latitude e longitude para rastrear a localização dos veículos em tempo real.
-- **Segurança:** Configura CORS para permitir acesso apenas de domínios autorizados.
-
-## 10.2 PWA (Manifest & Service Worker)
-- Permite que o sistema funcione como um Progressive Web App, tornando-o mais acessível e eficiente.
-
----
 
 # 11. Consistência e Verificações Gerais
 
@@ -181,3 +171,4 @@
 - Se a ultima troca de oleo nao tiver sido realizada, impede o uso do veiculo de forma normal e permite um de veiculo para trocar o oleo.
 - Revisão de rotas (segurança), revisão rotas a respeito de role admin 
 
+ 

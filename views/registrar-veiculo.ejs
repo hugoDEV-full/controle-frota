@@ -11,6 +11,9 @@
 <body>
   <div class="container mt-4">
     <h1>Registrar Veículo</h1>
+    <p>
+      Usuário: <strong><%= user.email %></strong> | Permissão: <strong><%= user.role %></strong>
+    </p>
     <form action="/registrar-veiculo" method="POST">
       <div class="mb-3">
         <label for="nome" class="form-label">Nome do Veículo</label>
