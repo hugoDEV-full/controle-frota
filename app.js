@@ -1084,7 +1084,7 @@ app.post('/editar-veiculo/:id', isAuthenticated, (req, res) => {
                                         const { placa, modelo } = results[0];
 
                                         if (parseInt(km, 10) !== currentKm) {
-                                            const mensagem = `Usuário (${userEmail}) alterou a quilometragem do veículo ID ${id} (Placa: ${placa}, Modelo: ${modelo}) de ${currentKm} para ${km}. Justificativa: ${justificativaKm || 'Sem justificativa.'}`;
+                                            const mensagem = `Usuário (${userEmail}) alterou a quilometragem do veículo (Placa: ${placa}, Modelo: ${modelo}) de ${currentKm} para ${km}. Justificativa: ${justificativaKm || 'Sem justificativa.'}`;
 
                                             db.query(
                                                 "INSERT INTO notificacoes (mensagem, data_hora) VALUES (?, NOW())",
