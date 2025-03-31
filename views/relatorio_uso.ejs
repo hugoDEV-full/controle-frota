@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,14 +19,18 @@
     }
   </style>
 </head>
+
 <body class="bg-light">
   <div class="container-fluid mt-4">
     <div class="row">
       <div class="col-12">
         <h1 class="text-center mb-4">Relatório de Uso de Veículos</h1>
+        
         <div class="text-center">
           <a href="/" class="btn btn-secondary mt-4 mb-2">Voltar para a Página Inicial</a>
         </div>
+
+        
 
         <div class="mb-3">
           <button id="deleteSelected" class="btn btn-danger">Excluir Selecionados</button>
@@ -93,13 +98,31 @@
         "pageLength": 25,
         "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
         "language": {
-          "url": "//cdn.datatables.net/plug-ins/1.13.4/i18n/Portuguese-Brasil.json"
+          "sEmptyTable": "Nenhum registro encontrado",
+          "sInfo": "Mostrando de _START_ até _END_ de _TOTAL_ registros",
+          "sInfoEmpty": "Mostrando 0 até 0 de 0 registros",
+          "sInfoFiltered": "(Filtrados de _MAX_ registros)",
+          "sLengthMenu": "Mostrar _MENU_ registros por página",
+          "sLoadingRecords": "Carregando...",
+          "sProcessing": "Processando...",
+          "sSearch": "Pesquisar:",
+          "sZeroRecords": "Nenhum registro encontrado",
+          "oPaginate": {
+            "sNext": "Próximo",
+            "sPrevious": "Anterior",
+            "sFirst": "Primeiro",
+            "sLast": "Último"
+          },
+          "oAria": {
+            "sSortAscending": ": Ordenar colunas de forma ascendente",
+            "sSortDescending": ": Ordenar colunas de forma descendente"
+          }
         },
         "columns": [
-          { 
-            "data": "id", 
+          {
+            "data": "id",
             "orderable": false,
-            "render": function(data) {
+            "render": function (data) {
               return `<input type="checkbox" class="selectRow" value="${data}">`;
             }
           },
@@ -141,7 +164,7 @@
             "data": "foto_km",
             "orderable": false,
             "render": function (data) {
-              return data 
+              return data
                 ? `<img src="/uploads/${data}" alt="Foto Quilometragem" class="img-thumbnail img-fluid" style="max-width: 100px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#imageModal" onclick="updateModalImage('/uploads/${data}')">`
                 : `<span class="text-muted">Não disponível</span>`;
             }
@@ -212,4 +235,5 @@
     });
   </script>
 </body>
+
 </html>

@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= typeof title !== 'undefined' ? title : 'Controle de Frota' %></title>
 
-
-  
   <!-- Manifest -->
   <link rel="manifest" href="/manifest.json">
   
@@ -15,90 +13,151 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <link rel="stylesheet" href="/styles.css">
   <style>
-    /* Estilos customizados */
+    /* Layout básico */
     body {
-      overflow-x: hidden;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
     }
-    /* Offcanvas Header customizado */
-    .offcanvas-header {
-      background-color: #343a40;
-      color: #fff;
+    .container-wrapper {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
     }
-    .offcanvas-body .nav-link {
+    /* Sidebar fixa */
+    .sidebar {
+      background-color: #f8f9fa;
+      border-right: 1px solid #dee2e6;
+      transition: width 0.3s;
+      overflow: hidden;
+      width: 250px;
+    }
+    /* Estado colapsado: largura menor e apenas ícones */
+    .sidebar.collapsed {
+      width: 80px;
+    }
+    .sidebar ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .sidebar li {
+      border-bottom: 1px solid #dee2e6;
+    }
+    .sidebar a {
+      display: flex;
+      align-items: center;
+      padding: 15px;
       color: #4c4d4e;
+      text-decoration: none;
       transition: background-color 0.2s, color 0.2s;
     }
-    .offcanvas-body .nav-link:hover,
-    .offcanvas-body .nav-link.active {
-      color: #fff;
+    .sidebar a:hover,
+    .sidebar a.active {
       background-color: #495057;
+      color: #fff;
     }
-    /* Ajuste de margem para o conteúdo quando o menu estiver fechado */
+    /* Ícone sempre visível e texto que some quando colapsado */
+    .sidebar i {
+      font-size: 1.5rem;
+      margin-right: 10px;
+      min-width: 30px;
+      text-align: center;
+    }
+    .sidebar.collapsed a span.menu-text {
+      display: none;
+    }
+    /* Conteúdo principal */
     main {
-      padding-top: 1rem;
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    /* Navbar */
+    .navbar {
+      flex-shrink: 0;
+    }
+    /* Rodapé */
+    footer {
+      background-color: #f8f9fa;
+      padding: 1rem 0;
+      text-align: center;
+      border-top: 1px solid #dee2e6;
+      flex-shrink: 0;
     }
   </style>
 </head>
 <body>
-  <!-- Navbar com botão hamburguer para todos os tamanhos de tela -->
+  <!-- Navbar -->
   <nav class="navbar navbar-dark bg-dark">
     <div class="container-fluid">
-      <button class="btn btn-dark" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasMenu" aria-controls="offcanvasMenu">
+      <!-- Botão de toggle para a sidebar -->
+      <button id="toggleSidebar" class="btn btn-dark me-2" type="button">
         <i class="bi bi-list" style="font-size: 1.5rem;"></i>
       </button>
-      <span class="navbar-brand mb-0 h1">Controle de Frota</span>
+      <span class="navbar-brand mb-0 h1"></span>
       <div>
-        
         <a href="/notificacoes" class="btn btn-primary me-2">Notificações</a>
         <a href="/logout" class="btn btn-primary">Sair</a>
       </div>
-      
     </div>
   </nav>
 
-  <!-- Offcanvas (menu) para todas as telas -->
-  <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasMenu" aria-labelledby="offcanvasMenuLabel">
-    <div class="offcanvas-header">
-      <h5 class="offcanvas-title" id="offcanvasMenuLabel">Menu</h5>
-      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
-    </div>
-    <div class="offcanvas-body">
+  <!-- Container com Sidebar e Conteúdo -->
+  <div class="container-wrapper">
+    <!-- Sidebar fixa -->
+    <aside id="sidebar" class="sidebar collapsed">
       <ul class="nav flex-column">
         <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Dashboard">
           <a class="nav-link <%= (activePage === 'dashboard' ? 'active' : '') %>" href="/">
-            <i class="bi bi-speedometer2 me-2"></i> Dashboard
+            <i class="bi bi-speedometer2"></i>
+            <span class="menu-text">Dashboard</span>
           </a>
         </li>
         <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatório de Uso">
           <a class="nav-link <%= (activePage === 'uso' ? 'active' : '') %>" href="/relatorio-uso">
-            <i class="bi bi-bar-chart me-2"></i> Rel. de Uso
+            <i class="bi bi-bar-chart"></i>
+            <span class="menu-text">Rel. de Uso</span>
           </a>
         </li>
         <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatório de Multas">
           <a class="nav-link <%= (activePage === 'multas' ? 'active' : '') %>" href="/relatorio-multas">
-            <i class="bi bi-file-earmark-text me-2"></i> Rel. de Multas
+            <i class="bi bi-file-earmark-text"></i>
+            <span class="menu-text">Rel. de Multas</span>
           </a>
         </li>
       </ul>
-    </div>
-   
-  </div>
+    </aside>
 
-  <!-- Conteúdo Principal -->
-  <div class="container-fluid">
-    <main class="px-md-4">
-      <!-- Conteúdo específico de cada página será injetado aqui -->
+    <!-- Conteúdo Principal -->
+    <main>
+      <!-- cada página será injetado aqui -->
       <%- body %>
     </main>
   </div>
+
+  <!-- Rodapé -->
+  <footer>
+    <div class="container">
+      <span>&copy; 2025 Controle de Frota. Todos os direitos reservados.</span>
+    </div>
+  </footer>
   
-  <!-- Bootstrap Bundle com Popper -->
+ 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // Inicializa os tooltips
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].forEach(el => new bootstrap.Tooltip(el));
+    
+    // Toggle da sidebar
+    const toggleSidebar = document.getElementById('toggleSidebar');
+    const sidebar = document.getElementById('sidebar');
+
+    toggleSidebar.addEventListener('click', () => {
+      sidebar.classList.toggle('collapsed');
+    });
   </script>
-  <script src="/main.js"></script>
 </body>
 </html>

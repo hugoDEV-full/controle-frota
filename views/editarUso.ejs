@@ -50,20 +50,41 @@
       </div>
       <div class="mb-3">
         <label for="km_final" class="form-label">KM Final</label>
-        <input type="number" class="form-control" id="km_final" name="km_final" value="<%= uso.km_final %>">
+        <input type="number" class="form-control" id="km_final" name="km_final" value="<%= uso.km_final %>" required>
       </div>
       <div class="mb-3">
         <label for="data_hora_inicial" class="form-label">Data e Hora Inicial</label>
         <input type="datetime-local" class="form-control" id="data_hora_inicial" name="data_hora_inicial"
-          value="<%= new Date(new Date(uso.data_hora_inicial).getTime() - (new Date(uso.data_hora_inicial).getTimezoneOffset() * 60000)).toISOString().slice(0,16) %>"
+          value="<%= new Date(uso.data_hora_inicial).toLocaleString('sv-SE', { timeZone: 'America/Sao_Paulo' }).replace(' ', 'T') %>" 
           readonly>
-
       </div>
+      
+
       <div class="mb-3">
         <label for="data_hora_final" class="form-label">Data e Hora Final</label>
-        <input type="datetime-local" class="form-control" id="data_hora_final" name="data_hora_final" value="<%= (uso.data_hora_final ? new Date(uso.data_hora_final) : new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)))
-                  .toISOString().slice(0,16) %>">
+        <% 
+          // Se houver registro no banco, usa esse valor; senão, usa a data atual
+          let dt = uso.data_hora_final ? new Date(uso.data_hora_final) : new Date();
+      
+          // fuso de São Paulo
+          let options = {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+            timeZone: 'America/Sao_Paulo'
+          };
+      
+          // O formato 'sv-SE'  similar a "YYYY-MM-DD HH:mm",
+        
+          let formatted = dt.toLocaleString('sv-SE', options).replace(' ', 'T');
+        %>
+        <input type="datetime-local" class="form-control" id="data_hora_final" name="data_hora_final" value="<%= formatted %>">
       </div>
+      
+      
 
 
       <div class="mb-3">
@@ -77,9 +98,9 @@
       </div>
 
       <hr>
-    
-                  <button type="submit" class="btn btn-primary">Salvar Alterações</button>
-                  <a href="/relatorio-uso" class="btn btn-secondary">Cancelar</a>
+
+      <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+      <a href="/relatorio-uso" class="btn btn-secondary">Cancelar</a>
     </form>
   </div>
 

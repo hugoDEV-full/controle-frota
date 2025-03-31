@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,21 +8,26 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="/styles.css">
 </head>
+
 <body>
     <div class="container mt-4">
         <h1>Registrar Uso do Veículo</h1>
         <form action="/usar/<%= veiculo.id %>" method="POST" enctype="multipart/form-data" id="formUsoVeiculo">
             <div class="mb-3">
                 <label for="motorista" class="form-label">Motorista</label>
-                <input type="text" class="form-control" id="motorista" name="motorista" required placeholder="Digite o nome do motorista">
+                <input type="text" class="form-control" id="motorista" name="motorista" required
+                    value="<%= motoristaEmail %>" readonly>
             </div>
+
             <div class="mb-3">
                 <label for="km_inicial" class="form-label">Quilometragem Inicial</label>
-                <input type="number" class="form-control" id="km_inicial" name="km_inicial" required min="0" value="<%= kmInicial %>" readonly>
+                <input type="number" class="form-control" id="km_inicial" name="km_inicial" required min="0"
+                    value="<%= kmInicial %>" readonly>
             </div>
             <div class="mb-3">
                 <label for="data_hora_inicial" class="form-label">Data e Hora Inicial</label>
-                <input type="datetime-local" class="form-control" id="data_hora_inicial" name="data_hora_inicial" required readonly>
+                <input type="datetime-local" class="form-control" id="data_hora_inicial" name="data_hora_inicial"
+                    required readonly>
             </div>
             <button type="submit" class="btn btn-success" id="btnSubmit">Registrar Uso</button>
             <div class="text-center">
@@ -31,20 +37,39 @@
     </div>
 
     <script>
-        // Define a data e hora atual, ajustada para o horário local, como padrão no campo datetime-local
-        document.addEventListener("DOMContentLoaded", function() {
-            const now = new Date();
-            const tzOffset = now.getTimezoneOffset() * 60000; // offset em milissegundos
-            const localDatetime = new Date(now.getTime() - tzOffset).toISOString().slice(0, 16);
-            document.getElementById("data_hora_inicial").value = localDatetime;
+
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const dataHoraInput = document.getElementById("data_hora_inicial");
+            const btnSubmit = document.getElementById("btnSubmit");
+
+            function atualizarDataHora() {
+                const agora = new Date();
+                const pad = num => num.toString().padStart(2, '0');
+                const dataHoraFormatada = `${agora.getFullYear()}-${pad(agora.getMonth() + 1)}-${pad(agora.getDate())}T${pad(agora.getHours())}:${pad(agora.getMinutes())}:${pad(agora.getSeconds())}`;
+                dataHoraInput.value = dataHoraFormatada;
+            }
+
+            // Atualiza a cada segundo
+            const intervalo = setInterval(atualizarDataHora, 1000);
+
+            // Para a atualização quando o botão de registrar for clicado
+            btnSubmit.addEventListener("click", function () {
+                clearInterval(intervalo);
+            });
+
+            // Inicializa com a hora atual
+            atualizarDataHora();
         });
 
+
         // Impede múltiplos envios do formulário
-        document.getElementById('formUsoVeiculo').addEventListener('submit', function() {
+        document.getElementById('formUsoVeiculo').addEventListener('submit', function () {
             document.getElementById('btnSubmit').disabled = true;
         });
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>
+
 </html>

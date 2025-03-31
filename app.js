@@ -245,28 +245,103 @@ app.use((req, res, next) => {
 
 
 app.get('/', isAuthenticated, (req, res) => {
-    // console.log("Usuário na dashboard (req.user):", req.user);
-    //console.log("Sessão completa (req.session):", req.session);
-    db.query('SELECT * FROM veiculos', (err, results) => {
+    db.query('SELECT * FROM veiculos', (err, veiculosResult) => {
         if (err) throw err;
-        db.query('SELECT COUNT(*) AS totalVeiculos FROM veiculos', (err, veiculosResult) => {
+        db.query('SELECT COUNT(*) AS totalVeiculos FROM veiculos', (err, totalVeiculosResult) => {
             if (err) throw err;
-            db.query('SELECT COUNT(*) AS totalMultas FROM multas', (err, multasResult) => {
+            db.query('SELECT COUNT(*) AS totalMultas FROM multas', (err, totalMultasResult) => {
                 if (err) throw err;
-                db.query('SELECT COUNT(*) AS totalUso FROM uso_veiculos', (err, usoResult) => {
+                db.query('SELECT COUNT(*) AS totalUso FROM uso_veiculos', (err, totalUsoResult) => {
                     if (err) throw err;
-                    db.query('SELECT COUNT(DISTINCT motorista) AS totalMotoristasAtivos FROM uso_veiculos', (err, motoristasResult) => {
+                    db.query('SELECT COUNT(DISTINCT motorista) AS totalMotoristasAtivos FROM uso_veiculos', (err, totalMotoristasResult) => {
                         if (err) throw err;
-                        res.render('dashboard', {
-                            title: 'dashboard',
-                            layout: 'layout',
-                            activePage: 'dashboard',
-                            veiculos: results,
-                            user: req.user, // Usuário proveniente da sessão
-                            totalVeiculos: veiculosResult[0].totalVeiculos,
-                            totalMultas: multasResult[0].totalMultas,
-                            totalUso: usoResult[0].totalUso,
-                            totalMotoristasAtivos: motoristasResult[0].totalMotoristasAtivos
+                        // Relatório: Uso por Dia usando a coluna 'data_criacao'
+                        db.query(`
+                SELECT 
+    DATE(data_criacao) AS dia, 
+    COUNT(*) AS totalUsoDia,
+    MIN(TIME(data_criacao)) AS primeiroUso,
+    MAX(TIME(data_criacao)) AS ultimoUso
+FROM uso_veiculos
+GROUP BY DATE(data_criacao)
+ORDER BY dia DESC;
+
+              `, (err, usoDiaResult) => {
+                            if (err) throw err;
+                            // Relatório: Uso por Mês
+                            db.query(`
+                  SELECT DATE_FORMAT(data_criacao, '%Y-%m') AS mes, COUNT(*) AS totalUsoMes
+                  FROM uso_veiculos
+                  GROUP BY DATE_FORMAT(data_criacao, '%Y-%m')
+                  ORDER BY mes DESC
+                `, (err, usoMesResult) => {
+                                if (err) throw err;
+                                // Relatório: Uso por Ano
+                                db.query(`
+                    SELECT YEAR(data_criacao) AS ano, COUNT(*) AS totalUsoAno
+                    FROM uso_veiculos
+                    GROUP BY YEAR(data_criacao)
+                    ORDER BY ano DESC
+                  `, (err, usoAnoResult) => {
+                                    if (err) throw err;
+                                    // Relatório: Total de Uso no Ano Corrente
+                                    const currentYear = new Date().getFullYear();
+                                    db.query(`
+                      SELECT COUNT(*) AS totalUsoAnoAtual
+                      FROM uso_veiculos
+                      WHERE YEAR(data_criacao) = ?
+                    `, [currentYear], (err, usoAnoAtualResult) => {
+                                        if (err) throw err;
+                                        // Relatório: Multas por Mês (utilizando a coluna 'data' da tabela multas)
+                                        db.query(`
+                        SELECT DATE_FORMAT(data, '%Y-%m') AS mes, COUNT(*) AS totalMultasMes
+                        FROM multas
+                        GROUP BY DATE_FORMAT(data, '%Y-%m')
+                        ORDER BY mes DESC
+                      `, (err, multasMesResult) => {
+                                            if (err) throw err;
+                                            // Relatório: Multas por Ano
+                                            db.query(`
+                          SELECT YEAR(data) AS ano, COUNT(*) AS totalMultasAno
+                          FROM multas
+                          GROUP BY YEAR(data)
+                          ORDER BY ano DESC
+                        `, (err, multasAnoResult) => {
+                                                if (err) throw err;
+                                                // Relatório: Multas por Motorista
+                                                db.query(`
+                            SELECT motorista, COUNT(*) AS totalMultasMotorista
+                            FROM multas
+                            GROUP BY motorista
+                            ORDER BY totalMultasMotorista DESC
+                          `, (err, multasMotoristaResult) => {
+                                                    if (err) throw err;
+
+                                                    res.render('dashboard', {
+                                                        title: 'Dashboard',
+                                                        layout: 'layout',
+                                                        activePage: 'dashboard',
+                                                        veiculos: veiculosResult,
+                                                        user: req.user,
+                                                        totalVeiculos: totalVeiculosResult[0].totalVeiculos,
+                                                        totalMultas: totalMultasResult[0].totalMultas,
+                                                        totalUso: totalUsoResult[0].totalUso,
+                                                        totalMotoristasAtivos: totalMotoristasResult[0].totalMotoristasAtivos,
+                                                        usoDia: usoDiaResult,           // Dados agrupados por dia
+                                                        usoMes: usoMesResult,           // Dados agrupados por mês
+                                                        usoAno: usoAnoResult,           // Dados agrupados por ano
+                                                        totalUsoAnoAtual: usoAnoAtualResult[0].totalUsoAnoAtual,  // Total no ano corrente
+                                                        multasMes: multasMesResult,      // Multas agrupadas por mês
+                                                        multasAno: multasAnoResult,      // Multas agrupadas por ano
+                                                        multasMotorista: multasMotoristaResult,
+
+                                                    });
+                                                });
+                                            });
+                                        });
+                                    });
+                                });
+                            });
                         });
                     });
                 });
@@ -274,6 +349,10 @@ app.get('/', isAuthenticated, (req, res) => {
         });
     });
 });
+
+
+
+
 
 
 
@@ -377,24 +456,53 @@ app.get('/relatorio-uso', isAuthenticated, (req, res) => {
 
 app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
     // Parâmetros do DataTables
-    let draw = req.query.draw;
+    let draw = req.query.draw || 0;
     let start = parseInt(req.query.start) || 0;
     let length = parseInt(req.query.length) || 10;
     let searchValue = req.query.search ? req.query.search.value : '';
 
-    // Parâmetros de ordenação
-    let orderColumnIndex = req.query.order ? parseInt(req.query.order[0].column) : 0;
-    let orderDir = req.query.order ? req.query.order[0].dir : 'asc';
+    // Mapeamento dos índices para as colunas ordenáveis
+    // Ordem visual da tabela:
+    // 0: Checkbox (não ordenável)
+    // 1: Veículo (veiculos.placa)
+    // 2: Motorista (uso_veiculos.motorista)
+    // 3: KM Inicial (uso_veiculos.km_inicial)
+    // 4: KM Final (uso_veiculos.km_final)
+    // 5: Data de Início (data_hora_inicial)
+    // 6: Data de Fim (data_hora_final)
+    // 7: Data de Criação (data_criacao)
+    // 8: Foto de Quilometragem (não ordenável)
+    // 9: Multas (não ordenável)
+    // 10: Ações (não ordenável)
+    let columns = [
+        null,
+        'veiculos.placa',
+        'uso_veiculos.motorista',
+        'uso_veiculos.km_inicial',
+        'uso_veiculos.km_final',
+        'data_hora_inicial',
+        'data_hora_final',
+        'data_criacao'
+    ];
 
-    // Mapeia os índices para as colunas do banco
-    let columns = ['veiculos.placa', 'motorista', 'km_inicial', 'km_final', 'data_hora_inicial', 'data_hora_final', 'data_criacao'];
+    // Obtém o índice da coluna para ordenação
+    let orderColumnIndex = 1; // padrão
+    let orderDir = 'asc'; // padrão
+    if (req.query.order && req.query.order[0]) {
+        orderColumnIndex = parseInt(req.query.order[0].column);
+        orderDir = req.query.order[0].dir || 'asc';
+    }
+    // Se o índice não estiver entre 1 e 7 (colunas ordenáveis), define padrão
+    if (orderColumnIndex < 1 || orderColumnIndex > 7) {
+        orderColumnIndex = 5; // data_hora_inicial
+    }
     let orderColumn = columns[orderColumnIndex] || 'data_hora_inicial';
 
-    // Monta a cláusula WHERE se tiver busca
+    // Monta a cláusula WHERE se houver busca
     let whereClause = '';
     let params = [];
     if (searchValue) {
-        whereClause = `WHERE (veiculos.placa LIKE ? OR motorista LIKE ? OR km_inicial LIKE ? OR km_final LIKE ? )`;
+        whereClause = `WHERE (veiculos.placa LIKE ? OR uso_veiculos.motorista LIKE ? OR uso_veiculos.km_inicial LIKE ? OR uso_veiculos.km_final LIKE ? )`;
         const searchParam = '%' + searchValue + '%';
         params.push(searchParam, searchParam, searchParam, searchParam);
     }
@@ -413,34 +521,49 @@ app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
       ORDER BY ${orderColumn} ${orderDir}
       LIMIT ? OFFSET ?
     `;
-
+    // Adiciona os parâmetros para LIMIT e OFFSET
     params.push(length, start);
+
+    console.log("SQL principal:", sql);
+    console.log("Parâmetros:", params);
 
     db.query(sql, params, (err, results) => {
         if (err) {
-            console.error(err);
-            return res.status(500).send("Erro na consulta");
+            console.error("Erro na consulta principal:", err);
+            return res.status(500).json({ error: "Erro na consulta principal" });
         }
-        let countSql = `SELECT COUNT(DISTINCT uso_veiculos.id) AS total FROM uso_veiculos
-                      JOIN veiculos ON uso_veiculos.veiculo_id = veiculos.id
-                      LEFT JOIN multas ON uso_veiculos.id = multas.uso_id
-                      ${whereClause}`;
-        db.query(countSql, params.slice(0, whereClause ? 4 : 0), (err, countResult) => {
+
+        // Consulta para obter a contagem dos registros filtrados
+        let countSql = `
+        SELECT COUNT(DISTINCT uso_veiculos.id) AS total 
+        FROM uso_veiculos
+        JOIN veiculos ON uso_veiculos.veiculo_id = veiculos.id
+        LEFT JOIN multas ON uso_veiculos.id = multas.uso_id
+        ${whereClause}
+      `;
+        // Se houver busca, utiliza os primeiros 4 parâmetros; caso contrário, nenhum
+        let countParams = searchValue ? params.slice(0, 4) : [];
+
+        console.log("SQL contagem filtrada:", countSql);
+        console.log("Parâmetros contagem:", countParams);
+
+        db.query(countSql, countParams, (err, countResult) => {
             if (err) {
-                console.error(err);
-                return res.status(500).send("Erro na consulta de contagem");
+                console.error("Erro na consulta de contagem filtrada:", err);
+                return res.status(500).json({ error: "Erro na consulta de contagem filtrada" });
             }
             let totalRecords = countResult[0].total;
 
-            // Total de registros sem filtro
+            // Consulta para obter o total de registros (sem filtro)
             db.query('SELECT COUNT(*) AS total FROM uso_veiculos', (err, totalResult) => {
                 if (err) {
-                    console.error(err);
-                    return res.status(500).send("Erro na consulta de contagem total");
+                    console.error("Erro na consulta de contagem total:", err);
+                    return res.status(500).json({ error: "Erro na consulta de contagem total" });
                 }
                 let totalRecordsUnfiltered = totalResult[0].total;
+                // Envia o JSON no formato esperado pelo DataTables
                 res.json({
-                    draw: draw,
+                    draw: parseInt(draw),
                     recordsTotal: totalRecordsUnfiltered,
                     recordsFiltered: totalRecords,
                     data: results
@@ -449,6 +572,9 @@ app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
         });
     });
 });
+
+
+
 
 
 
@@ -648,27 +774,45 @@ app.get('/editar-uso/:id', isAuthenticated, (req, res) => {
 
 app.get('/usar/:id', isAuthenticated, (req, res) => {
     const { id } = req.params;
-    // Busca os dados do veículo
-    db.query('SELECT * FROM veiculos WHERE id = ?', [id], (err, veiculoResult) => {
+    const userId = req.user.id; // Pega o ID do usuário autenticado
+
+    // Busca o email do usuário autenticado
+    db.query('SELECT email FROM usuarios WHERE id = ?', [userId], (err, userResult) => {
         if (err) {
-            console.error("Erro ao buscar veículo:", err);
-            return res.status(500).send("Erro ao buscar o veículo.");
+            console.error("Erro ao buscar usuário:", err);
+            return res.status(500).send("Erro ao buscar usuário.");
         }
-        if (veiculoResult.length === 0) {
-            return res.status(404).send("Veículo não encontrado");
+        if (userResult.length === 0) {
+            return res.status(404).send("Usuário não encontrado");
         }
-        const veiculo = veiculoResult[0];
-        // Define o kmInicial como o km atual do veículo, que já é o último km_final registrado
-        const kmInicial = veiculo.km || 0;
-        res.render('usar', {
-            veiculo,
-            kmInicial,
-            title: 'Usar Veículo',
-            layout: 'layout',
-            activePage: 'usar'
+
+        const motoristaEmail = userResult[0].email; // Email do usuário autenticado
+
+        // Busca os dados do veículo
+        db.query('SELECT * FROM veiculos WHERE id = ?', [id], (err, veiculoResult) => {
+            if (err) {
+                console.error("Erro ao buscar veículo:", err);
+                return res.status(500).send("Erro ao buscar o veículo.");
+            }
+            if (veiculoResult.length === 0) {
+                return res.status(404).send("Veículo não encontrado");
+            }
+
+            const veiculo = veiculoResult[0];
+            const kmInicial = veiculo.km || 0;
+
+            res.render('usar', {
+                veiculo,
+                kmInicial,
+                motoristaEmail, // Passa o email do usuário autenticado
+                title: 'Usar Veículo',
+                layout: 'layout',
+                activePage: 'usar'
+            });
         });
     });
 });
+
 
 
 app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
@@ -1171,6 +1315,8 @@ app.post('/excluir-notificacao-alteracao-km/:id', isAuthenticated, isAdmin, asyn
         res.redirect('/notificacoes');
     });
 });
+
+
 
 // Socket.IO: conexão com o cliente
 io.on("connection", (socket) => {

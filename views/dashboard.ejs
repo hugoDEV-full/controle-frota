@@ -1,84 +1,421 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+  <meta charset="UTF-8">
+  <title>
+    <%= title %>
+  </title>
+  <!-- Bootstrap CSS e Bootstrap Icons via CDN -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    #map {
+      width: 100%;
+      height: 500px;
+      border-radius: 10px;
+      margin-top: 20px;
+    }
+
+    /* Estilização do menu lateral */
+    #vehicle-menu {
+      position: absolute;
+      top: 50px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px;
+      width: 200px;
+      max-height: 400px;
+      overflow-y: auto;
+      border-radius: 5px;
+      box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    #vehicle-menu h4 {
+      margin-top: 0;
+    }
+
+    .vehicle-item {
+      padding: 5px;
+      border-bottom: 1px solid #ccc;
+      cursor: pointer;
+    }
+
+    .vehicle-item:hover {
+      background: #f0f0f0;
+    }
 
 
-<div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
-  <div>
-    <h1>Controle de Frota</h1>
-    <span class="navbar-text text-dark">
-      <i class="bi bi-person-circle"></i> <%= user ? user.email : 'Usuário' %> - <%= user ? user.role : 'Sem Permissão' %>
-    </span>
-  </div>
-</div>
+    /* Classe para padronizar os cartões com altura fixa */
+    .standard-card {
+      border-radius: 0.5rem;
+      height: 200px;
+      overflow: hidden;
+    }
 
-<!-- Cards com estatísticas -->
-<div class="row mb-4">
-  <div class="col-md-3">
-    <div class="card stat-card text-white bg-primary mb-3">
-      <div class="card-body">
-        <h5 class="card-title"><i class="bi bi-truck"></i> Veículos</h5>
-        <p class="card-text display-6"><%= totalVeiculos || 0 %></p>
-        <p class="card-text">Total de veículos cadastrados</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card stat-card text-white bg-danger mb-3">
-      <div class="card-body">
-        <h5 class="card-title"><i class="bi bi-exclamation-octagon"></i> Multas</h5>
-        <p class="card-text display-6"><%= totalMultas || 0 %></p>
-        <p class="card-text">Multas registradas</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card stat-card text-white bg-success mb-3">
-      <div class="card-body">
-        <h5 class="card-title"><i class="bi bi-speedometer2"></i> Uso</h5>
-        <p class="card-text display-6"><%= totalUso || 0 %></p>
-        <p class="card-text">Registros de uso</p>
-      </div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="card stat-card text-white bg-warning mb-3">
-      <div class="card-body">
-        <h5 class="card-title"><i class="bi bi-people"></i> Motoristas</h5>
-        <p class="card-text display-6"><%= totalMotoristasAtivos || 0 %></p>
-        <p class="card-text">Motoristas em atividade</p>
-      </div>
-    </div>
-  </div>
-</div>
+    .standard-card .card-header {
+      background-color: rgba(0, 0, 0, 0.05);
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+    }
 
-<!-- Lista de Veículos -->
-<div class="mb-4">
-  <p>Escolha um veículo para registrar o uso:</p>
-  <table class="table table-striped">
-    <thead>
-      <tr>
-        <th>Veículo</th>
-        <th>Placa</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% veiculos.forEach(veiculo => { %>
+    .standard-card .card-body {
+      padding: 1rem;
+      height: calc(200px - 3rem);
+      /* Ajuste: altura total menos a altura aproximada do header */
+      overflow-y: auto;
+    }
+  </style>
+</head>
+
+
+<div class="container-fluid mt-4">
+  <!-- Cabeçalho da página -->
+  <div class="d-flex justify-content-between align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <div>
+      <h1>Controle de Frota </h1>
+      <div id="datetime" class="text-center fs-4 mb-3"></div>
+
+      <span class="navbar-text text-dark">
+        <i class="bi bi-person-circle"></i>
+        <%= user ? user.email : 'Usuário' %> - <%= user ? user.role : 'Sem Permissão' %>
+      </span>
+    </div>
+  </div>
+  <!-- Lista de Veículos -->
+  <div class="mb-4 border-bottom pt-3 pb-2 mb-3">
+    <p>Escolha um veículo para registrar o uso:</p>
+    <table class="table table-striped">
+      <thead>
         <tr>
-          <td><%= veiculo.nome %></td>
-          <td><%= veiculo.placa %></td>
-          <td>
-            <a href="/usar/<%= veiculo.id %>" class="btn btn-primary">Registrar Uso</a>
-            <a href="/registrar-multa/<%= veiculo.id %>" class="btn btn-danger">Registrar Multas</a>
-            <a href="/editar-veiculo/<%= veiculo.id %>" class="btn btn-warning">Editar</a>
-            <form action="/excluir-veiculo/<%= veiculo.id %>" method="POST" style="display:inline;">
-              <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este veículo?');">Excluir</button>
-            </form>
-          </td>
+          <th>Veículo</th>
+          <th>Placa</th>
+          <th>Ações</th>
         </tr>
-      <% }); %>
-    </tbody>
-  </table>
-  <div class="d-flex gap-2">
-    <a href="/relatorio-uso" class="btn btn-secondary">Ver Relatório de Uso</a>
-    <a href="/registrar-veiculo" class="btn btn-success">Registrar Veículo</a>
+      </thead>
+      <tbody>
+        <% veiculos.forEach(veiculo=> { %>
+          <tr>
+            <td>
+              <%= veiculo.nome %>
+            </td>
+            <td>
+              <%= veiculo.placa %>
+            </td>
+            <td>
+              <a href="/usar/<%= veiculo.id %>" class="btn btn-primary">
+                <i class="bi bi-play-circle"></i> Registrar Uso
+              </a>
+              <a href="/registrar-multa/<%= veiculo.id %>" class="btn btn-danger">
+                <i class="bi bi-exclamation-triangle"></i> Registrar Multas
+              </a>
+              <a href="/editar-veiculo/<%= veiculo.id %>" class="btn btn-warning">
+                <i class="bi bi-pencil-square"></i> Editar
+              </a>
+              <form action="/excluir-veiculo/<%= veiculo.id %>" method="POST" style="display:inline;">
+                <button type="submit" class="btn btn-danger"
+                  onclick="return confirm('Tem certeza que deseja excluir este veículo?');">
+                  <i class="bi bi-trash"></i> Excluir
+                </button>
+              </form>
+            </td>
+          </tr>
+          <% }); %>
+      </tbody>
+    </table>
+    <div class="d-flex gap-2">
+      <a href="/relatorio-uso" class="btn btn-secondary">
+        <i class="bi bi-file-earmark-text"></i> Ver Relatório de Uso
+      </a>
+      <a href="/registrar-veiculo" class="btn btn-success">
+        <i class="bi bi-plus-circle"></i> Registrar Veículo
+      </a>
+    </div>
+  </div>
+  <!-- Cards de Estatísticas Principais -->
+  <div class="row mb-4">
+    <p>Estatísticas:</p>
+    <div class="col-md-3">
+      <div class="card standard-card text-white bg-primary mb-3">
+        <div class="card-header">
+          <i class="bi bi-truck"></i> Veículos
+        </div>
+        <div class="card-body">
+          <p class="card-text display-6">
+            <%= totalVeiculos || 0 %>
+          </p>
+          <p class="card-text">Total de veículos cadastrados</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card standard-card text-white bg-danger mb-3">
+        <div class="card-header">
+          <i class="bi bi-exclamation-octagon"></i> Multas
+        </div>
+        <div class="card-body">
+          <p class="card-text display-6">
+            <%= totalMultas || 0 %>
+          </p>
+          <p class="card-text">Multas registradas</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card standard-card text-white bg-success mb-3">
+        <div class="card-header">
+          <i class="bi bi-speedometer2"></i> Uso
+        </div>
+        <div class="card-body">
+          <p class="card-text display-6">
+            <%= totalUso || 0 %>
+          </p>
+          <p class="card-text">Registros de uso</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card standard-card text-white bg-warning mb-3">
+        <div class="card-header">
+          <i class="bi bi-people"></i> Motoristas
+        </div>
+        <div class="card-body">
+          <p class="card-text display-6">
+            <%= totalMotoristasAtivos || 0 %>
+          </p>
+          <p class="card-text">Motoristas em atividade</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Relatórios de Uso -->
+  <div class="row mb-4">
+    <!-- Cartão: Uso por Dia -->
+    <div class="col-md-4">
+      <div class="card standard-card text-white bg-info mb-3">
+        <div class="card-header">
+          <i class="bi bi-calendar-day"></i> Uso por Dia
+        </div>
+        <div class="card-body">
+          <% if (usoDia.length> 0) { %>
+            <% usoDia.forEach(item=> { %>
+              <p class="mb-1">
+                <strong>
+                  <%= new Intl.DateTimeFormat('pt-BR', { weekday: 'long' , day: '2-digit' , month: '2-digit' ,
+                    year: 'numeric' }).format(new Date(item.dia)) %>:
+                </strong>
+                <%= item.totalUsoDia %> usos<br>
+                  🕒 Primeiro uso: <%= item.primeiroUso %> <br>
+                    🕛 Último uso: <%= item.ultimoUso %>
+              </p>
+              <% }); %>
+                <% } else { %>
+                  <p>Nenhum uso registrado.</p>
+                  <% } %>
+        </div>
+      </div>
+    </div>
+    <!-- Cartão: Uso por Mês -->
+    <div class="col-md-4">
+      <div class="card standard-card text-white bg-success mb-3">
+        <div class="card-header">
+          <i class="bi bi-calendar3"></i> Uso por Mês
+        </div>
+        <div class="card-body">
+          <% if (usoMes.length> 0) { %>
+            <% usoMes.forEach(item=> { %>
+              <p class="mb-1">
+                <strong>
+                  <%= item.mes %>:
+                </strong>
+                <%= item.totalUsoMes %> usos
+              </p>
+              <% }); %>
+                <% } else { %>
+                  <p>Nenhum uso registrado.</p>
+                  <% } %>
+        </div>
+      </div>
+    </div>
+    <!-- Cartão: Uso por Ano -->
+    <div class="col-md-4">
+      <div class="card standard-card text-white bg-warning mb-3">
+        <div class="card-header">
+          <i class="bi bi-calendar4"></i> Uso por Ano
+        </div>
+        <div class="card-body">
+          <% if (usoAno.length> 0) { %>
+            <% usoAno.forEach(item=> { %>
+              <p class="mb-1">
+                <strong>
+                  <%= item.ano %>:
+                </strong>
+                <%= item.totalUsoAno %> usos
+              </p>
+              <% }); %>
+                <% } else { %>
+                  <p>Nenhum uso registrado.</p>
+                  <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Relatórios de Multas -->
+  <div class="row mb-4">
+    <!-- Cartão: Multas por Mês -->
+    <div class="col-md-4">
+      <div class="card standard-card text-white bg-secondary mb-3">
+        <div class="card-header">
+          <i class="bi bi-calendar3"></i> Multas por Mês
+        </div>
+        <div class="card-body">
+          <% if (multasMes.length> 0) { %>
+            <% multasMes.forEach(item=> { %>
+              <p class="mb-1">
+                <strong>
+                  <%= item.mes %>:
+                </strong>
+                <%= item.totalMultasMes %> multas
+              </p>
+              <% }); %>
+                <% } else { %>
+                  <p>Nenhuma multa registrada.</p>
+                  <% } %>
+        </div>
+      </div>
+    </div>
+    <!-- Cartão: Multas por Ano -->
+    <div class="col-md-4">
+      <div class="card standard-card text-white bg-dark mb-3">
+        <div class="card-header">
+          <i class="bi bi-calendar4"></i> Multas por Ano
+        </div>
+        <div class="card-body">
+          <% if (multasAno.length> 0) { %>
+            <% multasAno.forEach(item=> { %>
+              <p class="mb-1">
+                <strong>
+                  <%= item.ano %>:
+                </strong>
+                <%= item.totalMultasAno %> multas
+              </p>
+              <% }); %>
+                <% } else { %>
+                  <p>Nenhuma multa registrada.</p>
+                  <% } %>
+        </div>
+      </div>
+    </div>
+    <!-- Cartão: Multas por Motorista -->
+    <div class="col-md-4">
+      <div class="card standard-card text-white bg-info mb-3">
+        <div class="card-header">
+          <i class="bi bi-people"></i> Multas por Motorista
+        </div>
+        <div class="card-body">
+          <% if (multasMotorista.length> 0) { %>
+            <% multasMotorista.forEach(item=> { %>
+              <p class="mb-1">
+                <strong>
+                  <%= item.motorista %>:
+                </strong>
+                <%= item.totalMultasMotorista %> multas
+              </p>
+              <% }); %>
+                <% } else { %>
+                  <p>Nenhuma multa registrada.</p>
+                  <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="container mt-4">
+    <h2><i class="bi bi-map"></i> Localização dos Veículos</h2>
+    <div style="position: relative;">
+      <div id="map"></div>
+      <div id="vehicle-menu"
+        style="position: absolute; top: 10px; right: 10px; background: #fff; padding: 10px; z-index: 1000;">
+        <h4>Veículos</h4>
+        <div id="vehicle-list"></div>
+      </div>
+    </div>
   </div>
 </div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+  // Inicializa o mapa centralizado em Sobradinho
+  var map = L.map('map').setView([-15.6500, -47.6100], 12);
+
+  // Adiciona um mapa base do OpenStreetMap
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  // Ícone personalizado do veículo
+  var carIcon = L.icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/252/252025.png', // Ícone de carro
+    iconSize: [40, 40],
+    iconAnchor: [20, 20]
+  });
+
+  // Marca inicial do veículo 
+  var vehicleMarker = L.marker([-15.6500, -47.6100], { icon: carIcon }).addTo(map)
+    .bindPopup("🚗 Veículo em movimento").openPopup();
+
+  // Coordenadas simuladas para o trajeto de Sobradinho até Ceilândia
+  var positions = [
+    [-15.6500, -47.6100], // Sobradinho
+    [-15.7000, -47.6500],
+    [-15.7500, -47.7000],
+    [-15.8000, -47.7500],
+    [-15.8500, -47.8000],
+    [-15.8600, -48.0000], // Ceilândia
+  ];
+
+  var index = 0;
+
+  function moveVehicle() {
+    if (index < positions.length) {
+      vehicleMarker.setLatLng(positions[index]); // Atualiza posição do marcador
+      map.panTo(positions[index]); // Centraliza no veículo
+      index++;
+    } else {
+      clearInterval(interval); // Para a simulação ao chegar no destino
+    }
+  }
+
+  var interval = setInterval(moveVehicle, 2000); // Atualiza a cada 2 segundos
+</script>
+
+
+
+<script>
+  function updateDateTime() {
+    const now = new Date();
+    const options = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    };
+    document.getElementById('datetime').innerText = now.toLocaleDateString('pt-BR', options);
+  }
+
+  // Atualiza a cada segundo
+  setInterval(updateDateTime, 1000);
+  updateDateTime();
+</script>
