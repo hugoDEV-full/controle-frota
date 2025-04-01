@@ -158,7 +158,7 @@
 # Funcionalidades que ainda não tem 
 
 - Melhorar front end no que diz respeito a notificações de erro em edição de uso mais amigáveis ao usuário.
-- Ao ser alterado o km do veiculo automaticamente ser alterado o km inicial na edição.
+
 - Gestão de Motoristas
   Cadastro de motoristas  Formulário detalhado com nome, CPF, CNH, data de validade, categoria da CNH e foto.
   Validação automática da CNH : Verificar se a carteira de motorista está vencida antes de permitir o uso de um veículo.
@@ -170,5 +170,35 @@
 - Adicionar comprovante de abastecimento, informar quanto de reembolso o motorista precisa receber ao Admin e ao usuário 
 - Se a ultima troca de oleo nao tiver sido realizada, impede o uso do veiculo de forma normal e permite um de veiculo para trocar o oleo.
 - Revisão de rotas (segurança), revisão rotas a respeito de role admin 
-
- 
+--
+feito té 01/04
+- Ao ser alterado o km do veiculo automaticamente ser alterado o km inicial na edição.
+- Relatório de Uso Decrescente: Exibir os registros de uso em ordem decrescente.
+- Registro de Multas: Apenas o administrador terá permissão para registrar multas.
+- Notificação: Permitir que a notificação tenha a funcionalidade de apagar o registro.
+- Tradução do DataTables: tradução  para a tabela relatorio uso.
+- Usuário Logado: Preencher automaticamente o campo “motorista” com o usuário logado, como padrão.
+- Mapa do Veículo: Integrar um mapa que exiba a localização do veículo.
+- Movimentação Fictícia:  registrar movimentações fictícias no mapa.
+- Estatísticas Diversas: Gerar e exibir diversas estatísticas conforme os dados disponíveis.
+- Pesquisa no DataTables: Permitir a funcionalidade de pesquisa nas tabelas de dados.
+- Registro de Uso em Tempo Real: Atualizar o tempo em tempo real durante o registro de uso.
+- Edição de Data e Hora Final: Possibilitar a edição da data e hora final, utilizando como referência o fuso horário UTC -3 ou a data/hora do próprio registro de uso.
+- Estatisticas
+Motoristas que Podem Dirigir
+Motoristas que Não Podem Dirigir
+Veículos
+Multas
+Uso
+Motoristas em Atividade
+Uso por Dia
+Uso por Mês
+Uso por Ano
+Multas por Mês
+Multas por Ano
+Multas por Motorista
+Mapa localização fase 1 
+- Cadastro motorista
+Verificações se usuário é cadastrado como motorista, se CNH é válida antes de registrar uso.
+Link de motorista com usuario logado
+Vaidações de CPF

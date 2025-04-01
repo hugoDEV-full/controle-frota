@@ -244,111 +244,123 @@ app.use((req, res, next) => {
 });
 
 
-app.get('/', isAuthenticated, (req, res) => {
-    db.query('SELECT * FROM veiculos', (err, veiculosResult) => {
-        if (err) throw err;
-        db.query('SELECT COUNT(*) AS totalVeiculos FROM veiculos', (err, totalVeiculosResult) => {
-            if (err) throw err;
-            db.query('SELECT COUNT(*) AS totalMultas FROM multas', (err, totalMultasResult) => {
-                if (err) throw err;
-                db.query('SELECT COUNT(*) AS totalUso FROM uso_veiculos', (err, totalUsoResult) => {
-                    if (err) throw err;
-                    db.query('SELECT COUNT(DISTINCT motorista) AS totalMotoristasAtivos FROM uso_veiculos', (err, totalMotoristasResult) => {
-                        if (err) throw err;
-                        // Relatório: Uso por Dia usando a coluna 'data_criacao'
-                        db.query(`
-                SELECT 
-    DATE(data_criacao) AS dia, 
-    COUNT(*) AS totalUsoDia,
-    MIN(TIME(data_criacao)) AS primeiroUso,
-    MAX(TIME(data_criacao)) AS ultimoUso
-FROM uso_veiculos
-GROUP BY DATE(data_criacao)
-ORDER BY dia DESC;
+const util = require('util');
+const query = util.promisify(db.query).bind(db);
 
-              `, (err, usoDiaResult) => {
-                            if (err) throw err;
-                            // Relatório: Uso por Mês
-                            db.query(`
-                  SELECT DATE_FORMAT(data_criacao, '%Y-%m') AS mes, COUNT(*) AS totalUsoMes
-                  FROM uso_veiculos
-                  GROUP BY DATE_FORMAT(data_criacao, '%Y-%m')
-                  ORDER BY mes DESC
-                `, (err, usoMesResult) => {
-                                if (err) throw err;
-                                // Relatório: Uso por Ano
-                                db.query(`
-                    SELECT YEAR(data_criacao) AS ano, COUNT(*) AS totalUsoAno
-                    FROM uso_veiculos
-                    GROUP BY YEAR(data_criacao)
-                    ORDER BY ano DESC
-                  `, (err, usoAnoResult) => {
-                                    if (err) throw err;
-                                    // Relatório: Total de Uso no Ano Corrente
-                                    const currentYear = new Date().getFullYear();
-                                    db.query(`
-                      SELECT COUNT(*) AS totalUsoAnoAtual
-                      FROM uso_veiculos
-                      WHERE YEAR(data_criacao) = ?
-                    `, [currentYear], (err, usoAnoAtualResult) => {
-                                        if (err) throw err;
-                                        // Relatório: Multas por Mês (utilizando a coluna 'data' da tabela multas)
-                                        db.query(`
-                        SELECT DATE_FORMAT(data, '%Y-%m') AS mes, COUNT(*) AS totalMultasMes
-                        FROM multas
-                        GROUP BY DATE_FORMAT(data, '%Y-%m')
-                        ORDER BY mes DESC
-                      `, (err, multasMesResult) => {
-                                            if (err) throw err;
-                                            // Relatório: Multas por Ano
-                                            db.query(`
-                          SELECT YEAR(data) AS ano, COUNT(*) AS totalMultasAno
-                          FROM multas
-                          GROUP BY YEAR(data)
-                          ORDER BY ano DESC
-                        `, (err, multasAnoResult) => {
-                                                if (err) throw err;
-                                                // Relatório: Multas por Motorista
-                                                db.query(`
-                            SELECT motorista, COUNT(*) AS totalMultasMotorista
-                            FROM multas
-                            GROUP BY motorista
-                            ORDER BY totalMultasMotorista DESC
-                          `, (err, multasMotoristaResult) => {
-                                                    if (err) throw err;
+app.get('/', isAuthenticated, async (req, res) => {
+    try {
+        // Consultas para motoristas (contagem e dados)
+        const validosResult = await query(
+            'SELECT COUNT(*) AS totalValidos FROM motoristas WHERE data_validade >= CURDATE()'
+        );
+        const invalidosResult = await query(
+            'SELECT COUNT(*) AS totalInvalidos FROM motoristas WHERE data_validade < CURDATE()'
+        );
+        const motoristasValidosList = await query(
+            'SELECT nome, email FROM motoristas WHERE data_validade >= CURDATE()'
+        );
+        const motoristasInvalidosList = await query(
+            'SELECT nome, email FROM motoristas WHERE data_validade < CURDATE()'
+        );
 
-                                                    res.render('dashboard', {
-                                                        title: 'Dashboard',
-                                                        layout: 'layout',
-                                                        activePage: 'dashboard',
-                                                        veiculos: veiculosResult,
-                                                        user: req.user,
-                                                        totalVeiculos: totalVeiculosResult[0].totalVeiculos,
-                                                        totalMultas: totalMultasResult[0].totalMultas,
-                                                        totalUso: totalUsoResult[0].totalUso,
-                                                        totalMotoristasAtivos: totalMotoristasResult[0].totalMotoristasAtivos,
-                                                        usoDia: usoDiaResult,           // Dados agrupados por dia
-                                                        usoMes: usoMesResult,           // Dados agrupados por mês
-                                                        usoAno: usoAnoResult,           // Dados agrupados por ano
-                                                        totalUsoAnoAtual: usoAnoAtualResult[0].totalUsoAnoAtual,  // Total no ano corrente
-                                                        multasMes: multasMesResult,      // Multas agrupadas por mês
-                                                        multasAno: multasAnoResult,      // Multas agrupadas por ano
-                                                        multasMotorista: multasMotoristaResult,
+        // Consultas para veículos e outras estatísticas
+        const veiculosResult = await query('SELECT * FROM veiculos');
+        const totalVeiculosResult = await query('SELECT COUNT(*) AS totalVeiculos FROM veiculos');
+        const totalMultasResult = await query('SELECT COUNT(*) AS totalMultas FROM multas');
+        const totalUsoResult = await query('SELECT COUNT(*) AS totalUso FROM uso_veiculos');
+        const totalMotoristasResult = await query(
+            'SELECT COUNT(DISTINCT motorista) AS totalMotoristasAtivos FROM uso_veiculos'
+        );
 
-                                                    });
-                                                });
-                                            });
-                                        });
-                                    });
-                                });
-                            });
-                        });
-                    });
-                });
-            });
+        // Relatório: Uso por Dia
+        const usoDiaResult = await query(`
+      SELECT 
+        DATE(data_criacao) AS dia, 
+        COUNT(*) AS totalUsoDia,
+        MIN(TIME(data_criacao)) AS primeiroUso,
+        MAX(TIME(data_criacao)) AS ultimoUso
+      FROM uso_veiculos
+      GROUP BY DATE(data_criacao)
+      ORDER BY dia DESC
+    `);
+
+        // Relatório: Uso por Mês
+        const usoMesResult = await query(`
+      SELECT DATE_FORMAT(data_criacao, '%Y-%m') AS mes, COUNT(*) AS totalUsoMes
+      FROM uso_veiculos
+      GROUP BY DATE_FORMAT(data_criacao, '%Y-%m')
+      ORDER BY mes DESC
+    `);
+
+        // Relatório: Uso por Ano
+        const usoAnoResult = await query(`
+      SELECT YEAR(data_criacao) AS ano, COUNT(*) AS totalUsoAno
+      FROM uso_veiculos
+      GROUP BY YEAR(data_criacao)
+      ORDER BY ano DESC
+    `);
+
+        // Relatório: Total de Uso no Ano Corrente
+        const currentYear = new Date().getFullYear();
+        const usoAnoAtualResult = await query(
+            `SELECT COUNT(*) AS totalUsoAnoAtual FROM uso_veiculos WHERE YEAR(data_criacao) = ?`,
+            [currentYear]
+        );
+
+        // Relatório: Multas por Mês
+        const multasMesResult = await query(`
+      SELECT DATE_FORMAT(data, '%Y-%m') AS mes, COUNT(*) AS totalMultasMes
+      FROM multas
+      GROUP BY DATE_FORMAT(data, '%Y-%m')
+      ORDER BY mes DESC
+    `);
+
+        // Relatório: Multas por Ano
+        const multasAnoResult = await query(`
+      SELECT YEAR(data) AS ano, COUNT(*) AS totalMultasAno
+      FROM multas
+      GROUP BY YEAR(data)
+      ORDER BY ano DESC
+    `);
+
+        // Relatório: Multas por Motorista
+        const multasMotoristaResult = await query(`
+      SELECT motorista, COUNT(*) AS totalMultasMotorista
+      FROM multas
+      GROUP BY motorista
+      ORDER BY totalMultasMotorista DESC
+    `);
+
+        res.render('dashboard', {
+            title: 'Dashboard',
+            layout: 'layout',
+            activePage: 'dashboard',
+            veiculos: veiculosResult,
+            user: req.user,
+            totalVeiculos: totalVeiculosResult[0].totalVeiculos,
+            totalMultas: totalMultasResult[0].totalMultas,
+            totalUso: totalUsoResult[0].totalUso,
+            totalMotoristasAtivos: totalMotoristasResult[0].totalMotoristasAtivos,
+            totalMotoristasValidos: validosResult[0].totalValidos,
+            totalMotoristasInvalidos: invalidosResult[0].totalInvalidos,
+            motoristasValidosList,   // Lista com nome e email dos motoristas com CNH válida
+            motoristasInvalidosList, // Lista com nome e email dos motoristas com CNH vencida
+            usoDia: usoDiaResult,
+            usoMes: usoMesResult,
+            usoAno: usoAnoResult,
+            totalUsoAnoAtual: usoAnoAtualResult[0].totalUsoAnoAtual,
+            multasMes: multasMesResult,
+            multasAno: multasAnoResult,
+            multasMotorista: multasMotoristaResult,
         });
-    });
+    } catch (err) {
+        
+        console.error(err);
+        res.status(500).send('Erro no servidor');
+    }
 });
+
+
 
 
 
@@ -817,10 +829,11 @@ app.get('/usar/:id', isAuthenticated, (req, res) => {
 
 app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
     const { id } = req.params; // ID do veículo
-    const { motorista, km_inicial, km_final, data_hora_inicial, data_hora_final } = req.body;
+    const { km_inicial, km_final, data_hora_inicial, data_hora_final } = req.body;
     const foto_km = req.file ? req.file.filename : null;
+    const motoristaEmail = req.user.email; // Obtém o email do usuário autenticado
 
-    if (!motorista || !km_inicial) {
+    if (!km_inicial) {
         return res.status(400).send('Campos obrigatórios faltando');
     }
 
@@ -854,52 +867,73 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
         const dataHoraFinal = data_hora_final ? new Date(data_hora_final) : null;
         const newEnd = dataHoraFinal ? dataHoraFinal : new Date('9999-12-31');
 
-        /* 
-          Checa se já existe um uso que se sobrepõe ao novo.
-          Verifica se:
-            - Uso existente começa antes do final do novo uso
-            - E se termina depois do início do novo uso (ou ainda tá rolando)
-        */
-        db.query(
-            `SELECT * FROM uso_veiculos 
+        // Verifica se o usuário possui cadastro em motoristas com base no email
+        db.query('SELECT * FROM motoristas WHERE email = ?', [motoristaEmail], (err, motoristaResult) => {
+            if (err) {
+                console.error("Erro ao buscar motorista:", err);
+                return res.status(500).send("Erro ao buscar o motorista.");
+            }
+
+            // Se não houver nenhum registro, o motorista não está cadastrado
+            if (motoristaResult.length === 0) {
+                return res.status(400).send("Erro: Usuário não possui cadastro de motorista.");
+            }
+
+            // Se houver cadastro, verifica se algum possui CNH válida
+            const motoristasComCNHValida = motoristaResult.filter(motorista => {
+                // Converte a data_validade para objeto Date para comparar com a data atual
+                return new Date(motorista.data_validade) >= new Date();
+            });
+
+            if (motoristasComCNHValida.length === 0) {
+                return res.status(400).send("Erro: A CNH do motorista está vencida.");
+            }
+
+            // Verifica se já existe um uso que se sobrepõe ao novo.
+            db.query(
+                `SELECT * FROM uso_veiculos 
              WHERE (veiculo_id = ? OR motorista = ?)
                AND (data_hora_inicial < ?)
                AND ((data_hora_final IS NULL) OR (data_hora_final > ?))`,
-            [id, motorista, newEnd, dataHoraInicial],
-            (err, overlapResult) => {
-                if (err) {
-                    console.error("Erro na verificação de sobreposição:", err);
-                    return res.status(500).send("Erro interno");
-                }
-                if (overlapResult.length > 0) {
-                    return res.status(400).send("Erro: Já existe um uso nesse período.");
-                }
-
-                // Insere o registro de uso
-                db.query(
-                    'INSERT INTO uso_veiculos (veiculo_id, motorista, km_inicial, km_final, data_hora_inicial, data_hora_final, foto_km) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    [id, motorista, km_inicial, kmFinalValue, dataHoraInicial, dataHoraFinal, foto_km],
-                    (err, result) => {
-                        if (err) throw err;
-
-                        // Se tiver km_final, atualiza o km do veículo e checa a troca de óleo
-                        if (kmFinalValue !== null) {
-                            db.query('UPDATE veiculos SET km = ? WHERE id = ?', [kmFinalValue, id], (err, result2) => {
-                                if (err) {
-                                    console.error("Erro ao atualizar km:", err);
-                                } else {
-                                    console.log(`Veículo ${id} atualizado pra km=${kmFinalValue}`);
-                                    checkOilChangeForVehicle(id);
-                                }
-                            });
-                        }
-                        res.redirect('/');
+                [id, motoristaEmail, newEnd, dataHoraInicial],
+                (err, overlapResult) => {
+                    if (err) {
+                        console.error("Erro na verificação de sobreposição:", err);
+                        return res.status(500).send("Erro interno");
                     }
-                );
-            }
+                    if (overlapResult.length > 0) {
+                        return res.status(400).send("Erro: Já existe um uso nesse período.");
+                    }
+
+                    // Insere o registro de uso
+                    db.query(
+                        'INSERT INTO uso_veiculos (veiculo_id, motorista, km_inicial, km_final, data_hora_inicial, data_hora_final, foto_km) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        [id, motoristaEmail, km_inicial, kmFinalValue, dataHoraInicial, dataHoraFinal, foto_km],
+                        (err, result) => {
+                            if (err) throw err;
+
+                            // Se tiver km_final, atualiza o km do veículo e checa a troca de óleo
+                            if (kmFinalValue !== null) {
+                                db.query('UPDATE veiculos SET km = ? WHERE id = ?', [kmFinalValue, id], (err, result2) => {
+                                    if (err) {
+                                        console.error("Erro ao atualizar km:", err);
+                                    } else {
+                                        console.log(`Veículo ${id} atualizado para km=${kmFinalValue}`);
+                                        checkOilChangeForVehicle(id);
+                                    }
+                                });
+                            }
+                            res.redirect('/');
+                        }
+                    );
+                }
+            );
+        }
         );
     });
 });
+
+
 
 
 // Rota para editar uso, atualizar multas e imagem 
@@ -955,12 +989,16 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
                     }
                     if (kmFinalParsed < kmInicialValue) {
                         return res.status(400).send('km final não pode ser menor que km inicial');
-                    }
-                    // km_final não pode ultrapassar a autonomia de um tanque 
+                    } 
+                    
+                    // verificar autonimia < 700
                     const autonomiaUno = 700;
-                    if ((kmFinalParsed - kmInicialValue) > autonomiaUno) {
-                        return res.status(400).send(`O consumo excede a autonomia máxima de um tanque (${autonomiaUno} km).`);
+                    const consumo = kmFinalParsed - kmInicialValue;
+
+                    if (consumo > autonomiaUno) {
+                        return res.status(400).send(`O consumo (${consumo} km) ultrapassa a autonomia máxima de um tanque (${autonomiaUno} km).`);
                     }
+
                 }
                 if (data_hora_final && data_hora_final !== '') {
                     const dataHoraFinalParsed = new Date(data_hora_final);
@@ -1047,6 +1085,7 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
         });
     }
 });
+
 
 
 
@@ -1315,8 +1354,95 @@ app.post('/excluir-notificacao-alteracao-km/:id', isAuthenticated, isAdmin, asyn
         res.redirect('/notificacoes');
     });
 });
+const moment = require('moment');
+
+// Função para validar CPF
+function validarCPF(cpf) {
+    // Remove pontos e traços
+    cpf = cpf.replace(/[^\d]+/g, '');
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) {
+        return false;
+    }
+    let soma = 0, resto;
+    for (let i = 1; i <= 9; i++) {
+        soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
+    }
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) {
+        resto = 0;
+    }
+    if (resto !== parseInt(cpf.substring(9, 10))) {
+        return false;
+    }
+    soma = 0;
+    for (let i = 1; i <= 10; i++) {
+        soma += parseInt(cpf.substring(i - 1, i)) * (12 - i);
+    }
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) {
+        resto = 0;
+    }
+    if (resto !== parseInt(cpf.substring(10, 11))) {
+        return false;
+    }
+    return true;
+}
+
+// Rota GET para exibir o formulário de registro de motorista
+app.get('/registro-motorista', (req, res) => {
+    res.render('registro-motorista', { activePage: 'motorista', user: req.user });
+});
 
 
+
+// Rota para cadastro de motoristas
+app.post('/api/cadastro-motorista', isAuthenticated, upload.single('foto'), async (req, res) => {
+    console.log('Dados do corpo:', req.body);
+    console.log('Dados do arquivo:', req.file);
+
+    const { nome, cpf, cnh, dataValidade, categoria } = req.body;
+    const foto = req.file ? req.file.filename : null;
+
+    // O email vem do usuário autenticado (tabela "usuarios")
+    const email = req.user.email;
+
+    // Validação da data de validade da CNH
+    if (moment(dataValidade).isBefore(moment(), 'day')) {
+        return res.status(400).json({ success: false, message: 'CNH vencida. Cadastro não permitido.' });
+    }
+
+    // Validação do CPF
+    if (!validarCPF(cpf)) {
+        return res.status(400).json({ success: false, message: 'CPF inválido.' });
+    }
+
+    // Verifica se o CPF já está cadastrado
+    db.query('SELECT id FROM motoristas WHERE cpf = ?', [cpf], (err, results) => {
+        if (err) {
+            console.error('Erro ao verificar CPF:', err);
+            return res.status(500).json({ success: false, message: 'Erro ao verificar CPF.' });
+        }
+
+        if (results.length > 0) {
+            return res.status(400).json({ success: false, message: 'CPF já cadastrado.' });
+        }
+
+        // Se o CPF não existe, insere o novo motorista, incluindo o campo email
+        const query = `
+        INSERT INTO motoristas (nome, email, cpf, cnh, data_validade, categoria, foto)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `;
+        const values = [nome, email, cpf, cnh, dataValidade, categoria, foto];
+
+        db.query(query, values, (err, results) => {
+            if (err) {
+                console.error('Erro ao cadastrar motorista:', err);
+                return res.status(500).json({ success: false, message: 'Erro ao cadastrar motorista.' });
+            }
+            return res.status(200).json({ success: true, message: 'Motorista cadastrado com sucesso!' });
+        });
+    });
+});
 
 // Socket.IO: conexão com o cliente
 io.on("connection", (socket) => {
