@@ -14,6 +14,8 @@ services:
     environment:
       NODE_ENV: production
     restart: unless-stopped
+    tty: true
+    stdin_open: true
     deploy:
       resources:
         limits:
