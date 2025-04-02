@@ -257,11 +257,12 @@ app.get('/', isAuthenticated, async (req, res) => {
             'SELECT COUNT(*) AS totalInvalidos FROM motoristas WHERE data_validade < CURDATE()'
         );
         const motoristasValidosList = await query(
-            'SELECT nome, email FROM motoristas WHERE data_validade >= CURDATE()'
+            'SELECT nome, email, DATE_FORMAT(data_validade, "%d/%m/%Y") AS validade FROM motoristas WHERE data_validade >= CURDATE()'
         );
         const motoristasInvalidosList = await query(
-            'SELECT nome, email FROM motoristas WHERE data_validade < CURDATE()'
+            'SELECT nome, email, DATE_FORMAT(data_validade, "%d/%m/%Y") AS validade FROM motoristas WHERE data_validade < CURDATE()'
         );
+        
 
         // Consultas para veículos e outras estatísticas
         const veiculosResult = await query('SELECT * FROM veiculos');
@@ -274,31 +275,31 @@ app.get('/', isAuthenticated, async (req, res) => {
 
         // Relatório: Uso por Dia
         const usoDiaResult = await query(`
-      SELECT 
-        DATE(data_criacao) AS dia, 
-        COUNT(*) AS totalUsoDia,
-        MIN(TIME(data_criacao)) AS primeiroUso,
-        MAX(TIME(data_criacao)) AS ultimoUso
-      FROM uso_veiculos
-      GROUP BY DATE(data_criacao)
-      ORDER BY dia DESC
-    `);
+          SELECT 
+            DATE(data_criacao) AS dia, 
+            COUNT(*) AS totalUsoDia,
+            MIN(TIME(data_criacao)) AS primeiroUso,
+            MAX(TIME(data_criacao)) AS ultimoUso
+          FROM uso_veiculos
+          GROUP BY DATE(data_criacao)
+          ORDER BY dia DESC
+        `);
 
         // Relatório: Uso por Mês
         const usoMesResult = await query(`
-      SELECT DATE_FORMAT(data_criacao, '%Y-%m') AS mes, COUNT(*) AS totalUsoMes
-      FROM uso_veiculos
-      GROUP BY DATE_FORMAT(data_criacao, '%Y-%m')
-      ORDER BY mes DESC
-    `);
+          SELECT DATE_FORMAT(data_criacao, '%Y-%m') AS mes, COUNT(*) AS totalUsoMes
+          FROM uso_veiculos
+          GROUP BY DATE_FORMAT(data_criacao, '%Y-%m')
+          ORDER BY mes DESC
+        `);
 
         // Relatório: Uso por Ano
         const usoAnoResult = await query(`
-      SELECT YEAR(data_criacao) AS ano, COUNT(*) AS totalUsoAno
-      FROM uso_veiculos
-      GROUP BY YEAR(data_criacao)
-      ORDER BY ano DESC
-    `);
+          SELECT YEAR(data_criacao) AS ano, COUNT(*) AS totalUsoAno
+          FROM uso_veiculos
+          GROUP BY YEAR(data_criacao)
+          ORDER BY ano DESC
+        `);
 
         // Relatório: Total de Uso no Ano Corrente
         const currentYear = new Date().getFullYear();
@@ -309,27 +310,36 @@ app.get('/', isAuthenticated, async (req, res) => {
 
         // Relatório: Multas por Mês
         const multasMesResult = await query(`
-      SELECT DATE_FORMAT(data, '%Y-%m') AS mes, COUNT(*) AS totalMultasMes
-      FROM multas
-      GROUP BY DATE_FORMAT(data, '%Y-%m')
-      ORDER BY mes DESC
-    `);
+          SELECT DATE_FORMAT(data, '%Y-%m') AS mes, COUNT(*) AS totalMultasMes
+          FROM multas
+          GROUP BY DATE_FORMAT(data, '%Y-%m')
+          ORDER BY mes DESC
+        `);
 
         // Relatório: Multas por Ano
         const multasAnoResult = await query(`
-      SELECT YEAR(data) AS ano, COUNT(*) AS totalMultasAno
-      FROM multas
-      GROUP BY YEAR(data)
-      ORDER BY ano DESC
-    `);
+          SELECT YEAR(data) AS ano, COUNT(*) AS totalMultasAno
+          FROM multas
+          GROUP BY YEAR(data)
+          ORDER BY ano DESC
+        `);
 
         // Relatório: Multas por Motorista
         const multasMotoristaResult = await query(`
-      SELECT motorista, COUNT(*) AS totalMultasMotorista
-      FROM multas
-      GROUP BY motorista
-      ORDER BY totalMultasMotorista DESC
-    `);
+          SELECT motorista, COUNT(*) AS totalMultasMotorista
+          FROM multas
+          GROUP BY motorista
+          ORDER BY totalMultasMotorista DESC
+        `);
+
+        // Nova funcionalidade: Manutenções pendentes
+        const manutencoesPendentes = await query(`
+          SELECT m.*, v.placa, v.nome as veiculo_nome 
+          FROM manutencoes m
+          JOIN veiculos v ON m.veiculo_id = v.id
+          WHERE m.status = 'pendente'
+          ORDER BY m.data_agendada ASC
+        `);
 
         res.render('dashboard', {
             title: 'Dashboard',
@@ -352,13 +362,14 @@ app.get('/', isAuthenticated, async (req, res) => {
             multasMes: multasMesResult,
             multasAno: multasAnoResult,
             multasMotorista: multasMotoristaResult,
+            manutencoesPendentes // Dados das manutenções pendentes
         });
     } catch (err) {
-        
         console.error(err);
         res.status(500).send('Erro no servidor');
     }
 });
+
 
 
 
@@ -827,17 +838,68 @@ app.get('/usar/:id', isAuthenticated, (req, res) => {
 
 
 
+function autoGenerateMaintenance(veiculo) {
+    console.log(`🔍 Verificando manutenção para veículo ${veiculo.id} (${veiculo.placa}) com KM=${veiculo.km}`);
+
+    const regrasManutencao = [
+        { tipo: 'Troca de Pneus', kmIntervalo: 100 },
+        { tipo: 'Rodízio de Pneus', kmIntervalo: 100 },
+        { tipo: 'Troca de Pastilhas', kmIntervalo: 100 },
+        { tipo: 'Troca de Discos de Freio', kmIntervalo: 100 },
+    ];
+
+    regrasManutencao.forEach(regra => {
+        if (Number(veiculo.km) >= regra.kmIntervalo) {
+            console.log(`⚠️ Veículo ${veiculo.id} ultrapassou ${regra.kmIntervalo} km para ${regra.tipo}`);
+
+            const queryVerifica = `
+              SELECT * FROM manutencoes 
+              WHERE veiculo_id = ? AND tipo = ? AND status = 'pendente'
+            `;
+            db.query(queryVerifica, [veiculo.id, regra.tipo], (err, results) => {
+                if (err) {
+                    console.error(`Erro ao verificar manutenção ${regra.tipo}:`, err);
+                    return;
+                }
+                console.log(`Resultado da verificação para ${regra.tipo}: ${results.length} registros encontrados.`);
+                if (results.length === 0) {
+                    const descricao = `Manutenção automática disparada ao atingir ${veiculo.km} km.`;
+                    const queryInsert = `
+                       INSERT INTO manutencoes (veiculo_id, tipo, descricao, km_agendado, status)
+                       VALUES (?, ?, ?, ?, 'pendente')
+                    `;
+                    console.log(`Tentando inserir manutenção "${regra.tipo}" para o veículo ${veiculo.placa}.`);
+                    db.query(queryInsert, [veiculo.id, regra.tipo, descricao, regra.kmIntervalo], (err, result) => {
+                        if (err) {
+                            console.error(`Erro ao inserir manutenção ${regra.tipo}:`, err);
+                        } else {
+                            console.log(`✅ Manutenção "${regra.tipo}" gerada para o veículo ${veiculo.placa}.`);
+                            sendMaintenanceNotification(veiculo, { tipo: regra.tipo, descricao });
+                        }
+                    });
+                } else {
+                    console.log(`✅ Já existe manutenção pendente para ${regra.tipo} no veículo ${veiculo.placa}.`);
+                }
+            });
+        } else {
+            console.log(`Veículo ${veiculo.id} com KM=${veiculo.km} não atingiu ${regra.kmIntervalo} para ${regra.tipo}.`);
+        }
+    });
+}
+
+
+// Rota para registrar o uso do veículo, atualizar km e disparar manutenções automáticas
 app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
     const { id } = req.params; // ID do veículo
     const { km_inicial, km_final, data_hora_inicial, data_hora_final } = req.body;
     const foto_km = req.file ? req.file.filename : null;
-    const motoristaEmail = req.user.email; // Obtém o email do usuário autenticado
+    const motoristaEmail = req.user.email; // Email do usuário autenticado
 
     if (!km_inicial) {
         return res.status(400).send('Campos obrigatórios faltando');
     }
 
-    // Primeiro, busca os dados do veículo
+    // Busca os dados do veículo
     db.query('SELECT * FROM veiculos WHERE id = ?', [id], (err, veiculoResult) => {
         if (err) {
             console.error("Erro ao buscar veículo:", err);
@@ -848,10 +910,9 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
         }
         const veiculo = veiculoResult[0];
 
-        // Define o km_inicial esperado como o km atual do veículo
+        // Valida o km_inicial
         const expectedKmInicial = veiculo.km;
         const kmInicialParsed = parseInt(km_inicial, 10);
-
         if (kmInicialParsed !== expectedKmInicial) {
             return res.status(400).send("Erro: O km inicial deve ser igual ao km atual do veículo.");
         }
@@ -867,34 +928,28 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
         const dataHoraFinal = data_hora_final ? new Date(data_hora_final) : null;
         const newEnd = dataHoraFinal ? dataHoraFinal : new Date('9999-12-31');
 
-        // Verifica se o usuário possui cadastro em motoristas com base no email
+        // Verifica o cadastro de motoristas
         db.query('SELECT * FROM motoristas WHERE email = ?', [motoristaEmail], (err, motoristaResult) => {
             if (err) {
                 console.error("Erro ao buscar motorista:", err);
                 return res.status(500).send("Erro ao buscar o motorista.");
             }
-
-            // Se não houver nenhum registro, o motorista não está cadastrado
             if (motoristaResult.length === 0) {
                 return res.status(400).send("Erro: Usuário não possui cadastro de motorista.");
             }
-
-            // Se houver cadastro, verifica se algum possui CNH válida
             const motoristasComCNHValida = motoristaResult.filter(motorista => {
-                // Converte a data_validade para objeto Date para comparar com a data atual
                 return new Date(motorista.data_validade) >= new Date();
             });
-
             if (motoristasComCNHValida.length === 0) {
                 return res.status(400).send("Erro: A CNH do motorista está vencida.");
             }
 
-            // Verifica se já existe um uso que se sobrepõe ao novo.
+            // Verifica sobreposição de uso
             db.query(
                 `SELECT * FROM uso_veiculos 
-             WHERE (veiculo_id = ? OR motorista = ?)
-               AND (data_hora_inicial < ?)
-               AND ((data_hora_final IS NULL) OR (data_hora_final > ?))`,
+           WHERE (veiculo_id = ? OR motorista = ?)
+             AND (data_hora_inicial < ?)
+             AND ((data_hora_final IS NULL) OR (data_hora_final > ?))`,
                 [id, motoristaEmail, newEnd, dataHoraInicial],
                 (err, overlapResult) => {
                     if (err) {
@@ -912,14 +967,24 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
                         (err, result) => {
                             if (err) throw err;
 
-                            // Se tiver km_final, atualiza o km do veículo e checa a troca de óleo
+                            // Se km_final for informado, atualiza o km do veículo e dispara verificações
                             if (kmFinalValue !== null) {
                                 db.query('UPDATE veiculos SET km = ? WHERE id = ?', [kmFinalValue, id], (err, result2) => {
                                     if (err) {
                                         console.error("Erro ao atualizar km:", err);
                                     } else {
-                                        console.log(`Veículo ${id} atualizado para km=${kmFinalValue}`);
+                                        console.log(`🚗 Veículo ${id} atualizado para km=${kmFinalValue}`);
+                                        // Verifica troca de óleo
                                         checkOilChangeForVehicle(id);
+                                        // Busca dados atualizados do veículo e chama autoGenerateMaintenance
+                                        db.query('SELECT * FROM veiculos WHERE id = ?', [id], (err, updatedResult) => {
+                                            if (err) {
+                                                console.error("Erro ao buscar veículo atualizado:", err);
+                                            } else if (updatedResult.length > 0) {
+                                                console.log("📊 Dados atualizados do veículo:", updatedResult[0]);
+                                                autoGenerateMaintenance(updatedResult[0]);
+                                            }
+                                        });
                                     }
                                 });
                             }
@@ -928,10 +993,10 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
                     );
                 }
             );
-        }
-        );
+        });
     });
 });
+
 
 
 
@@ -989,9 +1054,9 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
                     }
                     if (kmFinalParsed < kmInicialValue) {
                         return res.status(400).send('km final não pode ser menor que km inicial');
-                    } 
-                    
-                    // verificar autonimia < 700
+                    }
+
+                    // Verificar autonomia < 700
                     const autonomiaUno = 700;
                     const consumo = kmFinalParsed - kmInicialValue;
 
@@ -1036,7 +1101,7 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
                 });
             }
 
-            // Se tiver km_final, atualiza o km do veículo
+            // Se tiver km_final, atualiza o km do veículo e dispara a verificação de manutenção
             if (km_final && km_final !== '') {
                 const kmFinalParsed = parseInt(km_final, 10);
                 const kmFinalValue = isNaN(kmFinalParsed) ? null : kmFinalParsed;
@@ -1053,6 +1118,15 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
                                     console.log(`Veículo ${veiculo_id} atualizado pra km=${kmFinalValue} via edição.`);
                                     // Não atualiza o km_inicial para manter o valor original
                                     checkOilChangeForVehicle(veiculo_id);
+                                    // Adiciona a chamada para autoGenerateMaintenance:
+                                    db.query("SELECT * FROM veiculos WHERE id = ?", [veiculo_id], (err, result4) => {
+                                        if (err) {
+                                            console.error("Erro ao buscar veículo para manutenção:", err);
+                                        } else if (result4.length > 0) {
+                                            const veiculoAtualizado = result4[0];
+                                            autoGenerateMaintenance(veiculoAtualizado);
+                                        }
+                                    });
                                 }
                             });
                         }
@@ -1064,15 +1138,15 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
                 return res.redirect('/relatorio-uso');
             }
 
-            db.query("SELECT veiculo_id FROM uso_veiculos WHERE id = ?", [id], (err, result4) => {
+            db.query("SELECT veiculo_id FROM uso_veiculos WHERE id = ?", [id], (err, result5) => {
                 if (err) {
                     console.error("Erro ao buscar veículo:", err);
                     return res.status(500).send("Erro ao buscar veículo.");
                 }
-                if (result4.length === 0) {
+                if (result5.length === 0) {
                     return res.status(404).send("Veículo não encontrado para este uso.");
                 }
-                const veiculo_id = result4[0].veiculo_id;
+                const veiculo_id = result5[0].veiculo_id;
                 const valores = novasMultas.map(multa => [id, veiculo_id, multa.trim()]);
                 db.query("INSERT INTO multas (uso_id, veiculo_id, multa) VALUES ?", [valores], (err) => {
                     if (err) {
@@ -1443,6 +1517,199 @@ app.post('/api/cadastro-motorista', isAuthenticated, upload.single('foto'), asyn
         });
     });
 });
+
+// Novas funcionalidades: Manutenções adicionais (rodízio de pneus, troca de pneus, pastilhas e discos de freio) //
+
+// Função para enviar notificação de manutenção (por email e via Socket.IO)
+function sendMaintenanceNotification(veiculo, manutencao) {
+    const transporter = nodemailer.createTransport({
+        service: 'Gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    });
+    const mailOptions = {
+        to: process.env.NOTIFY_EMAIL || process.env.EMAIL_USER,
+        from: process.env.EMAIL_USER,
+        subject: `Manutenção Pendente (${manutencao.tipo}): ${veiculo.nome} - ${veiculo.placa}`,
+        text: `O veículo ${veiculo.nome} (Placa: ${veiculo.placa}) necessita de ${manutencao.tipo}. ` +
+            `Detalhes: ${manutencao.descricao || 'Sem descrição.'}`
+    };
+    transporter.sendMail(mailOptions, (err, info) => {
+        if (err) console.error("Erro ao enviar email de manutenção:", err);
+        else console.log("Email de manutenção enviado:", info.response);
+    });
+    io.emit('maintenanceNotification', { veiculo, manutencao });
+}
+
+// Função para checar manutenções pendentes para um veículo
+function checkMaintenanceForVehicle(veiculo_id) {
+    const queryVeiculo = `SELECT * FROM veiculos WHERE id = ?`;
+    db.query(queryVeiculo, [veiculo_id], (err, results) => {
+        if (err) {
+            console.error("Erro ao buscar veículo para manutenção:", err);
+            return;
+        }
+        if (results.length > 0) {
+            const veiculo = results[0];
+            // Busca manutenções pendentes para este veículo
+            const queryManutencoes = `
+                SELECT * FROM manutencoes 
+                WHERE veiculo_id = ? AND status = 'pendente'
+            `;
+            db.query(queryManutencoes, [veiculo_id], (err, manutencoes) => {
+                if (err) {
+                    console.error("Erro ao buscar manutenções:", err);
+                    return;
+                }
+                const hoje = new Date();
+                manutencoes.forEach(manutencao => {
+                    let precisaNotificar = false;
+                    // Se tiver km agendado e a quilometragem atual for maior ou igual
+                    if (manutencao.km_agendado && Number(veiculo.km) >= Number(manutencao.km_agendado)) {
+                        precisaNotificar = true;
+                    }
+                    // Se tiver data agendada e hoje for igual ou depois
+                    if (manutencao.data_agendada && hoje >= new Date(manutencao.data_agendada)) {
+                        precisaNotificar = true;
+                    }
+                    if (precisaNotificar) {
+                        console.log(`Manutenção pendente detectada: ${manutencao.tipo} para veículo ${veiculo.placa}`);
+                        sendMaintenanceNotification(veiculo, manutencao);
+                    }
+                });
+            });
+        }
+    });
+}
+
+/* Rotas para manutenção */
+
+// Rota para exibir formulário de cadastro de manutenção para um veículo
+app.get('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin, (req, res) => {
+    const { veiculo_id } = req.params;
+    db.query("SELECT * FROM veiculos WHERE id = ?", [veiculo_id], (err, results) => {
+        if (err || results.length === 0) {
+            return res.status(404).send("Veículo não encontrado.");
+        }
+        const veiculo = results[0];
+        res.render('registrar-manutencao', {
+            title: 'Registrar Manutenção',
+            layout: 'layout',
+            activePage: 'manutencao',
+            veiculo,
+            tipos: ['Rodízio de Pneus', 'Troca de Pneus', 'Troca de Pastilhas', 'Troca de Discos de Freio']
+        });
+    });
+});
+
+// Rota para processar cadastro de manutenção
+app.post('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin, (req, res) => {
+    const { veiculo_id } = req.params;
+    const { tipo, descricao, km_agendado, data_agendada } = req.body;
+    const query = `
+        INSERT INTO manutencoes (veiculo_id, tipo, descricao, km_agendado, data_agendada)
+        VALUES (?, ?, ?, ?, ?)
+    `;
+    db.query(query, [veiculo_id, tipo, descricao, km_agendado || null, data_agendada || null], (err, result) => {
+        if (err) {
+            console.error("Erro ao registrar manutenção:", err);
+            return res.status(500).send("Erro ao registrar manutenção.");
+        }
+        res.redirect('/manutencoes');
+    });
+});
+
+// Rota para listar todas as manutenções (de todos os veículos)
+app.get('/manutencoes', isAuthenticated, isAdmin, (req, res) => {
+    const query = `
+      SELECT m.*, v.placa, v.nome as veiculo_nome 
+      FROM manutencoes m
+      JOIN veiculos v ON m.veiculo_id = v.id
+      ORDER BY m.status, m.data_agendada
+    `;
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error("Erro ao buscar manutenções:", err);
+            return res.status(500).send("Erro ao buscar manutenções.");
+        }
+        res.render('manutencoes', {
+            title: 'Manutenções',
+            layout: 'layout',
+            activePage: 'manutencoes',
+            manutencoes: results
+        });
+    });
+});
+
+// Rota para marcar uma manutenção como realizada
+app.post('/manutencoes/realizada/:id', isAuthenticated, isAdmin, (req, res) => {
+    const { id } = req.params;
+    const updateQuery = `
+      UPDATE manutencoes 
+      SET status = 'realizada', data_realizada = CURDATE() 
+      WHERE id = ?
+    `;
+    db.query(updateQuery, [id], (err, result) => {
+        if (err) {
+            console.error("Erro ao atualizar manutenção:", err);
+            return res.status(500).send("Erro ao atualizar manutenção.");
+        }
+        res.redirect('/manutencoes');
+    });
+});
+
+/* Fim das novas funcionalidades de manutenção */
+
+// Rota para cadastro de novo reembolso
+app.post('/reembolsos', upload.single('comprovante'), async (req, res) => {
+    try {
+      const { motorista_id, valor } = req.body;
+      // Se um arquivo foi enviado, obtenha o caminho
+      const comprovante = req.file ? req.file.filename : null;
+  
+      await query(
+        'INSERT INTO reembolsos (motorista_id, valor, comprovante) VALUES (?, ?, ?)',
+        [motorista_id, valor, comprovante]
+      );
+  
+      res.redirect('/reembolsos');
+    } catch (err) {
+      console.error(err);
+      res.status(500).send('Erro ao cadastrar reembolso');
+    }
+  });
+// Rota para exibir o formulário, a lista de reembolsos e os dados para o gráfico
+app.get('/reembolsos', async (req, res) => {
+    try {
+      // Consulta para buscar os reembolsos cadastrados com os dados do motorista
+      const reembolsos = await query(`
+        SELECT r.*, m.nome as motorista_nome 
+        FROM reembolsos r 
+        JOIN motoristas m ON r.motorista_id = m.id 
+        ORDER BY r.criado_em ASC
+      `);
+  
+      // Consulta para buscar motoristas para o formulário
+      const motoristas = await query('SELECT id, nome FROM motoristas');
+  
+      // Envie os dados completos dos reembolsos para a tabela e para o gráfico
+      res.render('reembolsos', {
+        reembolsos,
+        motoristas,
+        reembolsosGrafico: reembolsos, // mesma lista, utilizada também para o gráfico
+        title: 'Gerenciar Reembolsos',
+        activePage: 'reembolsos'
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send('Erro no servidor');
+    }
+  });
+  
+  
+  
 
 // Socket.IO: conexão com o cliente
 io.on("connection", (socket) => {

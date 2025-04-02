@@ -84,6 +84,20 @@
       border-top: 1px solid #dee2e6;
       flex-shrink: 0;
     }
+
+    #scrollBtn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  display: none;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  font-size: 24px;
+  text-align: center;
+  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+}
+
   </style>
 </head>
 <body>
@@ -131,6 +145,22 @@
             <span class="menu-text">Reg. de Motorista</span>
           </a>
         </li>
+
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Manutenções">
+          <a class="nav-link <%= (activePage === 'manutencoes' ? 'active' : '') %>" href="/manutencoes">
+            <i class="bi bi-tools"></i>
+            <span class="menu-text">Manutenções</span>
+          </a>
+        </li>
+
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Reembolsos">
+          <a class="nav-link <%= (activePage === 'reembolsos' ? 'active' : '') %>" href="/reembolsos">
+            <i class="bi bi-cash-stack"></i>
+            <span class="menu-text">Reembolsos</span>
+          </a>
+        </li>
+        
+        
         
       </ul>
     </aside>
@@ -140,6 +170,33 @@
       <!-- cada página será injetado aqui -->
       <%- body %>
     </main>
+    <!-- Botão de Scroll -->
+<button id="scrollBtn" class="btn btn-primary">
+  <i id="scrollIcon" class="bi bi-chevron-expand"></i>
+
+</button>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const scrollBtn = document.getElementById("scrollBtn");
+
+    window.addEventListener("scroll", function () {
+      if (window.scrollY > 100) {
+        scrollBtn.style.display = "block";
+      } else {
+        scrollBtn.style.display = "none";
+      }
+    });
+
+    scrollBtn.addEventListener("click", function () {
+      if (window.scrollY > window.innerHeight / 2) {
+        window.scrollTo({ top: 0, behavior: "smooth" }); // Sobe rápido
+      } else {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); // Desce rápido
+      }
+    });
+  });
+</script>
   </div>
 
   <!-- Rodapé -->

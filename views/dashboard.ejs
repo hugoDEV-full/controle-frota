@@ -12,6 +12,7 @@
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <style>
     #map {
       width: 100%;
@@ -179,7 +180,7 @@
             <ul class="list-group list-group-flush">
               <% motoristasValidosList.forEach(function(motorista) { %>
                 <li class="list-group-item">
-                  <strong><%= motorista.nome %></strong> - <%= motorista.email %>
+                  <strong><%= motorista.nome %></strong> - <%= motorista.email %> - Validade: <%= motorista.validade %>
                 </li>
               <% }); %>
             </ul>
@@ -196,7 +197,7 @@
             <ul class="list-group list-group-flush">
               <% motoristasInvalidosList.forEach(function(motorista) { %>
                 <li class="list-group-item">
-                  <strong><%= motorista.nome %></strong> - <%= motorista.email %>
+                  <strong><%= motorista.nome %></strong> - <%= motorista.email %> - Validade: <%= motorista.validade %>
                 </li>
               <% }); %>
             </ul>
@@ -205,11 +206,8 @@
       </div>
       
 
+
     </div>
-
-
-
-
 
 
     <div class="col-md-3">
@@ -423,7 +421,72 @@
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<!-- Tabela de Manutenções Pendentes -->
+<div class="row mt-4">
+  <div class="col-md-12">
+    <h3>Manutenções Pendentes</h3>
+    <table class="table table-bordered table-striped">
+      <thead class="thead-dark">
+        <tr>
+          <th>ID</th>
+          <th>Veículo</th>
+          <th>Placa</th>
+          <th>Tipo</th>
+          <th>Descrição</th>
+          <th>KM Agendado</th>
+          <th>Data Agendada</th>
+          <th>Ação</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (manutencoesPendentes.length> 0) { %>
+          <% manutencoesPendentes.forEach(function(m) { %>
+            <tr>
+              <td>
+                <%= m.id %>
+              </td>
+              <td>
+                <%= m.veiculo_nome %>
+              </td>
+              <td>
+                <%= m.placa %>
+              </td>
+              <td>
+                <%= m.tipo %>
+              </td>
+              <td>
+                <%= m.descricao || 'N/A' %>
+              </td>
+              <td>
+                <%= m.km_agendado || 'N/A' %>
+              </td>
+              <td>
+                <% if (m.data_agendada) { %>
+                  <%= new Date(m.data_agendada).toLocaleDateString() %>
+                    <% } else { %>
+                      N/A
+                      <% } %>
+              </td>
+              <td>
+                <form action="/manutencoes/realizada/<%= m.id %>" method="POST">
+                  <button type="submit" class="btn btn-sm btn-success">Marcar como Realizada</button>
+                </form>
+              </td>
+            </tr>
+            <% }); %>
+              <% } else { %>
+                <tr>
+                  <td colspan="8" class="text-center">Nenhuma manutenção pendente.</td>
+                </tr>
+                <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+
+
 <script>
   // Inicializa o mapa centralizado em Sobradinho
   var map = L.map('map').setView([-15.6500, -47.6100], 12);
@@ -467,6 +530,11 @@
   }
 
   var interval = setInterval(moveVehicle, 2000); // Atualiza a cada 2 segundos
+  // ajuste para : forçar o Leaflet a ajustar corretamente o tamanho do mapa após o carregamento.
+  setTimeout(() => {
+  map.invalidateSize();
+}, 500);
+
 </script>
 
 

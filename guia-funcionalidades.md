@@ -159,15 +159,15 @@
 
 - Melhorar front end no que diz respeito a notificações de erro em edição de uso mais amigáveis ao usuário.
 
-- Gestão de Motoristas
-  Cadastro de motoristas  Formulário detalhado com nome, CPF, CNH, data de validade, categoria da CNH e foto.
-  Validação automática da CNH : Verificar se a carteira de motorista está vencida antes de permitir o uso de um veículo.
-  Registro de infrações do motorista : Criar um histórico de multas e infrações para cada motorista.
-  Ranking de motoristas : Baseado em número de infrações
+- Gestão de Motoristas - feito
+  Cadastro de motoristas  - Formulário detalhado com nome, CPF, CNH, data de validade, categoria da CNH e foto. - feito
+  Validação automática da CNH : Verificar se a carteira de motorista está vencida antes de permitir o uso de um veículo.- feito
+  Registro de infrações do motorista : Criar um histórico de multas e infrações para cada motorista. feito
+  Ranking de motoristas : Baseado em número de infrações 
 - Adicionar mais relatórios: consumo de combustível (estimado) de cada veiculo por uso,  
 - Local de partida e destino 
 - Finalidade do uso, se pessoal ou a trabalho.
-- Adicionar comprovante de abastecimento, informar quanto de reembolso o motorista precisa receber ao Admin e ao usuário 
+- Adicionar comprovante de abastecimento, informar quanto de reembolso o motorista precisa receber ao Admin e ao usuário - feito
 - Se a ultima troca de oleo nao tiver sido realizada, impede o uso do veiculo de forma normal e permite um de veiculo para trocar o oleo.
 - Revisão de rotas (segurança), revisão rotas a respeito de role admin 
 --
@@ -202,3 +202,9 @@ Mapa localização fase 1
 Verificações se usuário é cadastrado como motorista, se CNH é válida antes de registrar uso.
 Link de motorista com usuario logado
 Vaidações de CPF
+feito - 02-04
+-manutencoes pendentes
+-reembolsos
+grafico
+-chn validade no card de motoristas 
+

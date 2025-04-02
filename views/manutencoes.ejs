@@ -1,0 +1,53 @@
+<div class="container mt-4">
+  <h1 class="mb-4">Manutenções</h1>
+
+  <% if (manutencoes.length === 0) { %>
+    <div class="alert alert-info" role="alert">
+      Nenhuma manutenção encontrada.
+    </div>
+  <% } else { %>
+    <table class="table table-bordered table-striped">
+      <thead class="thead-dark">
+        <tr>
+          <th>ID</th>
+          <th>Veículo</th>
+          <th>Tipo</th>
+          <th>Descrição</th>
+          <th>KM Agendado</th>
+          <th>Data Agendada</th>
+          <th>Status</th>
+          <th>Data Realizada</th>
+          <th>Ações</th> 
+        </tr>
+      </thead>
+      <tbody>
+        <% manutencoes.forEach(function(manutencao) { %>
+          <tr>
+            <td><%= manutencao.id %></td>
+            <td><%= manutencao.veiculo_nome %> (<%= manutencao.placa %>)</td>
+            <td><%= manutencao.tipo %></td>
+            <td><%= manutencao.descricao %></td>
+            <td><%= manutencao.km_agendado ? manutencao.km_agendado : 'N/A' %></td>
+            <td>
+              <%= manutencao.data_agendada ? manutencao.data_agendada.toString().substring(0,10) : 'N/A' %>
+            </td>
+            <td><%= manutencao.status %></td>
+            <td>
+              <%= manutencao.data_realizada ? manutencao.data_realizada.toString().substring(0,10) : 'N/A' %>
+            </td>
+            <td>
+              <% if(manutencao.status === 'pendente') { %>
+                <form action="/manutencoes/realizada/<%= manutencao.id %>" method="POST">
+                  <button type="submit" class="btn btn-sm btn-warning">Marcar como realizada</button>
+                </form>
+              <% } else { %>
+                <span class="btn btn-sm btn-success">Realizada</span>
+              <% } %>
+            </td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+

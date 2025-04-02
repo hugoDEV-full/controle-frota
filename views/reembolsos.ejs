@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title><%= title %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Importa o Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Importa o adapter para escalas de tempo -->
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+<body>
+  <div class="container my-5">
+    <h1 class="mb-4">Gerenciar Reembolsos</h1>
+
+    <!-- Formulário para cadastro de reembolso -->
+    <div class="card mb-4">
+      <div class="card-header">Novo Reembolso</div>
+      <div class="card-body">
+        <form action="/reembolsos" method="POST" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="motorista_id" class="form-label">Motorista</label>
+            <select name="motorista_id" id="motorista_id" class="form-select" required>
+              <option value="">Selecione um motorista</option>
+              <% motoristas.forEach(function(motorista) { %>
+                <option value="<%= motorista.id %>"><%= motorista.nome %></option>
+              <% }); %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="valor" class="form-label">Valor do Reembolso</label>
+            <input type="number" step="0.01" name="valor" id="valor" class="form-control" placeholder="Ex.: 150.00" required>
+          </div>
+          <div class="mb-3">
+            <label for="comprovante" class="form-label">Comprovante de Abastecimento</label>
+            <input type="file" name="comprovante" id="comprovante" class="form-control" accept="image/*">
+          </div>
+          <button type="submit" class="btn btn-primary">Cadastrar</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Lista de reembolsos cadastrados -->
+    <div class="card mb-4">
+      <div class="card-header">Reembolsos Cadastrados</div>
+      <div class="card-body">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Motorista</th>
+              <th>Valor</th>
+              <th>Comprovante</th>
+              <th>Data</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% reembolsos.forEach(function(reembolso) { %>
+              <tr>
+                <td><%= reembolso.motorista_nome %></td>
+                <td>R$ <%= reembolso.valor %></td>
+                <td>
+                  <% if (reembolso.comprovante) { %>
+                    <a href="/uploads/<%= reembolso.comprovante %>" target="_blank">Visualizar</a>
+                  <% } else { %>
+                    Sem comprovante
+                  <% } %>
+                </td>
+                <td><%= new Date(reembolso.criado_em).toLocaleDateString('pt-BR') %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Gráfico dos Reembolsos -->
+    <div class="card">
+      <div class="card-header">Gráfico de Reembolsos</div>
+      <div class="card-body">
+        <canvas id="reembolsosChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts do Bootstrap -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+  
+  <script>
+    // Dados do gráfico vindos do servidor
+    const reembolsosData = <%- JSON.stringify(reembolsosGrafico) %>;
+  
+    // Agrupar valores por motorista
+    const reembolsosPorMotorista = {};
+    reembolsosData.forEach(item => {
+      if (!reembolsosPorMotorista[item.motorista_nome]) {
+        reembolsosPorMotorista[item.motorista_nome] = 0;
+      }
+      reembolsosPorMotorista[item.motorista_nome] += parseFloat(item.valor);
+    });
+  
+    // Extrair labels e valores
+    const labels = Object.keys(reembolsosPorMotorista);
+    const valores = Object.values(reembolsosPorMotorista);
+  
+    // Criar gráfico de barras
+    const ctx = document.getElementById('reembolsosChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Total de Reembolsos (R$)',
+          data: valores,
+          backgroundColor: 'rgba(75, 192, 192, 0.5)',
+          borderColor: 'rgb(75, 192, 192)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true,
+            title: {
+              display: true,
+              text: 'Valor (R$)'
+            }
+          },
+          x: {
+            title: {
+              display: true,
+              text: 'Motoristas'
+            }
+          }
+        }
+      }
+    });
+  </script>
+  
+</body>
+</html>
