@@ -155,56 +155,96 @@
 
 # 12. O sistema gerencia usuários, veículos, registros de uso, multas e relatórios, promove consistência e segurança dos dados, notificações em tempo real e por e-mail.
 
-# Funcionalidades que ainda não tem 
+✅ Funcionalidades já feitas:
+🔹 Gestão de Motoristas
+Cadastro de motoristas (Nome, CPF, CNH, validade, categoria e foto).
 
-- Melhorar front end no que diz respeito a notificações de erro em edição de uso mais amigáveis ao usuário.
+Validação automática da CNH (verifica vencimento antes de permitir uso).
 
-- Gestão de Motoristas - feito
-  Cadastro de motoristas  - Formulário detalhado com nome, CPF, CNH, data de validade, categoria da CNH e foto. - feito
-  Validação automática da CNH : Verificar se a carteira de motorista está vencida antes de permitir o uso de um veículo.- feito
-  Registro de infrações do motorista : Criar um histórico de multas e infrações para cada motorista. feito
-  Ranking de motoristas : Baseado em número de infrações 
-- Adicionar mais relatórios: consumo de combustível (estimado) de cada veiculo por uso,  
-- Local de partida e destino 
-- Finalidade do uso, se pessoal ou a trabalho.
-- Adicionar comprovante de abastecimento, informar quanto de reembolso o motorista precisa receber ao Admin e ao usuário - feito
-- Se a ultima troca de oleo nao tiver sido realizada, impede o uso do veiculo de forma normal e permite um de veiculo para trocar o oleo.
-- Revisão de rotas (segurança), revisão rotas a respeito de role admin 
---
-feito té 01/04
-- Ao ser alterado o km do veiculo automaticamente ser alterado o km inicial na edição.
-- Relatório de Uso Decrescente: Exibir os registros de uso em ordem decrescente.
-- Registro de Multas: Apenas o administrador terá permissão para registrar multas.
-- Notificação: Permitir que a notificação tenha a funcionalidade de apagar o registro.
-- Tradução do DataTables: tradução  para a tabela relatorio uso.
-- Usuário Logado: Preencher automaticamente o campo “motorista” com o usuário logado, como padrão.
-- Mapa do Veículo: Integrar um mapa que exiba a localização do veículo.
-- Movimentação Fictícia:  registrar movimentações fictícias no mapa.
-- Estatísticas Diversas: Gerar e exibir diversas estatísticas conforme os dados disponíveis.
-- Pesquisa no DataTables: Permitir a funcionalidade de pesquisa nas tabelas de dados.
-- Registro de Uso em Tempo Real: Atualizar o tempo em tempo real durante o registro de uso.
-- Edição de Data e Hora Final: Possibilitar a edição da data e hora final, utilizando como referência o fuso horário UTC -3 ou a data/hora do próprio registro de uso.
-- Estatisticas
-Motoristas que Podem Dirigir
-Motoristas que Não Podem Dirigir
-Veículos
-Multas
-Uso
-Motoristas em Atividade
-Uso por Dia
-Uso por Mês
-Uso por Ano
-Multas por Mês
-Multas por Ano
-Multas por Motorista
-Mapa localização fase 1 
-- Cadastro motorista
-Verificações se usuário é cadastrado como motorista, se CNH é válida antes de registrar uso.
-Link de motorista com usuario logado
-Vaidações de CPF
-feito - 02-04
--manutencoes pendentes
--reembolsos
-grafico
--chn validade no card de motoristas 
+Registro de infrações para cada motorista.
 
+Ranking de motoristas baseado no número de infrações.
+
+Link do motorista com usuário logado.
+
+Validação de CPF no cadastro de motoristas.
+
+🔹 Relatórios e Estatísticas
+Relatório de uso decrescente (registros exibidos em ordem decrescente).
+
+Relatórios de estatísticas:
+
+Motoristas que Podem Dirigir.
+
+Motoristas que Não Podem Dirigir.
+
+Veículos.
+
+Multas.
+
+Uso por Dia/Mês/Ano.
+
+Multas por Mês/Ano/Motorista.
+
+Motoristas em Atividade.
+
+Pesquisa nas tabelas de dados (DataTables).
+
+Tradução do DataTables.
+
+🔹 Registro e Gestão de Uso
+Preenchimento automático do campo “motorista” com o usuário logado.
+
+Registro de uso em tempo real (tempo atualizado automaticamente).
+
+Edição de data e hora final baseada no fuso horário UTC-3.
+
+Atualização automática do KM inicial ao editar o veículo.
+
+🔹 Multas e Notificações
+Apenas administradores podem registrar multas.
+
+Notificação com opção de apagar o registro.
+
+🔹 Financeiro
+Adicionar comprovante de abastecimento.
+
+Informar o reembolso necessário ao administrador e ao usuário.
+
+Reembolsos registrados.
+
+🔹 Mapa e Localização (local com localizacao.html mandando localização e app.js recebendo e front end mostrando no mapa)
+Integração de mapa para exibição da localização do veículo.
+
+Registro de movimentação no mapa.
+
+
+🔹 Outros
+Manutenções pendentes registradas.
+
+Gráfico de reembolso
+
+Validade da CNH exibida nos cards dos motoristas.
+
+---
+
+❌ Funcionalidades que ainda precisam ser feitas:
+
+🔸 Melhorias no Front-end
+Melhorar notificações de erro para edição e uso mais amigável ao usuário.
+
+🔸 Localização
+Aguardar Integração solução de localização feita pela equipe usando celular.
+
+🔸 Relatórios adicionais
+Adicionar relatório de consumo estimado de combustível por veículo.
+
+🔸 Gestão de Uso
+Registro do local de partida e destino da viagem.
+
+Finalidade do uso (se pessoal ou a trabalho).
+
+🔸 Revisão e Segurança
+Revisão de rotas para segurança.
+
+Revisão de rotas em relação ao papel do administrador.

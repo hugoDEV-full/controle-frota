@@ -486,50 +486,44 @@
 
 
 
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+
 
 <script>
-  // Inicializa o mapa centralizado em Sobradinho
-  var map = L.map('map').setView([-15.6500, -47.6100], 12);
+// Inicializa o mapa centralizado em Sobradinho
+var map = L.map('map').setView([-15.6500, -47.6100], 12);
 
-  // Adiciona um mapa base do OpenStreetMap
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
+// Adiciona o mapa base do OpenStreetMap
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors'
+}).addTo(map);
 
-  // Ícone personalizado do veículo
-  var carIcon = L.icon({
-    iconUrl: 'https://cdn-icons-png.flaticon.com/512/252/252025.png', // Ícone de carro
-    iconSize: [40, 40],
-    iconAnchor: [20, 20]
-  });
+// Ícone personalizado do veículo
+var carIcon = L.icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/252/252025.png',
+  iconSize: [40, 40],
+  iconAnchor: [20, 20]
+});
 
-  // Marca inicial do veículo 
-  var vehicleMarker = L.marker([-15.6500, -47.6100], { icon: carIcon }).addTo(map)
-    .bindPopup("🚗 Veículo em movimento").openPopup();
+// Marca inicial do veículo (posição inicial arbitrária)
+var vehicleMarker = L.marker([-15.6500, -47.6100], { icon: carIcon }).addTo(map)
+  .bindPopup("🚗 Veículo em movimento").openPopup();
 
-  // Coordenadas simuladas para o trajeto de Sobradinho até Ceilândia
-  var positions = [
-    [-15.6500, -47.6100], // Sobradinho
-    [-15.7000, -47.6500],
-    [-15.7500, -47.7000],
-    [-15.8000, -47.7500],
-    [-15.8500, -47.8000],
-    [-15.8600, -48.0000], // Ceilândia
-  ];
+// Conecta ao Socket.IO
+var socket = io();
 
-  var index = 0;
+// Atualiza o marcador sempre que uma nova localização for recebida
+socket.on('locationUpdate', function(data) {
+  console.log('Localização recebida:', data);
+  var latitude = parseFloat(data.latitude);
+  var longitude = parseFloat(data.longitude);
+  // Atualiza a posição do marcador e centraliza o mapa
+  vehicleMarker.setLatLng([latitude, longitude]);
+  map.panTo([latitude, longitude]);
+});
 
-  function moveVehicle() {
-    if (index < positions.length) {
-      vehicleMarker.setLatLng(positions[index]); // Atualiza posição do marcador
-      map.panTo(positions[index]); // Centraliza no veículo
-      index++;
-    } else {
-      clearInterval(interval); // Para a simulação ao chegar no destino
-    }
-  }
 
-  var interval = setInterval(moveVehicle, 2000); // Atualiza a cada 2 segundos
+
   // ajuste para : forçar o Leaflet a ajustar corretamente o tamanho do mapa após o carregamento.
   setTimeout(() => {
   map.invalidateSize();

@@ -18,7 +18,14 @@ const http = require('http');
 const app = express();
 const server = http.createServer(app);
 const { Server } = require('socket.io');
-const io = new Server(server);
+const io = new Server(server, {
+    cors: {
+      // origin: ["https://rococo-kangaroo-21ce36.netlify.app", "http://127.0.0.1:5500", "http://localhost:3000"],
+      origin: "*",
+      methods: ["GET", "POST"]
+    }
+  });
+  
 
 const port = 3000;
 
@@ -51,11 +58,19 @@ const query = util.promisify(db.query).bind(db);
 //const app = express();
 
 
-// Inicia o servidor imediatamente; o pool cuidadas conexões
+/* Inicia o servidor imediatamente; o pool cuidadas conexões
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`App rodando na porta ${PORT}`);
+}); */
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`App rodando na porta ${PORT}`);
 });
+
+
 
 // Middleware pra checar se o usuário é admin
 function isAdmin(req, res, next) {
@@ -161,7 +176,7 @@ function isAuthenticated(req, res, next) {
     res.redirect('/login');
 }
 
-// Rota de login robusta com regeneração de sessão para evitar dados antigos
+// Rota de login com regeneração de sessão 
 app.post('/login', (req, res, next) => {
     passport.authenticate('local', (err, user, info) => {
         if (err) return next(err);
@@ -238,7 +253,7 @@ function checkOilChangeForVehicle(veiculo_id) {
     });
 }
 
-/* Rotas de autenticação */
+
 
 // injetar active page global caso nao tenha 
 
@@ -601,10 +616,6 @@ app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
 });
 
 
-
-
-
-
 app.get('/registrar-veiculo', isAuthenticated, isAdmin, (req, res) => {
     res.render('registrar-veiculo', {
         title: 'Registrar veículo',
@@ -840,7 +851,7 @@ app.get('/usar/:id', isAuthenticated, (req, res) => {
     });
 });
 
-
+//rota para auto gerar manutenção
 
 function autoGenerateMaintenance(veiculo) {
     console.log(`🔍 Verificando manutenção para veículo ${veiculo.id} (${veiculo.placa}) com KM=${veiculo.km}`);
@@ -1722,12 +1733,18 @@ io.on("connection", (socket) => {
 
 // GPS - Configura CORS e rota pra atualizar localização
 const cors = require('cors');
-app.use(cors({ origin: 'https://rococo-kangaroo-21ce36.netlify.app' }));
-app.post('/update-location', (req, res) => {
+app.use(cors({
+    origin: ['https://rococo-kangaroo-21ce36.netlify.app', 'http://localhost:3000', 'http://127.0.0.1:5500']
+  }));
+  
+  app.post('/update-location', (req, res) => {
     const { vehicleId, latitude, longitude } = req.body;
     console.log(`Veículo ${vehicleId}: Latitude ${latitude}, Longitude ${longitude}`);
+    // Emite o evento 'locationUpdate' para todos os clientes conectados
+    io.emit('locationUpdate', { vehicleId, latitude, longitude });
     res.json({ status: 'ok', received: req.body });
 });
+
 
 // Rotas pra servir o manifest e o service worker (PWA)
 //app.get('/manifest.json', (req, res) => {
