@@ -28,30 +28,34 @@ if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads');
 }
 
-// Configura a conexão com o banco de dados
-const db = mysql.createConnection({
+// Cria um pool de conexões
+const pool = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    database: process.env.DB_NAME,
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+  });
+
+
+  // Atribui o pool à variável db para compatibilidade nas requisições
+const db = pool;
+
+const util = require('util');
+const query = util.promisify(db.query).bind(db);
+
+// ===== Início do Servidor =====
+//const express = require('express');
+//const app = express();
+
+
+// Inicia o servidor imediatamente; o pool cuidadas conexões
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`App rodando na porta ${PORT}`);
 });
-function connectToDatabase() {
-    db.connect((err) => {
-        if (err) {
-            console.error('Erro ao conectar no DB:', err);
-            console.log('Tentando reconectar em 5 seg...');
-            setTimeout(connectToDatabase, 5000);
-        } else {
-            console.log('Conectado ao DB!');
-            // Só liga o server depois de conectar no DB
-            const PORT = process.env.PORT || 3000;
-            app.listen(PORT, () => {
-                console.log(`App rodando na porta ${PORT}`);
-            });
-        }
-    });
-}
-connectToDatabase();
 
 // Middleware pra checar se o usuário é admin
 function isAdmin(req, res, next) {
@@ -244,8 +248,8 @@ app.use((req, res, next) => {
 });
 
 
-const util = require('util');
-const query = util.promisify(db.query).bind(db);
+//const util = require('util');
+//const query = util.promisify(db.query).bind(db);
 
 app.get('/', isAuthenticated, async (req, res) => {
     try {
