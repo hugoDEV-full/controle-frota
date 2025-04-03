@@ -20,12 +20,12 @@ const server = http.createServer(app);
 const { Server } = require('socket.io');
 const io = new Server(server, {
     cors: {
-      // origin: ["https://rococo-kangaroo-21ce36.netlify.app", "http://127.0.0.1:5500", "http://localhost:3000"],
-      origin: "*",
-      methods: ["GET", "POST"]
+        // origin: ["https://rococo-kangaroo-21ce36.netlify.app", "http://127.0.0.1:5500", "http://localhost:3000"],
+        origin: "*",
+        methods: ["GET", "POST"]
     }
-  });
-  
+});
+
 
 const port = 3000;
 
@@ -44,10 +44,10 @@ const pool = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
-  });
+});
 
 
-  // Atribui o pool à variável db para compatibilidade nas requisições
+// Atribui o pool à variável db para compatibilidade nas requisições
 const db = pool;
 
 const util = require('util');
@@ -281,7 +281,7 @@ app.get('/', isAuthenticated, async (req, res) => {
         const motoristasInvalidosList = await query(
             'SELECT nome, email, DATE_FORMAT(data_validade, "%d/%m/%Y") AS validade FROM motoristas WHERE data_validade < CURDATE()'
         );
-        
+
 
         // Consultas para veículos e outras estatísticas
         const veiculosResult = await query('SELECT * FROM veiculos');
@@ -1023,168 +1023,168 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
     const novasMultas = req.body.novasMultas
         ? [].concat(req.body.novasMultas).filter(m => m.trim().length > 0)
         : [];
-  
+
     let updateQuery, params;
     if (req.files && req.files.length > 0) {
-      const novaImagem = req.files[0].filename;
-      updateQuery = `
+        const novaImagem = req.files[0].filename;
+        updateQuery = `
           UPDATE uso_veiculos 
           SET motorista = ?, km_final = ?, data_hora_final = ?, foto_km = ? 
           WHERE id = ?
       `;
-      params = [
-        motorista,
-        km_final === '' ? null : km_final,
-        data_hora_final === '' ? null : data_hora_final,
-        novaImagem,
-        id
-      ];
+        params = [
+            motorista,
+            km_final === '' ? null : km_final,
+            data_hora_final === '' ? null : data_hora_final,
+            novaImagem,
+            id
+        ];
     } else {
-      updateQuery = `
+        updateQuery = `
           UPDATE uso_veiculos 
           SET motorista = ?, km_final = ?, data_hora_final = ? 
           WHERE id = ?
       `;
-      params = [
-        motorista,
-        km_final === '' ? null : km_final,
-        data_hora_final === '' ? null : data_hora_final,
-        id
-      ];
+        params = [
+            motorista,
+            km_final === '' ? null : km_final,
+            data_hora_final === '' ? null : data_hora_final,
+            id
+        ];
     }
-  
+
     // Função auxiliar para renderizar o formulário com uma mensagem de erro amigável
     function renderError(message) {
-      db.query("SELECT * FROM uso_veiculos WHERE id = ?", [id], (err, results) => {
-        if (err || results.length === 0) {
-          return res.status(500).send("Erro ao carregar os dados para exibição do erro.");
-        }
-        const uso = results[0];
-        // Renderiza a view 'editarUso' passando o objeto 'uso' e a mensagem de erro
-        res.render('editarUso', { uso, errorMessage: message });
-      });
+        db.query("SELECT * FROM uso_veiculos WHERE id = ?", [id], (err, results) => {
+            if (err || results.length === 0) {
+                return res.status(500).send("Erro ao carregar os dados para exibição do erro.");
+            }
+            const uso = results[0];
+            // Renderiza a view 'editarUso' passando o objeto 'uso' e a mensagem de erro
+            res.render('editarUso', { uso, errorMessage: message });
+        });
     }
-  
+
     // Valida km_final e data_hora_final, se informados
     if ((km_final && km_final !== '') || (data_hora_final && data_hora_final !== '')) {
-      db.query("SELECT km_inicial, data_hora_inicial FROM uso_veiculos WHERE id = ?", [id], (err, resultSelect) => {
-        if (err) {
-          console.error("Erro na verificação:", err);
-          return renderError("Erro interno ao verificar os dados.");
-        }
-        if (resultSelect.length > 0) {
-          const kmInicialValue = parseInt(resultSelect[0].km_inicial, 10);
-          if (km_final && km_final !== '') {
-            const kmFinalParsed = parseInt(km_final, 10);
-            if (isNaN(kmFinalParsed)) {
-              return renderError('KM final inválido.');
-            }
-            if (kmFinalParsed < kmInicialValue) {
-              return renderError('KM final não pode ser menor que KM inicial.');
-            }
-  
-            // Verificar autonomia < 700
-            const autonomiaUno = 700;
-            const consumo = kmFinalParsed - kmInicialValue;
-            if (consumo > autonomiaUno) {
-              return renderError(`O consumo (${consumo} km) ultrapassa a autonomia máxima de um tanque (${autonomiaUno} km).`);
-            }
-          }
-          if (data_hora_final && data_hora_final !== '') {
-            const dataHoraFinalParsed = new Date(data_hora_final);
-            const dataHoraInicialParsed = new Date(resultSelect[0].data_hora_inicial);
-            if (dataHoraFinalParsed < dataHoraInicialParsed) {
-              return renderError('A data final não pode ser antes da data inicial.');
-            }
-          }
-        }
-        executeUpdate();
-      });
-    } else {
-      executeUpdate();
-    }
-  
-    function executeUpdate() {
-      db.query(updateQuery, params, (err, result) => {
-        if (err) {
-          console.error("Erro ao atualizar uso:", err);
-          return renderError('Erro ao atualizar o uso. Por favor, tente novamente.');
-        }
-  
-        // Atualiza as multas já existentes
-        if (multas_id && multas_descricao) {
-          const ids = Array.isArray(multas_id) ? multas_id : [multas_id];
-          const descricoes = Array.isArray(multas_descricao) ? multas_descricao : [multas_descricao];
-          ids.forEach((multaId, index) => {
-            db.query(
-              'UPDATE multas SET multa = ? WHERE id = ?',
-              [descricoes[index], multaId],
-              (err) => {
-                if (err) console.error(`Erro ao atualizar multa ${multaId}:`, err);
-              }
-            );
-          });
-        }
-  
-        // Se tiver km_final, atualiza o km do veículo e dispara a verificação de manutenção
-        if (km_final && km_final !== '') {
-          const kmFinalParsed = parseInt(km_final, 10);
-          const kmFinalValue = isNaN(kmFinalParsed) ? null : kmFinalParsed;
-          if (kmFinalValue !== null) {
-            db.query("SELECT veiculo_id FROM uso_veiculos WHERE id = ?", [id], (err, result2) => {
-              if (err) {
-                console.error("Erro ao buscar veiculo_id:", err);
-              } else if (result2.length > 0) {
-                const veiculo_id = result2[0].veiculo_id;
-                db.query("UPDATE veiculos SET km = ? WHERE id = ?", [kmFinalValue, veiculo_id], (err, result3) => {
-                  if (err) {
-                    console.error("Erro ao atualizar km do veículo:", err);
-                  } else {
-                    console.log(`Veículo ${veiculo_id} atualizado para km=${kmFinalValue} via edição.`);
-                    // Não atualiza o km_inicial para manter o valor original
-                    checkOilChangeForVehicle(veiculo_id);
-                    // Chama a verificação para manutenção automática
-                    db.query("SELECT * FROM veiculos WHERE id = ?", [veiculo_id], (err, result4) => {
-                      if (err) {
-                        console.error("Erro ao buscar veículo para manutenção:", err);
-                      } else if (result4.length > 0) {
-                        const veiculoAtualizado = result4[0];
-                        autoGenerateMaintenance(veiculoAtualizado);
-                      }
-                    });
-                  }
-                });
-              }
-            });
-          }
-        }
-  
-        if (novasMultas.length === 0) {
-          return res.redirect('/relatorio-uso');
-        }
-  
-        db.query("SELECT veiculo_id FROM uso_veiculos WHERE id = ?", [id], (err, result5) => {
-          if (err) {
-            console.error("Erro ao buscar veículo:", err);
-            return renderError("Erro ao buscar veículo para registrar novas multas.");
-          }
-          if (result5.length === 0) {
-            return renderError("Veículo não encontrado para este uso.");
-          }
-          const veiculo_id = result5[0].veiculo_id;
-          const valores = novasMultas.map(multa => [id, veiculo_id, multa.trim()]);
-          db.query("INSERT INTO multas (uso_id, veiculo_id, multa) VALUES ?", [valores], (err) => {
+        db.query("SELECT km_inicial, data_hora_inicial FROM uso_veiculos WHERE id = ?", [id], (err, resultSelect) => {
             if (err) {
-              console.error("Erro ao registrar novas multas:", err);
-              return renderError("Erro ao registrar novas multas. Por favor, tente novamente.");
+                console.error("Erro na verificação:", err);
+                return renderError("Erro interno ao verificar os dados.");
             }
-            return res.redirect('/relatorio-uso');
-          });
+            if (resultSelect.length > 0) {
+                const kmInicialValue = parseInt(resultSelect[0].km_inicial, 10);
+                if (km_final && km_final !== '') {
+                    const kmFinalParsed = parseInt(km_final, 10);
+                    if (isNaN(kmFinalParsed)) {
+                        return renderError('KM final inválido.');
+                    }
+                    if (kmFinalParsed < kmInicialValue) {
+                        return renderError('KM final não pode ser menor que KM inicial.');
+                    }
+
+                    // Verificar autonomia < 700
+                    const autonomiaUno = 700;
+                    const consumo = kmFinalParsed - kmInicialValue;
+                    if (consumo > autonomiaUno) {
+                        return renderError(`O consumo (${consumo} km) ultrapassa a autonomia máxima de um tanque (${autonomiaUno} km).`);
+                    }
+                }
+                if (data_hora_final && data_hora_final !== '') {
+                    const dataHoraFinalParsed = new Date(data_hora_final);
+                    const dataHoraInicialParsed = new Date(resultSelect[0].data_hora_inicial);
+                    if (dataHoraFinalParsed < dataHoraInicialParsed) {
+                        return renderError('A data final não pode ser antes da data inicial.');
+                    }
+                }
+            }
+            executeUpdate();
         });
-      });
+    } else {
+        executeUpdate();
     }
-  });
-  
+
+    function executeUpdate() {
+        db.query(updateQuery, params, (err, result) => {
+            if (err) {
+                console.error("Erro ao atualizar uso:", err);
+                return renderError('Erro ao atualizar o uso. Por favor, tente novamente.');
+            }
+
+            // Atualiza as multas já existentes
+            if (multas_id && multas_descricao) {
+                const ids = Array.isArray(multas_id) ? multas_id : [multas_id];
+                const descricoes = Array.isArray(multas_descricao) ? multas_descricao : [multas_descricao];
+                ids.forEach((multaId, index) => {
+                    db.query(
+                        'UPDATE multas SET multa = ? WHERE id = ?',
+                        [descricoes[index], multaId],
+                        (err) => {
+                            if (err) console.error(`Erro ao atualizar multa ${multaId}:`, err);
+                        }
+                    );
+                });
+            }
+
+            // Se tiver km_final, atualiza o km do veículo e dispara a verificação de manutenção
+            if (km_final && km_final !== '') {
+                const kmFinalParsed = parseInt(km_final, 10);
+                const kmFinalValue = isNaN(kmFinalParsed) ? null : kmFinalParsed;
+                if (kmFinalValue !== null) {
+                    db.query("SELECT veiculo_id FROM uso_veiculos WHERE id = ?", [id], (err, result2) => {
+                        if (err) {
+                            console.error("Erro ao buscar veiculo_id:", err);
+                        } else if (result2.length > 0) {
+                            const veiculo_id = result2[0].veiculo_id;
+                            db.query("UPDATE veiculos SET km = ? WHERE id = ?", [kmFinalValue, veiculo_id], (err, result3) => {
+                                if (err) {
+                                    console.error("Erro ao atualizar km do veículo:", err);
+                                } else {
+                                    console.log(`Veículo ${veiculo_id} atualizado para km=${kmFinalValue} via edição.`);
+                                    // Não atualiza o km_inicial para manter o valor original
+                                    checkOilChangeForVehicle(veiculo_id);
+                                    // Chama a verificação para manutenção automática
+                                    db.query("SELECT * FROM veiculos WHERE id = ?", [veiculo_id], (err, result4) => {
+                                        if (err) {
+                                            console.error("Erro ao buscar veículo para manutenção:", err);
+                                        } else if (result4.length > 0) {
+                                            const veiculoAtualizado = result4[0];
+                                            autoGenerateMaintenance(veiculoAtualizado);
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    });
+                }
+            }
+
+            if (novasMultas.length === 0) {
+                return res.redirect('/relatorio-uso');
+            }
+
+            db.query("SELECT veiculo_id FROM uso_veiculos WHERE id = ?", [id], (err, result5) => {
+                if (err) {
+                    console.error("Erro ao buscar veículo:", err);
+                    return renderError("Erro ao buscar veículo para registrar novas multas.");
+                }
+                if (result5.length === 0) {
+                    return renderError("Veículo não encontrado para este uso.");
+                }
+                const veiculo_id = result5[0].veiculo_id;
+                const valores = novasMultas.map(multa => [id, veiculo_id, multa.trim()]);
+                db.query("INSERT INTO multas (uso_id, veiculo_id, multa) VALUES ?", [valores], (err) => {
+                    if (err) {
+                        console.error("Erro ao registrar novas multas:", err);
+                        return renderError("Erro ao registrar novas multas. Por favor, tente novamente.");
+                    }
+                    return res.redirect('/relatorio-uso');
+                });
+            });
+        });
+    }
+});
+
 
 
 
@@ -1489,30 +1489,30 @@ function validarCPF(cpf) {
 
 app.get('/registro-motorista', isAuthenticated, (req, res) => {
     const email = req.user.email;
-  
+
     // Consulta para verificar se o motorista já possui cadastro
     db.query('SELECT id FROM motoristas WHERE email = ?', [email], (err, results) => {
-      if (err) {
-        console.error('Erro ao verificar cadastro do motorista:', err);
-        return res.status(500).send('Erro no servidor.');
-      }
-  
-      // Se já existir cadastro, renderiza o formulário com uma mensagem de erro
-      if (results.length > 0) {
-        return res.render('registro-motorista', {
-          activePage: 'motorista',
-          user: req.user,
-          errorMessage: 'Cadastro já realizado. Você já possui um motorista cadastrado.'
-        });
-      }
-  
-      // Se não houver cadastro, renderiza o formulário de registro normalmente
-      res.render('registro-motorista', { activePage: 'motorista', user: req.user });
+        if (err) {
+            console.error('Erro ao verificar cadastro do motorista:', err);
+            return res.status(500).send('Erro no servidor.');
+        }
+
+        // Se já existir cadastro, renderiza o formulário com uma mensagem de erro
+        if (results.length > 0) {
+            return res.render('registro-motorista', {
+                activePage: 'motorista',
+                user: req.user,
+                errorMessage: 'Cadastro já realizado. Você já possui um motorista cadastrado.'
+            });
+        }
+
+        // Se não houver cadastro, renderiza o formulário de registro normalmente
+        res.render('registro-motorista', { activePage: 'motorista', user: req.user });
     });
-  });
-  
-  
-  
+});
+
+
+
 
 
 // Rota para cadastro de motoristas
@@ -1711,59 +1711,59 @@ app.post('/manutencoes/realizada/:id', isAuthenticated, isAdmin, (req, res) => {
 // Rota para cadastro de novo reembolso
 app.post('/reembolsos', upload.single('comprovante'), async (req, res) => {
     try {
-      const { motorista_id, valor } = req.body;
-      // Se um arquivo foi enviado, obtenha o caminho
-      const comprovante = req.file ? req.file.filename : null;
-  
-      await query(
-        'INSERT INTO reembolsos (motorista_id, valor, comprovante) VALUES (?, ?, ?)',
-        [motorista_id, valor, comprovante]
-      );
-  
-      res.redirect('/reembolsos');
+        const { motorista_id, valor } = req.body;
+        // Se um arquivo foi enviado, obtenha o caminho
+        const comprovante = req.file ? req.file.filename : null;
+
+        await query(
+            'INSERT INTO reembolsos (motorista_id, valor, comprovante) VALUES (?, ?, ?)',
+            [motorista_id, valor, comprovante]
+        );
+
+        res.redirect('/reembolsos');
     } catch (err) {
-      console.error(err);
-      res.status(500).send('Erro ao cadastrar reembolso');
+        console.error(err);
+        res.status(500).send('Erro ao cadastrar reembolso');
     }
-  });
+});
 // Rota para exibir o formulário, a lista de reembolsos e os dados para o gráfico
 app.get('/reembolsos', async (req, res) => {
     try {
-      // Consulta para buscar os reembolsos cadastrados com os dados do motorista
-      const reembolsos = await query(`
+        // Consulta para buscar os reembolsos cadastrados com os dados do motorista
+        const reembolsos = await query(`
         SELECT r.*, m.nome as motorista_nome 
         FROM reembolsos r 
         JOIN motoristas m ON r.motorista_id = m.id 
         ORDER BY r.criado_em ASC
       `);
-  
-      // Consulta para buscar motoristas para o formulário
-      const motoristas = await query('SELECT id, nome FROM motoristas');
-  
-      // Envie os dados completos dos reembolsos para a tabela e para o gráfico
-      res.render('reembolsos', {
-        reembolsos,
-        motoristas,
-        reembolsosGrafico: reembolsos, // mesma lista, utilizada também para o gráfico
-        title: 'Gerenciar Reembolsos',
-        activePage: 'reembolsos'
-      });
+
+        // Consulta para buscar motoristas para o formulário
+        const motoristas = await query('SELECT id, nome FROM motoristas');
+
+        // Envie os dados completos dos reembolsos para a tabela e para o gráfico
+        res.render('reembolsos', {
+            reembolsos,
+            motoristas,
+            reembolsosGrafico: reembolsos, // mesma lista, utilizada também para o gráfico
+            title: 'Gerenciar Reembolsos',
+            activePage: 'reembolsos'
+        });
     } catch (err) {
-      console.error(err);
-      res.status(500).send('Erro no servidor');
+        console.error(err);
+        res.status(500).send('Erro no servidor');
     }
-  });
-  
-  app.get('/relatorio-consumo', isAuthenticated, async (req, res) => {
+});
+
+app.get('/relatorio-consumo', isAuthenticated, async (req, res) => {
     try {
-      // Fator de consumo: eficiência média em km por litro
-      const eficiencia = 10; // km por litro (ajuste conforme a realidade)
-      // Preço da gasolina
-      const precoGasolina = 6.45;
-  
-      // Consulta para buscar os registros de uso com o cálculo da distância, consumo estimado e custo
-      const consumoResult = await query(
-        `
+        // Fator de consumo: eficiência média em km por litro
+        const eficiencia = 10; // km por litro 
+        // Preço da gasolina
+        const precoGasolina = 6.45;
+
+        // Consulta para buscar os registros de uso com o cálculo da distância, consumo estimado e custo
+        const consumoResult = await query(
+            `
         SELECT 
           uso.id, 
           veiculos.placa, 
@@ -1778,22 +1778,22 @@ app.get('/reembolsos', async (req, res) => {
         WHERE uso.km_final IS NOT NULL
         ORDER BY uso.data_criacao DESC
         `,
-        [eficiencia, eficiencia, precoGasolina]
-      );
-  
-      res.render('relatorioConsumo', {
-        title: 'Relatório de Consumo Estimado',
-        layout: 'layout',
-        activePage: 'relatorioConsumo',
-        consumoResult
-      });
+            [eficiencia, eficiencia, precoGasolina]
+        );
+
+        res.render('relatorioConsumo', {
+            title: 'Relatório de Consumo Estimado',
+            layout: 'layout',
+            activePage: 'relatorioConsumo',
+            consumoResult
+        });
     } catch (err) {
-      console.error(err);
-      res.status(500).send('Erro no servidor ao gerar relatório de consumo.');
+        console.error(err);
+        res.status(500).send('Erro no servidor ao gerar relatório de consumo.');
     }
-  });
-  
-  
+});
+
+
 
 // Socket.IO: conexão com o cliente
 io.on("connection", (socket) => {
@@ -1804,9 +1804,9 @@ io.on("connection", (socket) => {
 const cors = require('cors');
 app.use(cors({
     origin: ['https://rococo-kangaroo-21ce36.netlify.app', 'http://localhost:3000', 'http://127.0.0.1:5500']
-  }));
-  
-  app.post('/update-location', (req, res) => {
+}));
+
+app.post('/update-location', (req, res) => {
     const { vehicleId, latitude, longitude } = req.body;
     console.log(`Veículo ${vehicleId}: Latitude ${latitude}, Longitude ${longitude}`);
     // Emite o evento 'locationUpdate' para todos os clientes conectados
