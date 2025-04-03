@@ -11,6 +11,12 @@
 </head>
 <body>
   <div class="container mt-5">
+    <% if (typeof errorMessage !== 'undefined') { %>
+      <div class="alert alert-danger">
+        <%= errorMessage %>
+      </div>
+    <% } %>
+    
     <h1 class="mb-4">Cadastro de Motoristas</h1>
     <form id="formCadastro" enctype="multipart/form-data">
       <div class="mb-3">

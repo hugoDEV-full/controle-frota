@@ -1477,11 +1477,32 @@ function validarCPF(cpf) {
     return true;
 }
 
-// Rota GET para exibir o formulário de registro de motorista
-app.get('/registro-motorista', (req, res) => {
-    res.render('registro-motorista', { activePage: 'motorista', user: req.user });
-});
-
+app.get('/registro-motorista', isAuthenticated, (req, res) => {
+    const email = req.user.email;
+  
+    // Consulta para verificar se o motorista já possui cadastro
+    db.query('SELECT id FROM motoristas WHERE email = ?', [email], (err, results) => {
+      if (err) {
+        console.error('Erro ao verificar cadastro do motorista:', err);
+        return res.status(500).send('Erro no servidor.');
+      }
+  
+      // Se já existir cadastro, renderiza o formulário com uma mensagem de erro
+      if (results.length > 0) {
+        return res.render('registro-motorista', {
+          activePage: 'motorista',
+          user: req.user,
+          errorMessage: 'Cadastro já realizado. Você já possui um motorista cadastrado.'
+        });
+      }
+  
+      // Se não houver cadastro, renderiza o formulário de registro normalmente
+      res.render('registro-motorista', { activePage: 'motorista', user: req.user });
+    });
+  });
+  
+  
+  
 
 
 // Rota para cadastro de motoristas
@@ -1533,7 +1554,7 @@ app.post('/api/cadastro-motorista', isAuthenticated, upload.single('foto'), asyn
     });
 });
 
-// Novas funcionalidades: Manutenções adicionais (rodízio de pneus, troca de pneus, pastilhas e discos de freio) //
+//  Manutenções adicionais (rodízio de pneus, troca de pneus, pastilhas e discos de freio) //
 
 // Função para enviar notificação de manutenção (por email e via Socket.IO)
 function sendMaintenanceNotification(veiculo, manutencao) {
@@ -1675,7 +1696,7 @@ app.post('/manutencoes/realizada/:id', isAuthenticated, isAdmin, (req, res) => {
     });
 });
 
-/* Fim das novas funcionalidades de manutenção */
+/* Fim das funcionalidades de manutenção */
 
 // Rota para cadastro de novo reembolso
 app.post('/reembolsos', upload.single('comprovante'), async (req, res) => {
