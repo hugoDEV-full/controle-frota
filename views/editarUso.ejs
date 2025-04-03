@@ -34,6 +34,12 @@
 
 <body>
   <div class="container mt-4">
+    <% if (typeof errorMessage !== 'undefined') { %>
+      <div class="alert alert-danger" role="alert">
+        <%= errorMessage %>
+      </div>
+    <% } %>
+    
     <h1>Editar Uso e Multas</h1>
     <!-- Formulário para editar uso e multas -->
     <form action="/editar-uso/<%= uso.id %>" method="POST" enctype="multipart/form-data">
@@ -41,7 +47,7 @@
       <h3>Dados do Uso</h3>
       <div class="mb-3">
         <label for="motorista" class="form-label">Motorista</label>
-        <input type="text" class="form-control" id="motorista" name="motorista" value="<%= uso.motorista %>" required>
+        <input type="text" class="form-control" id="motorista" name="motorista" value="<%= uso.motorista %>" required readonly>
       </div>
       <div class="mb-3">
         <label for="km_inicial" class="form-label">KM Inicial</label>
@@ -89,13 +95,13 @@
 
       <div class="mb-3">
         <label for="foto_km" class="form-label">Foto de Quilometragem final</label>
-        <input type="file" class="form-control" id="foto_km" name="foto_km" readonly>
+        <input type="file" class="form-control" id="foto_km" name="foto_km" <%= !uso.foto_km ? 'required' : '' %>>
         <% if (uso.foto_km) { %>
           <p>Imagem atual:</p>
-          <img src="/uploads/<%= uso.foto_km %>" alt="Foto Quilometragem" class="img-fluid mt-2"
-            style="max-width: 200px;">
-          <% } %>
+          <img src="/uploads/<%= uso.foto_km %>" alt="Foto Quilometragem" class="img-fluid mt-2" style="max-width: 200px;">
+        <% } %>
       </div>
+      
 
       <hr>
 

@@ -217,6 +217,8 @@ Reembolsos registrados.
 Integração de mapa para exibição da localização do veículo.
 
 Registro de movimentação no mapa.
+🔹 Melhorias no Front-end
+Melhorar notificações de erro para edição e uso mais amigável ao usuário.
 
 
 🔹 Outros
@@ -230,8 +232,6 @@ Validade da CNH exibida nos cards dos motoristas.
 
 ❌ Funcionalidades que ainda precisam ser feitas:
 
-🔸 Melhorias no Front-end
-Melhorar notificações de erro para edição e uso mais amigável ao usuário.
 
 🔸 Localização
 Aguardar Integração solução de localização feita pela equipe usando celular.
