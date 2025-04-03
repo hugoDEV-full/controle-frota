@@ -220,6 +220,8 @@ Registro de movimentação no mapa.
 🔹 Melhorias no Front-end
 Melhorar notificações de erro para edição e uso mais amigável ao usuário.
 
+🔹 Relatórios adicionais
+Adicionar relatório de consumo estimado de combustível por uso /  veículo.
 
 🔹 Outros
 Manutenções pendentes registradas.
@@ -227,7 +229,7 @@ Manutenções pendentes registradas.
 Gráfico de reembolso
 
 Validade da CNH exibida nos cards dos motoristas.
-
+ 
 ---
 
 ❌ Funcionalidades que ainda precisam ser feitas:
@@ -236,8 +238,7 @@ Validade da CNH exibida nos cards dos motoristas.
 🔸 Localização
 Aguardar Integração solução de localização feita pela equipe usando celular.
 
-🔸 Relatórios adicionais
-Adicionar relatório de consumo estimado de combustível por veículo.
+
 
 🔸 Gestão de Uso
 Registro do local de partida e destino da viagem.

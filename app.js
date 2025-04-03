@@ -1754,6 +1754,44 @@ app.get('/reembolsos', async (req, res) => {
     }
   });
   
+  app.get('/relatorio-consumo', isAuthenticated, async (req, res) => {
+    try {
+      // Fator de consumo: eficiência média em km por litro
+      const eficiencia = 10; // km por litro (ajuste conforme a realidade)
+      // Preço da gasolina
+      const precoGasolina = 6.45;
+  
+      // Consulta para buscar os registros de uso com o cálculo da distância, consumo estimado e custo
+      const consumoResult = await query(
+        `
+        SELECT 
+          uso.id, 
+          veiculos.placa, 
+          uso.motorista, 
+          uso.km_inicial, 
+          uso.km_final, 
+          (uso.km_final - uso.km_inicial) AS distancia,
+          ROUND((uso.km_final - uso.km_inicial) / ?, 2) AS consumo_estimado,
+          ROUND(((uso.km_final - uso.km_inicial) / ?) * ?, 2) AS custo_estimado
+        FROM uso_veiculos AS uso
+        JOIN veiculos ON uso.veiculo_id = veiculos.id
+        WHERE uso.km_final IS NOT NULL
+        ORDER BY uso.data_criacao DESC
+        `,
+        [eficiencia, eficiencia, precoGasolina]
+      );
+  
+      res.render('relatorioConsumo', {
+        title: 'Relatório de Consumo Estimado',
+        layout: 'layout',
+        activePage: 'relatorioConsumo',
+        consumoResult
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send('Erro no servidor ao gerar relatório de consumo.');
+    }
+  });
   
   
 

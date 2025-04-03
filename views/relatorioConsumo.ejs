@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    
+    <div class="container mt-4">
+      <h1>Relatório de Consumo Estimado por Uso</h1>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>ID Uso</th>
+            <th>Placa do Veículo</th>
+            <th>Motorista</th>
+            <th>KM Inicial</th>
+            <th>KM Final</th>
+            <th>Distância Percorrida (km)</th>
+            <th>Consumo Estimado (l)</th>
+            <th>Custo Estimado (R$)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% consumoResult.forEach(item => { %>
+            <tr>
+              <td><%= item.id %></td>
+              <td><%= item.placa %></td>
+              <td><%= item.motorista %></td>
+              <td><%= item.km_inicial %></td>
+              <td><%= item.km_final %></td>
+              <td><%= item.distancia %></td>
+              <td><%= item.consumo_estimado %></td>
+              <td><%= item.custo_estimado %></td>
+            </tr>
+          <% }); %>
+        </tbody>
+      </table>
+      <a href="/" class="btn btn-primary">Voltar</a>
+    </div>
+    
+  </body>
+</html>
