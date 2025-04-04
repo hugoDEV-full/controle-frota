@@ -30,8 +30,6 @@
           <a href="/" class="btn btn-secondary mt-4 mb-2">Voltar para a Página Inicial</a>
         </div>
 
-        
-
         <div class="mb-3">
           <button id="deleteSelected" class="btn btn-danger">Excluir Selecionados</button>
         </div>
@@ -45,6 +43,8 @@
                 <th>Motorista</th>
                 <th>KM Inicial</th>
                 <th>KM Final</th>
+                <th>Finalidade</th> <!-- Novo campo -->
+                <th>Descrição</th>  <!-- Novo campo -->
                 <th>Data de Início</th>
                 <th>Data de Fim</th>
                 <th>Data de Criação</th>
@@ -54,7 +54,7 @@
               </tr>
             </thead>
             <tbody>
-              <!-- dados carregados via Ajax -->
+              <!-- Dados carregados via Ajax -->
             </tbody>
           </table>
         </div>
@@ -94,7 +94,7 @@
       var table = $('#usoTable').DataTable({
         "serverSide": true,
         "ajax": "/api/relatorio-uso",
-        "order": [[7, "desc"]],
+        "order": [[9, "desc"]], // Ordena pela data de criação (índice 9)
         "pageLength": 25,
         "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
         "language": {
@@ -130,6 +130,8 @@
           { "data": "motorista" },
           { "data": "km_inicial" },
           { "data": "km_final" },
+          { "data": "finalidade" }, // Novo campo
+          { "data": "descricao" },  // Novo campo
           {
             "data": "data_hora_inicial",
             "render": function (data) {

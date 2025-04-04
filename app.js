@@ -282,7 +282,6 @@ app.get('/', isAuthenticated, async (req, res) => {
             'SELECT nome, email, DATE_FORMAT(data_validade, "%d/%m/%Y") AS validade FROM motoristas WHERE data_validade < CURDATE()'
         );
 
-
         // Consultas para veículos e outras estatísticas
         const veiculosResult = await query('SELECT * FROM veiculos');
         const totalVeiculosResult = await query('SELECT COUNT(*) AS totalVeiculos FROM veiculos');
@@ -351,13 +350,111 @@ app.get('/', isAuthenticated, async (req, res) => {
           ORDER BY totalMultasMotorista DESC
         `);
 
-        // Nova funcionalidade: Manutenções pendentes
+        // Relatório: Tempo de Uso por Dia
+        const tempoUsoDiaResult = await query(`
+          SELECT 
+            DATE(data_hora_inicial) AS dia, 
+            SEC_TO_TIME(SUM(TIMESTAMPDIFF(SECOND, data_hora_inicial, data_hora_final))) AS totalTempoUsoDia
+          FROM uso_veiculos
+          GROUP BY DATE(data_hora_inicial)
+          ORDER BY dia DESC
+        `);
+
+        // Relatório: Tempo de Uso por Mês
+        const tempoUsoMesResult = await query(`
+          SELECT 
+            DATE_FORMAT(data_hora_inicial, '%Y-%m') AS mes, 
+            SEC_TO_TIME(SUM(TIMESTAMPDIFF(SECOND, data_hora_inicial, data_hora_final))) AS totalTempoUsoMes
+          FROM uso_veiculos
+          GROUP BY DATE_FORMAT(data_hora_inicial, '%Y-%m')
+          ORDER BY mes DESC
+        `);
+
+        // Relatório: Tempo de Uso por Ano
+        const tempoUsoAnoResult = await query(`
+          SELECT 
+            YEAR(data_hora_inicial) AS ano, 
+            SEC_TO_TIME(SUM(TIMESTAMPDIFF(SECOND, data_hora_inicial, data_hora_final))) AS totalTempoUsoAno
+          FROM uso_veiculos
+          GROUP BY YEAR(data_hora_inicial)
+          ORDER BY ano DESC
+        `);
+
+        // Relatório: Tempo de Uso por Motorista
+        const tempoUsoMotoristaResult = await query(`
+          SELECT 
+            motorista, 
+            SEC_TO_TIME(SUM(TIMESTAMPDIFF(SECOND, data_hora_inicial, data_hora_final))) AS totalTempoUsoMotorista
+          FROM uso_veiculos
+          GROUP BY motorista
+          ORDER BY totalTempoUsoMotorista DESC
+        `);
+
+        // Manutenções pendentes
         const manutencoesPendentes = await query(`
           SELECT m.*, v.placa, v.nome as veiculo_nome 
           FROM manutencoes m
           JOIN veiculos v ON m.veiculo_id = v.id
           WHERE m.status = 'pendente'
           ORDER BY m.data_agendada ASC
+        `);
+
+        // Estatísticas de viagens utilizando a tabela uso_veiculos e a coluna "finalidade"
+        // Agrupamento por Dia
+        const viagensTrabalhoDiaResult = await query(`
+          SELECT DATE(data_criacao) AS dia, COUNT(*) AS totalViagensTrabalho
+          FROM uso_veiculos
+          WHERE finalidade = 'trabalho'
+          GROUP BY DATE(data_criacao)
+          ORDER BY dia DESC
+        `);
+        const viagensPessoalDiaResult = await query(`
+          SELECT DATE(data_criacao) AS dia, COUNT(*) AS totalViagensPessoal
+          FROM uso_veiculos
+          WHERE finalidade = 'pessoal'
+          GROUP BY DATE(data_criacao)
+          ORDER BY dia DESC
+        `);
+
+        // Agrupamento por Mês
+        const viagensTrabalhoMesResult = await query(`
+          SELECT DATE_FORMAT(data_criacao, '%Y-%m') AS mes, COUNT(*) AS totalViagensTrabalho
+          FROM uso_veiculos
+          WHERE finalidade = 'trabalho'
+          GROUP BY DATE_FORMAT(data_criacao, '%Y-%m')
+          ORDER BY mes DESC
+        `);
+        const viagensPessoalMesResult = await query(`
+          SELECT DATE_FORMAT(data_criacao, '%Y-%m') AS mes, COUNT(*) AS totalViagensPessoal
+          FROM uso_veiculos
+          WHERE finalidade = 'pessoal'
+          GROUP BY DATE_FORMAT(data_criacao, '%Y-%m')
+          ORDER BY mes DESC
+        `);
+
+        // Agrupamento por Ano
+        const viagensTrabalhoAnoResult = await query(`
+          SELECT YEAR(data_criacao) AS ano, COUNT(*) AS totalViagensTrabalho
+          FROM uso_veiculos
+          WHERE finalidade = 'trabalho'
+          GROUP BY YEAR(data_criacao)
+          ORDER BY ano DESC
+        `);
+        const viagensPessoalAnoResult = await query(`
+          SELECT YEAR(data_criacao) AS ano, COUNT(*) AS totalViagensPessoal
+          FROM uso_veiculos
+          WHERE finalidade = 'pessoal'
+          GROUP BY YEAR(data_criacao)
+          ORDER BY ano DESC
+        `);
+
+        // Estatísticas de viagens por motorista, agrupando por finalidade
+        const viagensMotoristaResult = await query(`
+          SELECT motorista, finalidade, COUNT(*) AS totalViagens
+          FROM uso_veiculos
+          WHERE finalidade IN ('trabalho', 'pessoal')
+          GROUP BY motorista, finalidade
+          ORDER BY motorista, totalViagens DESC
         `);
 
         res.render('dashboard', {
@@ -381,20 +478,25 @@ app.get('/', isAuthenticated, async (req, res) => {
             multasMes: multasMesResult,
             multasAno: multasAnoResult,
             multasMotorista: multasMotoristaResult,
-            manutencoesPendentes // Dados das manutenções pendentes
+            tempoUsoDia: tempoUsoDiaResult,             // Estatística: tempo de uso por dia
+            tempoUsoMes: tempoUsoMesResult,             // Estatística: tempo de uso por mês
+            tempoUsoAno: tempoUsoAnoResult,             // Estatística: tempo de uso por ano
+            tempoUsoMotorista: tempoUsoMotoristaResult, // Estatística: tempo de uso por motorista
+            manutencoesPendentes,   // Dados das manutenções pendentes
+            // Estatísticas de viagens (usando uso_veiculos e coluna "finalidade")
+            viagensTrabalhoDia: viagensTrabalhoDiaResult,
+            viagensPessoalDia: viagensPessoalDiaResult,
+            viagensTrabalhoMes: viagensTrabalhoMesResult,
+            viagensPessoalMes: viagensPessoalMesResult,
+            viagensTrabalhoAno: viagensTrabalhoAnoResult,
+            viagensPessoalAno: viagensPessoalAnoResult,
+            viagensMotorista: viagensMotoristaResult
         });
     } catch (err) {
         console.error(err);
         res.status(500).send('Erro no servidor');
     }
 });
-
-
-
-
-
-
-
 
 
 
@@ -510,18 +612,22 @@ app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
     // 2: Motorista (uso_veiculos.motorista)
     // 3: KM Inicial (uso_veiculos.km_inicial)
     // 4: KM Final (uso_veiculos.km_final)
-    // 5: Data de Início (data_hora_inicial)
-    // 6: Data de Fim (data_hora_final)
-    // 7: Data de Criação (data_criacao)
-    // 8: Foto de Quilometragem (não ordenável)
-    // 9: Multas (não ordenável)
-    // 10: Ações (não ordenável)
+    // 5: Finalidade (uso_veiculos.finalidade)  <-- Novo
+    // 6: Descrição (uso_veiculos.descricao)    <-- Novo
+    // 7: Data de Início (data_hora_inicial)
+    // 8: Data de Fim (data_hora_final)
+    // 9: Data de Criação (data_criacao)
+    // 10: Foto de Quilometragem (não ordenável)
+    // 11: Multas (não ordenável)
+    // 12: Ações (não ordenável)
     let columns = [
         null,
         'veiculos.placa',
         'uso_veiculos.motorista',
         'uso_veiculos.km_inicial',
         'uso_veiculos.km_final',
+        'uso_veiculos.finalidade', // novo campo
+        'uso_veiculos.descricao',  // novo campo
         'data_hora_inicial',
         'data_hora_final',
         'data_criacao'
@@ -534,9 +640,9 @@ app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
         orderColumnIndex = parseInt(req.query.order[0].column);
         orderDir = req.query.order[0].dir || 'asc';
     }
-    // Se o índice não estiver entre 1 e 7 (colunas ordenáveis), define padrão
-    if (orderColumnIndex < 1 || orderColumnIndex > 7) {
-        orderColumnIndex = 5; // data_hora_inicial
+    // Se o índice não estiver entre 1 e 9 (colunas ordenáveis), define padrão
+    if (orderColumnIndex < 1 || orderColumnIndex > 9) {
+        orderColumnIndex = 7; // data_hora_inicial
     }
     let orderColumn = columns[orderColumnIndex] || 'data_hora_inicial';
 
@@ -544,12 +650,12 @@ app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
     let whereClause = '';
     let params = [];
     if (searchValue) {
-        whereClause = `WHERE (veiculos.placa LIKE ? OR uso_veiculos.motorista LIKE ? OR uso_veiculos.km_inicial LIKE ? OR uso_veiculos.km_final LIKE ? )`;
+        whereClause = `WHERE (veiculos.placa LIKE ? OR uso_veiculos.motorista LIKE ? OR uso_veiculos.km_inicial LIKE ? OR uso_veiculos.km_final LIKE ? OR uso_veiculos.finalidade LIKE ? OR uso_veiculos.descricao LIKE ? )`;
         const searchParam = '%' + searchValue + '%';
-        params.push(searchParam, searchParam, searchParam, searchParam);
+        params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
     }
 
-    // Consulta principal
+    // Consulta principal com os novos campos
     let sql = `
       SELECT uso_veiculos.*, 
              veiculos.placa, 
@@ -566,9 +672,6 @@ app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
     // Adiciona os parâmetros para LIMIT e OFFSET
     params.push(length, start);
 
-    //console.log("SQL principal:", sql);
-    //console.log("Parâmetros:", params);
-
     db.query(sql, params, (err, results) => {
         if (err) {
             console.error("Erro na consulta principal:", err);
@@ -583,11 +686,7 @@ app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
         LEFT JOIN multas ON uso_veiculos.id = multas.uso_id
         ${whereClause}
       `;
-        // Se houver busca, utiliza os primeiros 4 parâmetros; caso contrário, nenhum
-        let countParams = searchValue ? params.slice(0, 4) : [];
-
-        //console.log("SQL contagem filtrada:", countSql);
-        //console.log("Parâmetros contagem:", countParams);
+        let countParams = searchValue ? params.slice(0, 6) : [];
 
         db.query(countSql, countParams, (err, countResult) => {
             if (err) {
@@ -603,7 +702,6 @@ app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
                     return res.status(500).json({ error: "Erro na consulta de contagem total" });
                 }
                 let totalRecordsUnfiltered = totalResult[0].total;
-                // Envia o JSON no formato esperado pelo DataTables
                 res.json({
                     draw: parseInt(draw),
                     recordsTotal: totalRecordsUnfiltered,
@@ -614,6 +712,7 @@ app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
         });
     });
 });
+
 
 
 app.get('/registrar-veiculo', isAuthenticated, isAdmin, (req, res) => {
@@ -861,7 +960,26 @@ function autoGenerateMaintenance(veiculo) {
         { tipo: 'Rodízio de Pneus', kmIntervalo: 100 },
         { tipo: 'Troca de Pastilhas', kmIntervalo: 100 },
         { tipo: 'Troca de Discos de Freio', kmIntervalo: 100 },
+        { tipo: 'Troca da Correia Dentada', kmIntervalo: 100 },
+        { tipo: 'Troca do Óleo do Motor', kmIntervalo: 100 },
+        { tipo: 'Troca do Filtro de Óleo', kmIntervalo: 100 },
+        { tipo: 'Troca do Filtro de Ar', kmIntervalo: 100 },
+        { tipo: 'Troca do Filtro de Combustível', kmIntervalo: 100 },
+        { tipo: 'Alinhamento e Balanceamento', kmIntervalo: 100 },
+        { tipo: 'Verificação do Sistema de Arrefecimento', kmIntervalo: 100 },
+        { tipo: 'Revisão do Sistema Elétrico', kmIntervalo: 100 },
+        { tipo: 'Inspeção dos Níveis (água, freio, etc.)', kmIntervalo: 100 },
+        { tipo: 'Troca do Líquido de Arrefecimento', kmIntervalo: 100 },
+        { tipo: 'Troca do Líquido de Freio', kmIntervalo: 100 },
+        { tipo: 'Troca do Líquido da Direção Hidráulica', kmIntervalo: 100 },
+        { tipo: 'Troca das Velas de Ignição', kmIntervalo: 100 },
+        { tipo: 'Inspeção da Suspensão e Amortecedores', kmIntervalo: 100 },
+        { tipo: 'Inspeção da Bateria', kmIntervalo: 100 },
+        { tipo: 'Inspeção do Sistema de Escape', kmIntervalo: 100 },
+        { tipo: 'Verificação dos Cabos e Correias', kmIntervalo: 100 }
     ];
+    
+    
 
     regrasManutencao.forEach(regra => {
         if (Number(veiculo.km) >= regra.kmIntervalo) {
@@ -903,10 +1021,10 @@ function autoGenerateMaintenance(veiculo) {
 }
 
 
-// Rota para registrar o uso do veículo, atualizar km e disparar manutenções automáticas
 app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
     const { id } = req.params; // ID do veículo
-    const { km_inicial, km_final, data_hora_inicial, data_hora_final } = req.body;
+    
+    const { km_inicial, km_final, data_hora_inicial, data_hora_final, finalidade, descricao } = req.body;
     const foto_km = req.file ? req.file.filename : null;
     const motoristaEmail = req.user.email; // Email do usuário autenticado
 
@@ -962,9 +1080,9 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
             // Verifica sobreposição de uso
             db.query(
                 `SELECT * FROM uso_veiculos 
-           WHERE (veiculo_id = ? OR motorista = ?)
-             AND (data_hora_inicial < ?)
-             AND ((data_hora_final IS NULL) OR (data_hora_final > ?))`,
+                 WHERE (veiculo_id = ? OR motorista = ?)
+                   AND (data_hora_inicial < ?)
+                   AND ((data_hora_final IS NULL) OR (data_hora_final > ?))`,
                 [id, motoristaEmail, newEnd, dataHoraInicial],
                 (err, overlapResult) => {
                     if (err) {
@@ -975,10 +1093,10 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
                         return res.status(400).send("Erro: Já existe um uso nesse período.");
                     }
 
-                    // Insere o registro de uso
+                    // Insere o registro de uso incluindo os novos campos
                     db.query(
-                        'INSERT INTO uso_veiculos (veiculo_id, motorista, km_inicial, km_final, data_hora_inicial, data_hora_final, foto_km) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                        [id, motoristaEmail, km_inicial, kmFinalValue, dataHoraInicial, dataHoraFinal, foto_km],
+                        'INSERT INTO uso_veiculos (veiculo_id, motorista, km_inicial, km_final, data_hora_inicial, data_hora_final, foto_km, finalidade, descricao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [id, motoristaEmail, km_inicial, kmFinalValue, dataHoraInicial, dataHoraFinal, foto_km, finalidade, descricao],
                         (err, result) => {
                             if (err) throw err;
 
@@ -1016,10 +1134,10 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
 
 
 
-// Rota para editar uso, atualizar multas e imagem  
+
 app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
     const { id } = req.params;
-    const { motorista, km_final, data_hora_final, multas_id, multas_descricao } = req.body;
+    const { motorista, km_final, data_hora_final, multas_id, multas_descricao, finalidade, descricao } = req.body;
     const novasMultas = req.body.novasMultas
         ? [].concat(req.body.novasMultas).filter(m => m.trim().length > 0)
         : [];
@@ -1029,7 +1147,7 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
         const novaImagem = req.files[0].filename;
         updateQuery = `
           UPDATE uso_veiculos 
-          SET motorista = ?, km_final = ?, data_hora_final = ?, foto_km = ? 
+          SET motorista = ?, km_final = ?, data_hora_final = ?, foto_km = ?, finalidade = ?, descricao = ?
           WHERE id = ?
       `;
         params = [
@@ -1037,35 +1155,38 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
             km_final === '' ? null : km_final,
             data_hora_final === '' ? null : data_hora_final,
             novaImagem,
+            finalidade,
+            descricao,
             id
         ];
     } else {
         updateQuery = `
           UPDATE uso_veiculos 
-          SET motorista = ?, km_final = ?, data_hora_final = ? 
+          SET motorista = ?, km_final = ?, data_hora_final = ?, finalidade = ?, descricao = ?
           WHERE id = ?
       `;
         params = [
             motorista,
             km_final === '' ? null : km_final,
             data_hora_final === '' ? null : data_hora_final,
+            finalidade,
+            descricao,
             id
         ];
     }
 
-    // Função auxiliar para renderizar o formulário com uma mensagem de erro amigável
+    //  renderizar o formulário com uma mensagem de erro 
     function renderError(message) {
         db.query("SELECT * FROM uso_veiculos WHERE id = ?", [id], (err, results) => {
             if (err || results.length === 0) {
                 return res.status(500).send("Erro ao carregar os dados para exibição do erro.");
             }
             const uso = results[0];
-            // Renderiza a view 'editarUso' passando o objeto 'uso' e a mensagem de erro
             res.render('editarUso', { uso, errorMessage: message });
         });
     }
 
-    // Valida km_final e data_hora_final, se informados
+    // Validação do km_final e data_hora_final, se informados
     if ((km_final && km_final !== '') || (data_hora_final && data_hora_final !== '')) {
         db.query("SELECT km_inicial, data_hora_inicial FROM uso_veiculos WHERE id = ?", [id], (err, resultSelect) => {
             if (err) {
@@ -1082,8 +1203,6 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
                     if (kmFinalParsed < kmInicialValue) {
                         return renderError('KM final não pode ser menor que KM inicial.');
                     }
-
-                    // Verificar autonomia < 700
                     const autonomiaUno = 700;
                     const consumo = kmFinalParsed - kmInicialValue;
                     if (consumo > autonomiaUno) {
@@ -1126,7 +1245,7 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
                 });
             }
 
-            // Se tiver km_final, atualiza o km do veículo e dispara a verificação de manutenção
+            // Se km_final for informado, atualiza o km do veículo e dispara a verificação de manutenção
             if (km_final && km_final !== '') {
                 const kmFinalParsed = parseInt(km_final, 10);
                 const kmFinalValue = isNaN(kmFinalParsed) ? null : kmFinalParsed;
@@ -1141,9 +1260,7 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
                                     console.error("Erro ao atualizar km do veículo:", err);
                                 } else {
                                     console.log(`Veículo ${veiculo_id} atualizado para km=${kmFinalValue} via edição.`);
-                                    // Não atualiza o km_inicial para manter o valor original
                                     checkOilChangeForVehicle(veiculo_id);
-                                    // Chama a verificação para manutenção automática
                                     db.query("SELECT * FROM veiculos WHERE id = ?", [veiculo_id], (err, result4) => {
                                         if (err) {
                                             console.error("Erro ao buscar veículo para manutenção:", err);
@@ -1232,57 +1349,86 @@ app.post('/excluir-uso/:id', isAuthenticated, isAdmin, (req, res) => {
     });
 });
 
-// Rota pra excluir múltiplos usos
 app.post('/excluir-multiplos-usos', isAuthenticated, isAdmin, (req, res) => {
-    const { ids } = req.body;
+    let { ids } = req.body;
 
-    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    if (!ids) {
         return res.status(400).json({ message: 'IDs inválidos.' });
     }
 
-    db.beginTransaction(err => {
+    // Certifica  que `ids` seja um array de números
+    if (typeof ids === 'string') {
+        ids = ids.split(',').map(id => Number(id.trim()));
+    }
+    if (!Array.isArray(ids) || ids.length === 0) {
+        return res.status(400).json({ message: 'IDs inválidos.' });
+    }
+
+    console.log('IDs para exclusão:', ids);
+
+    // Obtém uma conexão do pool
+    db.getConnection((err, connection) => {
         if (err) {
-            console.error('Erro ao iniciar transação:', err);
-            return res.status(500).json({ message: 'Erro na transação.' });
+            console.error('Erro ao obter conexão:', err);
+            return res.status(500).json({ message: 'Erro ao obter conexão.' });
         }
 
-        const queryMultas = 'DELETE FROM multas WHERE uso_id IN (?)';
-        db.query(queryMultas, [ids], (err, resultMultas) => {
+        connection.beginTransaction(err => {
             if (err) {
-                console.error('Erro ao excluir multas:', err);
-                return db.rollback(() => {
-                    res.status(500).json({ message: 'Erro ao excluir multas.' });
-                });
+                connection.release();
+                console.error('Erro ao iniciar transação:', err);
+                return res.status(500).json({ message: 'Erro ao iniciar transação.' });
             }
 
-            const queryUso = 'DELETE FROM uso_veiculos WHERE id IN (?)';
-            db.query(queryUso, [ids], (err, resultUso) => {
+            // Corrige a query de DELETE para múltiplos IDs
+            const placeholders = ids.map(() => '?').join(',');
+            const queryMultas = `DELETE FROM multas WHERE uso_id IN (${placeholders})`;
+
+            connection.query(queryMultas, ids, (err, resultMultas) => {
                 if (err) {
-                    console.error('Erro ao excluir usos:', err);
-                    return db.rollback(() => {
-                        res.status(500).json({ message: 'Erro ao excluir usos.' });
+                    console.error('Erro ao excluir multas:', err);
+                    return connection.rollback(() => {
+                        connection.release();
+                        res.status(500).json({ message: 'Erro ao excluir multas.' });
                     });
                 }
 
-                if (resultUso.affectedRows === 0) {
-                    return db.rollback(() => {
-                        res.status(404).json({ message: 'Nenhum registro encontrado.' });
-                    });
-                }
+                const queryUso = `DELETE FROM uso_veiculos WHERE id IN (${placeholders})`;
 
-                db.commit(err => {
+                connection.query(queryUso, ids, (err, resultUso) => {
                     if (err) {
-                        console.error('Erro ao commitar transação:', err);
-                        return db.rollback(() => {
-                            res.status(500).json({ message: 'Erro ao finalizar exclusão.' });
+                        console.error('Erro ao excluir usos:', err);
+                        return connection.rollback(() => {
+                            connection.release();
+                            res.status(500).json({ message: 'Erro ao excluir usos.' });
                         });
                     }
-                    res.json({ message: 'Registros excluídos com sucesso.' });
+
+                    if (resultUso.affectedRows === 0) {
+                        return connection.rollback(() => {
+                            connection.release();
+                            res.status(404).json({ message: 'Nenhum registro encontrado.' });
+                        });
+                    }
+
+                    connection.commit(err => {
+                        if (err) {
+                            console.error('Erro ao commitar transação:', err);
+                            return connection.rollback(() => {
+                                connection.release();
+                                res.status(500).json({ message: 'Erro ao finalizar exclusão.' });
+                            });
+                        }
+                        connection.release();
+                        res.json({ message: 'Registros excluídos com sucesso.' });
+                    });
                 });
             });
         });
     });
 });
+
+
 
 // Rota pra exibir a tela de edição do veículo
 app.get('/editar-veiculo/:id', isAuthenticated, (req, res) => {
@@ -1790,6 +1936,50 @@ app.get('/relatorio-consumo', isAuthenticated, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send('Erro no servidor ao gerar relatório de consumo.');
+    }
+});
+////////////////////////////////////////////////////////////////////////////////////
+
+app.get('/search', isAuthenticated, async (req, res) => {
+    const q = req.query.q || '';
+    // Se não houver consulta, renderiza a view sem resultados
+    if (!q.trim()) {
+        return res.render('searchResults', { q, results: {} });
+    }
+
+    try {
+        // Busca em veículos (nome e placa)
+        const veiculos = await query(
+            "SELECT id, nome, placa FROM veiculos WHERE nome LIKE ? OR placa LIKE ?",
+            ['%' + q + '%', '%' + q + '%']
+        );
+        // Busca em usos de veículos (motorista)
+        const usos = await query(
+            "SELECT id, motorista, km_inicial, km_final FROM uso_veiculos WHERE motorista LIKE ?",
+            ['%' + q + '%']
+        );
+        // Busca em multas (descrição da multa)
+        const multas = await query(
+            "SELECT id, multa, motorista FROM multas WHERE multa LIKE ?",
+            ['%' + q + '%']
+        );
+        // Busca em motoristas (nome e CPF)
+        const motoristas = await query(
+            "SELECT id, nome, cpf FROM motoristas WHERE nome LIKE ? OR cpf LIKE ?",
+            ['%' + q + '%', '%' + q + '%']
+        );
+
+        const results = {
+            veiculos,
+            usos,
+            multas,
+            motoristas
+        };
+
+        res.render('searchResults', { q, results });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Erro no servidor ao realizar busca.");
     }
 });
 

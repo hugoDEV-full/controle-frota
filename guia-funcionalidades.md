@@ -223,6 +223,32 @@ Melhorar notificações de erro para edição e uso mais amigável ao usuário.
 🔹 Relatórios adicionais
 Adicionar relatório de consumo estimado de combustível por uso /  veículo.
 
+🔹 Finalidade do uso (se pessoal ou a trabalho), em usar, editarUso e relatoriodeuso.
+🔹 Estatistica tempo de uso, mes , dia, ano, motorista. ajuste scroll y de cards em dashboard .
+🔹 Busca em: veiculos nome e placa, uso motorista, multas descrição da multa, motoristas nome e cpf.
+🔹 RegrasManutencao = [
+        { tipo: 'Troca de Pneus', kmIntervalo: 100 },
+        { tipo: 'Rodízio de Pneus', kmIntervalo: 100 },
+        { tipo: 'Troca de Pastilhas', kmIntervalo: 100 },
+        { tipo: 'Troca de Discos de Freio', kmIntervalo: 100 },
+        { tipo: 'Troca da Correia Dentada', kmIntervalo: 100 },
+        { tipo: 'Troca do Óleo do Motor', kmIntervalo: 100 },
+        { tipo: 'Troca do Filtro de Óleo', kmIntervalo: 100 },
+        { tipo: 'Troca do Filtro de Ar', kmIntervalo: 100 },
+        { tipo: 'Troca do Filtro de Combustível', kmIntervalo: 100 },
+        { tipo: 'Alinhamento e Balanceamento', kmIntervalo: 100 },
+        { tipo: 'Verificação do Sistema de Arrefecimento', kmIntervalo: 100 },
+        { tipo: 'Revisão do Sistema Elétrico', kmIntervalo: 100 },
+        { tipo: 'Inspeção dos Níveis (água, freio, etc.)', kmIntervalo: 100 },
+        { tipo: 'Troca do Líquido de Arrefecimento', kmIntervalo: 100 },
+        { tipo: 'Troca do Líquido de Freio', kmIntervalo: 100 },
+        { tipo: 'Troca do Líquido da Direção Hidráulica', kmIntervalo: 100 },
+        { tipo: 'Troca das Velas de Ignição', kmIntervalo: 100 },
+        { tipo: 'Inspeção da Suspensão e Amortecedores', kmIntervalo: 100 },
+        { tipo: 'Inspeção da Bateria', kmIntervalo: 100 },
+        { tipo: 'Inspeção do Sistema de Escape', kmIntervalo: 100 },
+        { tipo: 'Verificação dos Cabos e Correias', kmIntervalo: 100 }]
+
 🔹 Outros
 Manutenções pendentes registradas.
 
@@ -243,7 +269,7 @@ Aguardar Integração solução de localização feita pela equipe usando celula
 🔸 Gestão de Uso
 Registro do local de partida e destino da viagem.
 
-Finalidade do uso (se pessoal ou a trabalho).
+
 
 🔸 Revisão e Segurança
 Revisão de rotas para segurança.

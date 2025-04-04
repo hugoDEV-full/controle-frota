@@ -101,7 +101,21 @@
           <img src="/uploads/<%= uso.foto_km %>" alt="Foto Quilometragem" class="img-fluid mt-2" style="max-width: 200px;">
         <% } %>
       </div>
-      
+        <!-- Novo campo: Finalidade do Uso -->
+        <div class="mb-3">
+          <label for="finalidade" class="form-label">Finalidade do Uso</label>
+          <select class="form-select" id="finalidade" name="finalidade" required>
+            <option value="">Selecione a finalidade...</option>
+            <option value="Pessoal" <%= uso.finalidade === 'Pessoal' ? 'selected' : '' %>>Pessoal</option>
+            <option value="Trabalho" <%= uso.finalidade === 'Trabalho' ? 'selected' : '' %>>Trabalho</option>
+          </select>
+        </div>
+        
+        <!-- Novo campo: Descrição do Uso -->
+        <div class="mb-3">
+          <label for="descricao" class="form-label">Descrição do Uso</label>
+          <textarea class="form-control" id="descricao" name="descricao" rows="3" placeholder="Informe detalhes adicionais, se necessário"><%= uso.descricao || '' %></textarea>
+        </div>
 
       <hr>
 

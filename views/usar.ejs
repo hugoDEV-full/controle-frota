@@ -29,6 +29,21 @@
                 <input type="datetime-local" class="form-control" id="data_hora_inicial" name="data_hora_inicial"
                     required readonly>
             </div>
+            <!--  Finalidade do Uso -->
+            <div class="mb-3">
+                <label for="finalidade" class="form-label">Finalidade do Uso</label>
+                <select class="form-select" id="finalidade" name="finalidade" required>
+                  <option value="">Selecione a finalidade...</option>
+                  <option value="Pessoal">Pessoal</option>
+                  <option value="Trabalho">Trabalho</option>
+                </select>
+              </div>
+              
+              <!--  Descrição do Uso -->
+              <div class="mb-3">
+                <label for="descricao" class="form-label">Descrição do Uso</label>
+                <textarea class="form-control" id="descricao" name="descricao" rows="3" placeholder="Informe detalhes adicionais, se necessário"></textarea>
+              </div>
             <button type="submit" class="btn btn-success" id="btnSubmit">Registrar Uso</button>
             <div class="text-center">
                 <a href="/" class="btn btn-secondary mt-4">Voltar para a Página Inicial</a>

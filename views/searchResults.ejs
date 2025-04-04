@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Resultados da Busca</title>
+  <link rel="stylesheet" href="/styles.css">
+ 
+</head>
+<body>
+  <div class="container mt-4">
+    <h1>Resultados da Busca para "<%= q %>"</h1>
+    <% if (!q.trim() || Object.keys(results).length === 0) { %>
+      <p>Nenhum resultado encontrado.</p>
+    <% } else { %>
+      <% if (results.veiculos && results.veiculos.length > 0) { %>
+        <h2>Veículos</h2>
+        <ul>
+          <% results.veiculos.forEach(v => { %>
+            <li>
+              <a href="/editar-veiculo/<%= v.id %>">
+                <%= v.nome %> - <%= v.placa %>
+              </a>
+            </li>
+          <% }); %>
+        </ul>
+      <% } %>
+
+      <% if (results.usos && results.usos.length > 0) { %>
+        <h2>Usos de Veículos</h2>
+        <ul>
+          <% results.usos.forEach(u => { %>
+            <li>
+              <a href="/editar-uso/<%= u.id %>">
+                <%= u.motorista %> (KM Inicial: <%= u.km_inicial %> - KM Final: <%= u.km_final %>)
+              </a>
+            </li>
+          <% }); %>
+        </ul>
+      <% } %>
+
+      <% if (results.multas && results.multas.length > 0) { %>
+        <h2>Multas</h2>
+        <ul>
+          <% results.multas.forEach(m => { %>
+            <li><%= m.multa %> – <%= m.motorista %></li>
+          <% }); %>
+        </ul>
+      <% } %>
+
+      <% if (results.motoristas && results.motoristas.length > 0) { %>
+        <h2>Motoristas</h2>
+        <ul>
+          <% results.motoristas.forEach(m => { %>
+            <li><%= m.nome %> – CPF: <%= m.cpf %></li>
+          <% }); %>
+        </ul>
+      <% } %>
+    <% } %>
+    <a href="/" class="btn btn-primary mt-3">Voltar</a>
+  </div>
+</body>
+</html>
