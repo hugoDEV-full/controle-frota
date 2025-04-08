@@ -6,39 +6,105 @@
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
-    
     <div class="container mt-4">
-      <h1>Relatório de Consumo Estimado por Uso</h1>
-      <table class="table table-bordered">
+      <h1>Relatório de Consumo Estimado por Motorista</h1>
+
+      <!-- Formulário de Busca -->
+      <form method="get" action="/relatorio-consumo" class="form-inline mb-4">
+        <select name="motorista" class="form-control mr-2">
+          <option value="">Todos os Motoristas</option>
+          <% motoristasList.forEach(m => { %>
+            <option value="<%= m.email %>" <%= String(filtro.motorista) === m.email ? 'selected' : '' %>>
+              <%= m.email %>
+            </option>
+          <% }) %>
+        </select>
+        
+        <!-- Datas de filtro -->
+        <input type="date" name="startDate" value="<%= filtro.startDate || '' %>" class="form-control mr-2"/>
+        <input type="date" name="endDate" value="<%= filtro.endDate || '' %>" class="form-control mr-2"/>
+
+        <button type="submit" class="btn btn-primary mr-2">Buscar</button>
+        <a href="/relatorio-consumo" class="btn btn-secondary">Limpar</a>
+      </form>
+
+      <!-- Resumo Diário -->
+      <h3>Consumo Diário</h3>
+      <table class="table table-sm table-bordered mb-4">
         <thead>
           <tr>
-            <th>ID Uso</th>
-            <th>Placa do Veículo</th>
             <th>Motorista</th>
-            <th>KM Inicial</th>
-            <th>KM Final</th>
-            <th>Distância Percorrida (km)</th>
-            <th>Consumo Estimado (l)</th>
-            <th>Custo Estimado (R$)</th>
+            <th>Dia</th>
+            <th>Consumo (l)</th>
+            <th>Custo (R$)</th>
           </tr>
         </thead>
         <tbody>
-          <% consumoResult.forEach(item => { %>
+          <% resumoDiario.forEach(r => { 
+              const d = new Date(r.dia);
+              const dd   = ('0' + d.getDate()).slice(-2);
+              const mm   = ('0' + (d.getMonth() + 1)).slice(-2);
+              const yyyy = d.getFullYear();
+          %>
             <tr>
-              <td><%= item.id %></td>
-              <td><%= item.placa %></td>
-              <td><%= item.motorista %></td>
-              <td><%= item.km_inicial %></td>
-              <td><%= item.km_final %></td>
-              <td><%= item.distancia %></td>
-              <td><%= item.consumo_estimado %></td>
-              <td><%= item.custo_estimado %></td>
+              <td><%= r.motorista %></td>
+              <td><%= dd + '/' + mm + '/' + yyyy %></td>
+              <td><%= r.consumo_estimado %></td>
+              <td><%= r.custo_estimado %></td>
             </tr>
-          <% }); %>
+          <% }) %>
         </tbody>
       </table>
+
+      <!-- Resumo Mensal -->
+      <h3>Consumo Mensal</h3>
+      <table class="table table-sm table-bordered mb-4">
+        <thead>
+          <tr>
+            <th>Motorista</th>
+            <th>Mês/Ano</th>
+            <th>Consumo (l)</th>
+            <th>Custo (R$)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% resumoMensal.forEach(r => { 
+              const [ano, mes] = r.mes.split('-');
+          %>
+            <tr>
+              <td><%= r.motorista %></td>
+              <td><%= mes + '/' + ano %></td>
+              <td><%= r.consumo_estimado %></td>
+              <td><%= r.custo_estimado %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+
+      <!-- Resumo Anual -->
+      <h3>Consumo Anual</h3>
+      <table class="table table-sm table-bordered mb-4">
+        <thead>
+          <tr>
+            <th>Motorista</th>
+            <th>Ano</th>
+            <th>Consumo (l)</th>
+            <th>Custo (R$)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% resumoAnual.forEach(r => { %>
+            <tr>
+              <td><%= r.motorista %></td>
+              <td><%= r.ano %></td>
+              <td><%= r.consumo_estimado %></td>
+              <td><%= r.custo_estimado %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+
       <a href="/" class="btn btn-primary">Voltar</a>
     </div>
-    
   </body>
 </html>

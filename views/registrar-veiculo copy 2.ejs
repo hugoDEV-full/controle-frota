@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrar Veículo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="container mt-4">
+    <h1>Registrar Veículo</h1>
+    <p>
+      Usuário: <strong><%= user.email %></strong> | Permissão: <strong><%= user.role %></strong>
+    </p>
+    <form action="/registrar-veiculo" method="POST">
+      <div class="mb-3">
+        <label for="nome" class="form-label">Nome do Veículo</label>
+        <input type="text" class="form-control" id="nome" name="nome" required>
+      </div>
+      <div class="mb-3">
+        <label for="placa" class="form-label">Placa</label>
+        <input type="text" class="form-control" id="placa" name="placa" required>
+      </div>
+      <div class="mb-3">
+        <label for="km" class="form-label">Quilometragem</label>
+        <input type="number" class="form-control" id="km" name="km" required>
+      </div>
+      <div class="mb-3">
+        <label for="ultimaTrocaOleo" class="form-label">Última Troca de Óleo (km)</label>
+        <input type="number" class="form-control" id="ultimaTrocaOleo" name="ultimaTrocaOleo" required>
+      </div>
+      <!-- Seleção de Marcas -->
+      <div class="mb-3">
+        <label for="marca" class="form-label">Marca</label>
+        <select class="form-select" id="marca" name="marca" required>
+          <option value="">Carregando marcas...</option>
+        </select>
+      </div>
+      <!-- Seleção de Modelos -->
+      <div class="mb-3">
+        <label for="modelo" class="form-label">Modelo</label>
+        <select class="form-select" id="modelo" name="modelo" required>
+          <option value="">Selecione uma marca primeiro</option>
+        </select>
+      </div>
+      <!-- Seleção de Anos -->
+      <div class="mb-3">
+        <label for="ano" class="form-label">Ano</label>
+        <select class="form-select" id="ano" name="ano" required>
+          <option value="">Selecione um modelo primeiro</option>
+        </select>
+      </div>
+      <!-- Outros campos podem ser adicionados conforme necessário -->
+      <button type="submit" class="btn btn-primary">Registrar</button>
+    </form>
+    <a href="/" class="btn btn-secondary mt-3">Voltar</a>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    // Função para carregar as marcas da API FIPE
+    async function carregarMarcas() {
+      try {
+        const response = await fetch('/api/marcas');
+        if (!response.ok) throw new Error('Erro ao carregar marcas');
+        const marcas = await response.json();
+        const marcaSelect = document.getElementById('marca');
+        marcaSelect.innerHTML = '<option value="">Selecione uma marca</option>';
+        marcas.forEach(marca => {
+          const option = document.createElement('option');
+          option.value = marca.code || marca.codigo;
+          option.textContent = marca.name || marca.nome;
+          marcaSelect.appendChild(option);
+        });
+      } catch (error) {
+        console.error(error);
+        alert('Erro ao carregar as marcas da FIPE.');
+      }
+    }
+
+    // Função para carregar os modelos da marca selecionada
+    async function carregarModelos(marcaId) {
+      try {
+        const response = await fetch(`/api/modelos?marca=${encodeURIComponent(marcaId)}`);
+        if (!response.ok) throw new Error('Erro ao carregar modelos');
+        const modelos = await response.json();
+        const modeloSelect = document.getElementById('modelo');
+        modeloSelect.innerHTML = '<option value="">Selecione um modelo</option>';
+        modelos.forEach(modelo => {
+          const option = document.createElement('option');
+          option.value = modelo.code || modelo.codigo;
+          option.textContent = modelo.name || modelo.nome;
+          modeloSelect.appendChild(option);
+        });
+      } catch (error) {
+        console.error(error);
+        alert('Erro ao carregar os modelos da FIPE.');
+      }
+    }
+
+    // Função para carregar os anos do modelo selecionado
+    async function carregarAnos(marcaId, modeloId) {
+      try {
+        const response = await fetch(`/api/anos?marca=${encodeURIComponent(marcaId)}&modelo=${encodeURIComponent(modeloId)}`);
+        if (!response.ok) throw new Error('Erro ao carregar anos');
+        const anos = await response.json();
+        const anoSelect = document.getElementById('ano');
+        anoSelect.innerHTML = '<option value="">Selecione um ano</option>';
+        anos.forEach(ano => {
+          const option = document.createElement('option');
+          option.value = ano.code || ano.codigo;
+          option.textContent = ano.name || ano.nome;
+          anoSelect.appendChild(option);
+        });
+      } catch (error) {
+        console.error(error);
+        alert('Erro ao carregar os anos da FIPE.');
+      }
+    }
+
+    // Eventos: Carregar modelos quando a marca for alterada
+    document.getElementById('marca').addEventListener('change', function() {
+      const marcaId = this.value;
+      if (marcaId) {
+        carregarModelos(marcaId);
+        // Limpa o select de anos enquanto o novo modelo não for selecionado
+        document.getElementById('ano').innerHTML = '<option value="">Selecione um modelo primeiro</option>';
+      } else {
+        document.getElementById('modelo').innerHTML = '<option value="">Selecione uma marca primeiro</option>';
+        document.getElementById('ano').innerHTML = '<option value="">Selecione um modelo primeiro</option>';
+      }
+    });
+
+    // Evento: Carregar anos quando o modelo for alterado
+    document.getElementById('modelo').addEventListener('change', function() {
+      const modeloId = this.value;
+      const marcaId = document.getElementById('marca').value;
+      if (modeloId && marcaId) {
+        carregarAnos(marcaId, modeloId);
+      } else {
+        document.getElementById('ano').innerHTML = '<option value="">Selecione um modelo primeiro</option>';
+      }
+    });
+
+    // Carrega as marcas assim que a página é carregada
+    carregarMarcas();
+  </script>
+</body>
+</html>

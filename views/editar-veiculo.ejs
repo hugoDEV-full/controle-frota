@@ -6,15 +6,32 @@
   <title>Editar Veículo</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="/styles.css">
+  <% const isAdmin = user && user.role === 'admin'; %>
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
       const kmField = document.getElementById('km');
       const justificativaContainer = document.getElementById('justificativaKmContainer');
-      
-      // Ao clicar no campo de quilometragem, exibe a justificativa
-      kmField.addEventListener('click', function() {
-        justificativaContainer.style.display = 'block';
-      });
+      const justificativaField = document.getElementById('justificativaKm');
+
+      // Só adiciona a lógica se o usuário tiver role "user"
+      <% if (!isAdmin) { %>
+        kmField.addEventListener('click', function () {
+          justificativaContainer.style.display = 'block';
+          justificativaField.setAttribute('required', true);
+        });
+      <% } else { %>
+        // Para admin, se desejar implementar lógica de mudança de km:
+        kmField.addEventListener('change', function () {
+          // Exemplo: se o km for alterado, exibe a justificativa e a torna required
+          if (kmField.value !== '<%= veiculo.km %>') {
+            justificativaContainer.style.display = 'block';
+            justificativaField.setAttribute('required', true);
+          } else {
+            justificativaContainer.style.display = 'none';
+            justificativaField.removeAttribute('required');
+          }
+        });
+      <% } %>
     });
   </script>
 </head>
@@ -22,30 +39,46 @@
   <div class="container mt-4">
     <h1>Editar Veículo</h1>
     <form action="/editar-veiculo/<%= veiculo.id %>" method="POST">
+      
+      <!-- Campos editáveis somente para administradores ficam readonly para usuários -->
       <div class="mb-3">
         <label for="nome" class="form-label">Nome do Veículo</label>
-        <input type="text" class="form-control" id="nome" name="nome" value="<%= veiculo.nome %>" required>
+        <input type="text" class="form-control" id="nome" name="nome" value="<%= veiculo.nome %>" <%= !isAdmin ? 'readonly' : '' %> required>
       </div>
       <div class="mb-3">
         <label for="placa" class="form-label">Placa</label>
-        <input type="text" class="form-control" id="placa" name="placa" value="<%= veiculo.placa %>" required>
+        <input type="text" class="form-control" id="placa" name="placa" value="<%= veiculo.placa %>" <%= !isAdmin ? 'readonly' : '' %> required>
       </div>
+
+      <!-- Quilometragem fica sempre editável -->
       <div class="mb-3">
         <label for="km" class="form-label">Quilometragem</label>
         <input type="number" class="form-control" id="km" name="km" value="<%= veiculo.km %>" required>
       </div>
+      <!-- Justificativa aparece somente se clicar em km -->
       <div class="mb-3" id="justificativaKmContainer" style="display: none;">
         <label for="justificativaKm" class="form-label">Justificativa para alteração da quilometragem</label>
-        <textarea class="form-control" id="justificativaKm" name="justificativaKm" placeholder="Informe a justificativa para alteração da quilometragem" rows="3" required></textarea>
+        <textarea class="form-control" id="justificativaKm" name="justificativaKm"
+          placeholder="Informe a justificativa para alteração da quilometragem" rows="3"></textarea>
       </div>
+
       <div class="mb-3">
         <label for="ultimaTrocaOleo" class="form-label">Última Troca de Óleo (km)</label>
-        <input type="number" class="form-control" id="ultimaTrocaOleo" name="ultimaTrocaOleo" value="<%= veiculo.ultimaTrocaOleo %>" required>
+        <input type="number" class="form-control" id="ultimaTrocaOleo" name="ultimaTrocaOleo" value="<%= veiculo.ultimaTrocaOleo %>" <%= !isAdmin ? 'readonly' : '' %> required>
       </div>
       <div class="mb-3">
         <label for="modelo" class="form-label">Modelo</label>
-        <input type="text" class="form-control" id="modelo" name="modelo" value="<%= veiculo.modelo %>" required>
+        <input type="text" class="form-control" id="modelo" name="modelo" value="<%= veiculo.modelo %>" <%= !isAdmin ? 'readonly' : '' %> required>
       </div>
+      <div class="mb-3">
+        <label for="ano" class="form-label">Ano</label>
+        <input type="number" class="form-control" id="ano" name="ano" value="<%= veiculo.ano %>" <%= !isAdmin ? 'readonly' : '' %> required>
+      </div>
+      <div class="mb-3">
+        <label for="cor" class="form-label">Cor</label>
+        <input type="text" class="form-control" id="cor" name="cor" value="<%= veiculo.cor %>" <%= !isAdmin ? 'readonly' : '' %> required>
+      </div>
+
       <button type="submit" class="btn btn-success">Salvar Alterações</button>
       <a href="/" class="btn btn-secondary">Cancelar</a>
     </form>

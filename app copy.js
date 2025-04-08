@@ -228,7 +228,7 @@ function sendOilChangeEmail(veiculo) {
     };
     transporter.sendMail(mailOptions, (err, info) => {
         if (err) console.error("Erro ao enviar email:", err);
-        else console.log("Email troca de oleo enviado:", info.response);
+        else console.log("Email enviado:", info.response);
     });
 }
 
@@ -724,23 +724,21 @@ app.get('/registrar-veiculo', isAuthenticated, isAdmin, (req, res) => {
     });
 });
 app.post('/registrar-veiculo', isAuthenticated, isAdmin, (req, res) => {
-    const { nome, placa, km, ultimaTrocaOleo, emUsoPor, modelo, ano, cor } = req.body;
-    if (!nome || !placa || !km || !ultimaTrocaOleo || !modelo || !ano || !cor) {
-      return res.status(400).send('Todos os campos são obrigatórios');
+    const { nome, placa, km, ultimaTrocaOleo, emUsoPor, modelo } = req.body;
+    if (!nome || !placa || !km || !ultimaTrocaOleo || !modelo) {
+        return res.status(400).send('Todos os campos são obrigatórios');
     }
-    db.query(
-      'INSERT INTO veiculos (nome, placa, km, ultimaTrocaOleo, emUsoPor, modelo, ano, cor) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [nome, placa, km, ultimaTrocaOleo, emUsoPor, modelo, ano, cor],
-      (err, result) => {
-        if (err) {
-          console.error('Erro ao registrar veículo:', err);
-          return res.status(500).send('Erro ao registrar veículo');
+    db.query('INSERT INTO veiculos (nome, placa, km, ultimaTrocaOleo, emUsoPor, modelo) VALUES (?, ?, ?, ?, ?, ?)',
+        [nome, placa, km, ultimaTrocaOleo, emUsoPor, modelo], (err, result) => {
+            if (err) {
+                console.error('Erro ao registrar veículo:', err);
+                return res.status(500).send('Erro ao registrar veículo');
+            }
+            res.redirect('/');
         }
-        res.redirect('/');
-      }
     );
-  });
-  
+});
+
 app.post('/multar/:uso_id', isAuthenticated, (req, res) => {
     const { uso_id } = req.params;
     const { multa } = req.body; // Descrição da multa
@@ -1138,16 +1136,8 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
 
 
 app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
-    // Supondo que o objeto req.user contenha a identificação do usuário logado
-    // e que o campo 'motorista' enviado no corpo da requisição deva ser igual ao usuário logado.
     const { id } = req.params;
     const { motorista, km_final, data_hora_final, multas_id, multas_descricao, finalidade, descricao } = req.body;
-    
-    // Verifica se o usuário logado é o mesmo que está tentando editar o uso
-    if (req.user && req.user.username !== motorista) {
-        return res.status(403).send('Você não tem permissão para editar este uso.');
-    }
-
     const novasMultas = req.body.novasMultas
         ? [].concat(req.body.novasMultas).filter(m => m.trim().length > 0)
         : [];
@@ -1159,7 +1149,7 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
           UPDATE uso_veiculos 
           SET motorista = ?, km_final = ?, data_hora_final = ?, foto_km = ?, finalidade = ?, descricao = ?
           WHERE id = ?
-        `;
+      `;
         params = [
             motorista,
             km_final === '' ? null : km_final,
@@ -1174,7 +1164,7 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
           UPDATE uso_veiculos 
           SET motorista = ?, km_final = ?, data_hora_final = ?, finalidade = ?, descricao = ?
           WHERE id = ?
-        `;
+      `;
         params = [
             motorista,
             km_final === '' ? null : km_final,
@@ -1185,7 +1175,7 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
         ];
     }
 
-    // Função para renderizar o formulário com mensagem de erro
+    //  renderizar o formulário com uma mensagem de erro 
     function renderError(message) {
         db.query("SELECT * FROM uso_veiculos WHERE id = ?", [id], (err, results) => {
             if (err || results.length === 0) {
@@ -1315,7 +1305,6 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
 
 
 
-
 // Rota pra marcar que a troca de óleo foi feita
 app.post('/troca-feita/:id', isAuthenticated, isAdmin, (req, res) => {
     const { id } = req.params;
@@ -1441,104 +1430,116 @@ app.post('/excluir-multiplos-usos', isAuthenticated, isAdmin, (req, res) => {
 
 
 
-// Rota para exibir a tela de edição do veículo
+// Rota pra exibir a tela de edição do veículo
 app.get('/editar-veiculo/:id', isAuthenticated, (req, res) => {
     const id = req.params.id;
     db.query("SELECT * FROM veiculos WHERE id = ?", [id], (err, results) => {
-      if (err || results.length === 0) {
-        return res.status(404).send("Veículo não encontrado.");
-      }
-      res.render('editar-veiculo', {
-        veiculo: results[0],
-        title: 'Editar Veículo',
-        layout: 'layout',
-        activePage: 'editar-veiculo',
-        user: req.user // Passa o usuário autenticado para o template
-      });
+        if (err || results.length === 0) {
+            return res.status(404).send("Veículo não encontrado.");
+        }
+        res.render('editar-veiculo', {
+            veiculo: results[0],
+            title: 'Editar Veículo',
+            layout: 'layout',
+            activePage: 'editar-veiculo'
+        });
+
     });
-  });
-  
- // Rota para atualizar dados do veículo
+});
+
+// Rota para atualizar dados do veículo
 app.post('/editar-veiculo/:id', isAuthenticated, (req, res) => {
     const id = req.params.id;
-    const { nome, placa, km, ultimaTrocaOleo, modelo, ano, cor, justificativaKm } = req.body;
-    
-    // Obtém o km atual para comparação
-    db.query("SELECT km AS currentKm FROM veiculos WHERE id = ?", [id], (err, resultVehicle) => {
-      if (err) {
-        console.error("Erro ao buscar dados do veículo:", err);
-        return res.status(500).send("Erro interno ao buscar dados do veículo.");
-      }
-      if (resultVehicle.length === 0) {
-        return res.status(404).send("Veículo não encontrado.");
-      }
-      const currentKm = parseInt(resultVehicle[0].currentKm, 10);
-      
-      // Se a quilometragem for alterada, a justificativa deve ser informada
-      if (parseInt(km, 10) !== currentKm && (!justificativaKm || !justificativaKm.trim())) {
-        return res.status(400).send("Justificativa é obrigatória ao alterar a quilometragem.");
-      }
-  
-      // Verifica se há uso em andamento para este veículo
-      db.query(
-        "SELECT COUNT(*) AS count FROM uso_veiculos WHERE veiculo_id = ? AND (km_final IS NULL OR data_hora_final IS NULL)",
+    const { nome, placa, km, ultimaTrocaOleo, modelo, justificativaKm } = req.body;
+
+    // Primeiro, obtém o km atual do veículo para comparar
+    db.query(
+        "SELECT km AS currentKm FROM veiculos WHERE id = ?",
         [id],
-        (err, result) => {
-          if (err) {
-            console.error("Erro ao verificar uso em andamento:", err);
-            return res.status(500).send("Erro ao verificar uso em andamento.");
-          }
-          if (result[0].count > 0) {
-            return res.status(400).send("Não é possível atualizar o veículo, pois há um uso em andamento.");
-          } else {
+        (err, resultVehicle) => {
+            if (err) {
+                console.error("Erro ao buscar dados do veículo:", err);
+                return res.status(500).send("Erro interno ao buscar dados do veículo.");
+            }
+            if (resultVehicle.length === 0) {
+                return res.status(404).send("Veículo não encontrado.");
+            }
+            const currentKm = parseInt(resultVehicle[0].currentKm, 10);
+
+            // Verifica se há algum uso em andamento para este veículo
             db.query(
-              "UPDATE veiculos SET nome = ?, placa = ?, km = ?, ultimaTrocaOleo = ?, modelo = ?, ano = ?, cor = ? WHERE id = ?",
-              [nome, placa, km, ultimaTrocaOleo, modelo, ano, cor, id],
-              (err) => {
-                if (err) {
-                  console.error("Erro ao atualizar veículo:", err);
-                  return res.status(500).send("Erro ao atualizar veículo.");
-                }
-                
-                // Se a quilometragem foi alterada, insere uma notificação com a justificativa
-                const userEmail = req.user ? req.user.email : 'E-mail não disponível';
-                db.query(
-                  "SELECT placa, modelo FROM veiculos WHERE id = ?",
-                  [id],
-                  (err, results) => {
+                "SELECT COUNT(*) AS count FROM uso_veiculos WHERE veiculo_id = ? AND (km_final IS NULL OR data_hora_final IS NULL)",
+                [id],
+                (err, result) => {
                     if (err) {
-                      console.error("Erro ao buscar dados do veículo:", err);
-                      return;
+                        console.error("Erro ao verificar uso em andamento:", err);
+                        return res.status(500).send("Erro ao verificar uso em andamento.");
                     }
-                    if (results.length === 0) {
-                      console.warn("Veículo não encontrado no banco de dados.");
-                      return;
+                    if (result[0].count > 0) {
+                        // Bloqueia a atualização se houver uso em andamento
+                        return res.status(400).send("Não é possível atualizar o veículo, pois há um uso em andamento.");
+                    } else {
+                        // Atualiza os dados do veículo
+                        db.query(
+                            "UPDATE veiculos SET nome = ?, placa = ?, km = ?, ultimaTrocaOleo = ?, modelo = ? WHERE id = ?",
+                            [nome, placa, km, ultimaTrocaOleo, modelo, id],
+                            (err) => {
+                                if (err) {
+                                    console.error("Erro ao atualizar veículo:", err);
+                                    return res.status(500).send("Erro ao atualizar veículo.");
+                                }
+
+                                // Se a quilometragem foi alterada, insere uma notificação com a justificativa e o usuário responsável
+                                // Obtém ID e e-mail do usuário autenticado
+                                //const userId = req.user ? req.user.id : 'Desconhecido';
+                                const userEmail = req.user ? req.user.email : 'E-mail não disponível';
+
+                                // Primeiro, busque os detalhes do veículo no banco de dados
+                                db.query(
+                                    "SELECT placa, modelo FROM veiculos WHERE id = ?",
+                                    [id],
+                                    (err, results) => {
+                                        if (err) {
+                                            console.error("Erro ao buscar dados do veículo:", err);
+                                            return;
+                                        }
+
+                                        if (results.length === 0) {
+                                            console.warn("Veículo não encontrado no banco de dados.");
+                                            return;
+                                        }
+
+                                        const { placa, modelo } = results[0];
+
+                                        if (parseInt(km, 10) !== currentKm) {
+                                            const mensagem = `Usuário (${userEmail}) alterou a quilometragem do veículo (Placa: ${placa}, Modelo: ${modelo}) de ${currentKm} para ${km}. Justificativa: ${justificativaKm || 'Sem justificativa.'}`;
+
+                                            db.query(
+                                                "INSERT INTO notificacoes (mensagem, data_hora) VALUES (?, NOW())",
+                                                [mensagem],
+                                                (err) => {
+                                                    if (err) {
+                                                        console.error("Erro ao inserir notificação de km editado:", err);
+                                                    }
+                                                }
+                                            );
+                                        }
+                                    }
+                                );
+
+
+
+
+                                res.redirect('/');
+                            }
+                        );
                     }
-                    const { placa, modelo } = results[0];
-                    if (parseInt(km, 10) !== currentKm) {
-                      const mensagem = `Usuário (${userEmail}) alterou a quilometragem do veículo (Placa: ${placa}, Modelo: ${modelo}) de ${currentKm} para ${km}. Justificativa: ${justificativaKm || 'Sem justificativa.'}`;
-                      db.query(
-                        "INSERT INTO notificacoes (mensagem, data_hora) VALUES (?, NOW())",
-                        [mensagem],
-                        (err) => {
-                          if (err) {
-                            console.error("Erro ao inserir notificação de km editado:", err);
-                          }
-                        }
-                      );
-                    }
-                  }
-                );
-                res.redirect('/');
-              }
+                }
             );
-          }
         }
-      );
-    });
-  });
-  
-  
+    );
+});
+
 
 
 
@@ -1554,7 +1555,7 @@ app.post('/excluir-veiculo/:id', isAuthenticated, isAdmin, (req, res) => {
 });
 
 // Rota de notificações: mostra veículos que precisam trocar óleo e notificações de alteração de quilometragem
-app.get('/notificacoes', isAuthenticated,isAdmin, (req, res) => {
+app.get('/notificacoes', isAuthenticated, (req, res) => {
     // Query para veículos que precisam trocar óleo
     const oilQuery = `
       SELECT *, (km - ultimaTrocaOleo) AS kmDesdeUltimaTroca 
@@ -1901,88 +1902,42 @@ app.get('/reembolsos', async (req, res) => {
 
 app.get('/relatorio-consumo', isAuthenticated, async (req, res) => {
     try {
-      // 1) Parâmetros de busca
-      const { motorista, startDate, endDate } = req.query;
-  
-      // 2) Constantes de negócio
-      const eficiencia    = 10;    // km por litro
-      const precoGasolina = 6.45;  // R$
-  
-      // 3) Carrega a lista de motoristas (id e email) para popular o <select>
-      const motoristasList = await query(
-        'SELECT id, email FROM motoristas ORDER BY email'
-      );
-  
-      // 4) Constrói os filtros dinâmicos
-      const filters = ['uso.km_final IS NOT NULL'];
-      const params  = [];
-  
-      // Filtra pelo e-mail do motorista (com lower e trim)
-      if (motorista) {
-        filters.push('LOWER(TRIM(motoristas.email)) = LOWER(TRIM(?))');
-        params.push(motorista);
-      }
-      if (startDate) {
-        filters.push('DATE(uso.data_criacao) >= ?');
-        params.push(startDate);
-      }
-      if (endDate) {
-        filters.push('DATE(uso.data_criacao) <= ?');
-        params.push(endDate);
-      }
-      const whereClause = filters.length ? 'WHERE ' + filters.join(' AND ') : '';
-  
-      //console.log('WHERE CLAUSE:', whereClause);
-      //console.log('PARAMS:', params);
-  
-      // 5) Função auxiliar para agregar por dia, mês ou ano
-      const agregar = async (groupExpr, label) => {
-        const sql = `
-          SELECT
-            motoristas.email AS motorista,
-            ${groupExpr} AS ${label},
-            ROUND(SUM((uso.km_final - uso.km_inicial) / ?), 2) AS consumo_estimado,
-            ROUND(SUM((uso.km_final - uso.km_inicial) / ? * ?), 2) AS custo_estimado
-          FROM uso_veiculos AS uso
-          JOIN veiculos ON uso.veiculo_id = veiculos.id
-          JOIN motoristas ON motoristas.email = uso.motorista
-          ${whereClause}
-          GROUP BY motoristas.email, ${groupExpr}
-          ORDER BY ${groupExpr} DESC, motoristas.email
-        `;
-        console.log('SQL:', sql);
-        return await query(sql, [eficiencia, eficiencia, precoGasolina, ...params]);
-      };
-  
-      // 6) Executa as agregações
-      const resumoDiario  = await agregar("DATE(uso.data_criacao)", "dia");
-      const resumoMensal  = await agregar("DATE_FORMAT(uso.data_criacao, '%Y-%m')", "mes");
-      const resumoAnual   = await agregar("YEAR(uso.data_criacao)", "ano");
-  
-      //console.log('Resumo Diário:', resumoDiario);
-     // console.log('Resumo Mensal:', resumoMensal);
-      //console.log('Resumo Anual:', resumoAnual);
-  
-      // 7) Renderiza a view
-      res.render('relatorioConsumo', {
-        title: 'Relatório de Consumo por Motorista',
-        activePage: 'relatorioConsumo',
-        filtro: { motorista, startDate, endDate },
-        motoristasList,
-        resumoDiario,
-        resumoMensal,
-        resumoAnual
-      });
-      
+        // Fator de consumo: eficiência média em km por litro
+        const eficiencia = 10; // km por litro 
+        // Preço da gasolina
+        const precoGasolina = 6.45;
+
+        // Consulta para buscar os registros de uso com o cálculo da distância, consumo estimado e custo
+        const consumoResult = await query(
+            `
+        SELECT 
+          uso.id, 
+          veiculos.placa, 
+          uso.motorista, 
+          uso.km_inicial, 
+          uso.km_final, 
+          (uso.km_final - uso.km_inicial) AS distancia,
+          ROUND((uso.km_final - uso.km_inicial) / ?, 2) AS consumo_estimado,
+          ROUND(((uso.km_final - uso.km_inicial) / ?) * ?, 2) AS custo_estimado
+        FROM uso_veiculos AS uso
+        JOIN veiculos ON uso.veiculo_id = veiculos.id
+        WHERE uso.km_final IS NOT NULL
+        ORDER BY uso.data_criacao DESC
+        `,
+            [eficiencia, eficiencia, precoGasolina]
+        );
+
+        res.render('relatorioConsumo', {
+            title: 'Relatório de Consumo Estimado',
+            layout: 'layout',
+            activePage: 'relatorioConsumo',
+            consumoResult
+        });
     } catch (err) {
-      console.error(err);
-      res.status(500).send('Erro no servidor ao gerar relatório de consumo.');
+        console.error(err);
+        res.status(500).send('Erro no servidor ao gerar relatório de consumo.');
     }
-  });
-  
-  
-  
-  
+});
 ////////////////////////////////////////////////////////////////////////////////////
 
 app.get('/search', isAuthenticated, async (req, res) => {
@@ -2027,7 +1982,7 @@ app.get('/search', isAuthenticated, async (req, res) => {
         res.status(500).send("Erro no servidor ao realizar busca.");
     }
 });
-/*
+
 /// API FIPE
 const axios = require('axios');
 
@@ -2143,55 +2098,12 @@ function parsePrice(priceStr) {
     }
   });
 
-  app.get('/api/marcas', async (req, res) => {
-    try {
-      const response = await axios.get('https://parallelum.com.br/fipe/api/v2/cars/brands');
-      res.json(response.data);
-    } catch (error) {
-      console.error('Erro ao consultar marcas:', error);
-      res.status(500).json({ error: 'Erro ao carregar marcas' });
-    }
-  });
-  app.get('/api/modelos', async (req, res) => {
-    const { marca } = req.query;
-    if (!marca) {
-      return res.status(400).json({ error: 'Marca não informada' });
-    }
-    try {
-      const response = await axios.get(`https://parallelum.com.br/fipe/api/v2/cars/brands/${marca}/models`);
-      // Se a resposta for um array, use-a diretamente, caso contrário, tente usar response.data.modelos
-      const modelos = Array.isArray(response.data) ? response.data : response.data.modelos;
-      res.json(modelos);
-    } catch (error) {
-      console.error('Erro ao consultar modelos:', error);
-      res.status(500).json({ error: 'Erro ao carregar modelos' });
-    }
-  });
-  
-  app.get('/api/anos', async (req, res) => {
-    const { marca, modelo } = req.query;
-    if (!marca || !modelo) {
-      return res.status(400).json({ error: 'Marca e modelo são obrigatórios' });
-    }
-    try {
-      const response = await axios.get(`https://parallelum.com.br/fipe/api/v2/cars/brands/${marca}/models/${modelo}/years`);
-      res.json(response.data);
-    } catch (error) {
-      console.error('Erro ao consultar anos:', error);
-      res.status(500).json({ error: 'Erro ao carregar anos' });
-    }
-  });
 
-
-  */  
-
-
-  
 // Socket.IO: conexão com o cliente
 io.on("connection", (socket) => {
     console.log("Cliente conectado via Socket.IO.");
 });
-/*
+
 // GPS - Configura CORS e rota pra atualizar localização
 const cors = require('cors');
 app.use(cors({
@@ -2206,7 +2118,6 @@ app.post('/update-location', (req, res) => {
     res.json({ status: 'ok', received: req.body });
 });
 
-*/
 
 // Rotas pra servir o manifest e o service worker (PWA)
 //app.get('/manifest.json', (req, res) => {

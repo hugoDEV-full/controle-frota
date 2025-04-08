@@ -1,11 +1,14 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= typeof title !== 'undefined' ? title : 'Controle de Frota' %></title>
+  <title>
+    <%= typeof title !=='undefined' ? title : 'Controle de Frota' %>
+  </title>
 
-  
+
   <!-- Bootstrap CSS -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
@@ -18,11 +21,13 @@
       flex-direction: column;
       min-height: 100vh;
     }
+
     .container-wrapper {
       display: flex;
       flex: 1;
       overflow: hidden;
     }
+
     /* Sidebar fixa */
     .sidebar {
       background-color: #f8f9fa;
@@ -31,18 +36,22 @@
       overflow: hidden;
       width: 250px;
     }
+
     /* Estado colapsado: largura menor e apenas ícones */
     .sidebar.collapsed {
       width: 80px;
     }
+
     .sidebar ul {
       list-style: none;
       padding: 0;
       margin: 0;
     }
+
     .sidebar li {
       border-bottom: 1px solid #dee2e6;
     }
+
     .sidebar a {
       display: flex;
       align-items: center;
@@ -51,11 +60,13 @@
       text-decoration: none;
       transition: background-color 0.2s, color 0.2s;
     }
+
     .sidebar a:hover,
     .sidebar a.active {
       background-color: #495057;
       color: #fff;
     }
+
     /* Ícone sempre visível e texto que some quando colapsado */
     .sidebar i {
       font-size: 1.5rem;
@@ -63,19 +74,23 @@
       min-width: 30px;
       text-align: center;
     }
+
     .sidebar.collapsed a span.menu-text {
       display: none;
     }
+
     /* Conteúdo principal */
     main {
       flex: 1;
       padding: 1rem;
       overflow-y: auto;
     }
+
     /* Navbar */
     .navbar {
       flex-shrink: 0;
     }
+
     /* Rodapé */
     footer {
       background-color: #f8f9fa;
@@ -86,20 +101,20 @@
     }
 
     #scrollBtn {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  display: none;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  font-size: 24px;
-  text-align: center;
-  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-}
-
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      font-size: 24px;
+      text-align: center;
+      box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    }
   </style>
 </head>
+
 <body>
   <!-- Navbar -->
   <nav class="navbar navbar-dark bg-dark">
@@ -113,9 +128,11 @@
         <input class="form-control me-2" type="search" placeholder="Buscar..." aria-label="Buscar" name="q">
         <button class="btn btn-outline-success" type="submit">Buscar</button>
       </form>
-      
+
       <div>
+
         <a href="/notificacoes" class="btn btn-primary me-2">Notificações</a>
+
         <a href="/logout" class="btn btn-primary">Sair</a>
       </div>
     </div>
@@ -170,10 +187,10 @@
             <span class="menu-text">Relatório Consumo</span>
           </a>
         </li>
-        
-        
-        
-        
+
+
+
+
       </ul>
     </aside>
 
@@ -183,32 +200,32 @@
       <%- body %>
     </main>
     <!-- Botão de Scroll -->
-<button id="scrollBtn" class="btn btn-primary">
-  <i id="scrollIcon" class="bi bi-chevron-expand"></i>
+    <button id="scrollBtn" class="btn btn-primary">
+      <i id="scrollIcon" class="bi bi-chevron-expand"></i>
 
-</button>
+    </button>
 
-<script>
-  document.addEventListener("DOMContentLoaded", function () {
-    const scrollBtn = document.getElementById("scrollBtn");
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const scrollBtn = document.getElementById("scrollBtn");
 
-    window.addEventListener("scroll", function () {
-      if (window.scrollY > 100) {
-        scrollBtn.style.display = "block";
-      } else {
-        scrollBtn.style.display = "none";
-      }
-    });
+        window.addEventListener("scroll", function () {
+          if (window.scrollY > 100) {
+            scrollBtn.style.display = "block";
+          } else {
+            scrollBtn.style.display = "none";
+          }
+        });
 
-    scrollBtn.addEventListener("click", function () {
-      if (window.scrollY > window.innerHeight / 2) {
-        window.scrollTo({ top: 0, behavior: "smooth" }); // Sobe rápido
-      } else {
-        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); // Desce rápido
-      }
-    });
-  });
-</script>
+        scrollBtn.addEventListener("click", function () {
+          if (window.scrollY > window.innerHeight / 2) {
+            window.scrollTo({ top: 0, behavior: "smooth" }); // Sobe rápido
+          } else {
+            window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" }); // Desce rápido
+          }
+        });
+      });
+    </script>
   </div>
 
   <!-- Rodapé -->
@@ -217,14 +234,14 @@
       <span>&copy; 2025 Controle de Frota. Todos os direitos reservados.</span>
     </div>
   </footer>
-  
- 
+
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     // Inicializa os tooltips
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
     [...tooltipTriggerList].forEach(el => new bootstrap.Tooltip(el));
-    
+
     // Toggle da sidebar
     const toggleSidebar = document.getElementById('toggleSidebar');
     const sidebar = document.getElementById('sidebar');
@@ -234,4 +251,5 @@
     });
   </script>
 </body>
+
 </html>

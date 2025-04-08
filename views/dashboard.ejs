@@ -573,7 +573,7 @@
         </div>
       </div>
     </div>
-
+    <% if (user && user.role === 'admin') { %>
     <!-- Tabela de Manutenções Pendentes -->
     <div class="row mt-4">
       <div class="col-md-12">
@@ -624,6 +624,7 @@
         </table>
       </div>
     </div>
+    <% } %>
   </div>
 
   <!-- Scripts -->

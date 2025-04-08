@@ -248,7 +248,7 @@ Adicionar relatório de consumo estimado de combustível por uso /  veículo.
         { tipo: 'Inspeção da Bateria', kmIntervalo: 100 },
         { tipo: 'Inspeção do Sistema de Escape', kmIntervalo: 100 },
         { tipo: 'Verificação dos Cabos e Correias', kmIntervalo: 100 }]
-
+🔹Relatorio consumo com pesquisa por motorista e intervalo de datas, ano e cor adicionado a registrar e editar veiculo e ao banco
 🔹 Outros
 Manutenções pendentes registradas.
 
@@ -275,3 +275,5 @@ Registro do local de partida e destino da viagem.
 Revisão de rotas para segurança.
 
 Revisão de rotas em relação ao papel do administrador.
+
+
