@@ -1846,7 +1846,7 @@ app.post('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin, (req, re
 });
 
 // Rota para listar todas as manutenções (de todos os veículos)
-app.get('/manutencoes', isAuthenticated, isAdmin, (req, res) => {
+app.get('/manutencoes', isAuthenticated,  (req, res) => {
     const query = `
       SELECT m.*, v.placa, v.nome as veiculo_nome 
       FROM manutencoes m
@@ -1887,7 +1887,7 @@ app.post('/manutencoes/realizada/:id', isAuthenticated, isAdmin, (req, res) => {
 /* Fim das funcionalidades de manutenção */
 
 // Rota para cadastro de novo reembolso
-app.post('/reembolsos', upload.single('comprovante'), async (req, res) => {
+app.post('/reembolsos', upload.single('comprovante'), isAuthenticated,async (req, res) => {
     try {
         const { motorista_id, valor } = req.body;
         // Se um arquivo foi enviado, obtenha o caminho
@@ -1905,7 +1905,7 @@ app.post('/reembolsos', upload.single('comprovante'), async (req, res) => {
     }
 });
 // Rota para exibir o formulário, a lista de reembolsos e os dados para o gráfico
-app.get('/reembolsos', async (req, res) => {
+app.get('/reembolsos', isAuthenticated, async (req, res) => {
     try {
         // Consulta para buscar os reembolsos cadastrados com os dados do motorista
         const reembolsos = await query(`

@@ -17,7 +17,7 @@
       </div>
     <% } %>
 
-    <form action="/registrar-multa/<%= veiculo.id %>" method="POST">
+    <form action="/registrar-multa/<%= veiculo.id %>" method="POST" onsubmit="return confirm(' Você revisou as informações ? Deseja realmente confirmar registrar multa?');">
 
       <div class="mb-3">
         <label for="data_multa" class="form-label">Data e Hora da Multa</label>

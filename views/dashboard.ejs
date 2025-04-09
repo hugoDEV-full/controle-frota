@@ -111,10 +111,11 @@
                   <i class="bi bi-pencil-square"></i> Editar
                 </a>
                 <form action="/excluir-veiculo/<%= veiculo.id %>" method="POST" style="display:inline;">
-                  <button type="submit" class="btn btn-danger" onclick="return confirm('Tem certeza que deseja excluir este veículo?');">
+                  <button type="submit" class="btn btn-danger" onclick="return confirm('Excluir este veículo é irreversível. Tem certeza que deseja realmente excluir este veículo?');">
                     <i class="bi bi-trash"></i> Excluir
                   </button>
                 </form>
+                
               </td>
             </tr>
           <% }); %>
@@ -573,7 +574,7 @@
         </div>
       </div>
     </div>
-    <% if (user && user.role === 'admin') { %>
+    
       <!-- Tabela de Manutenções Pendentes -->
       <div class="row mt-4">
         <div class="col-md-12">
@@ -611,8 +612,10 @@
                       </td>
                       <td>
                         <form action="/manutencoes/realizada/<%= m.id %>" method="POST">
-                          <button type="submit" class="btn btn-sm btn-success">Marcar como Realizada</button>
+                          <button type="submit" class="btn btn-sm btn-success" onclick="return confirm('Marcar como manutenção realizada é irreversível. Tem certeza que deseja realmente marcar como realizada?');">Marcar como Realizada</button>
                         </form>
+                        
+                        
                       </td>
                     </tr>
                   <% }); %>
@@ -626,7 +629,7 @@
           </div>
         </div>
       </div>
-    <% } %>
+   
     
   </div>
 

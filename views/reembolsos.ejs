@@ -17,7 +17,7 @@
     <div class="card mb-4">
       <div class="card-header">Novo Reembolso</div>
       <div class="card-body">
-        <form action="/reembolsos" method="POST" enctype="multipart/form-data">
+        <form action="/reembolsos" method="POST" enctype="multipart/form-data" onsubmit="return confirm('Revisou as informações? Deseja realmente confirmar registrar reembolso?');">
           <div class="mb-3">
             <label for="motorista_id" class="form-label">Motorista</label>
             <select name="motorista_id" id="motorista_id" class="form-select" required>

@@ -12,90 +12,78 @@
   <div class="container mt-5">
     <h1>Notificações - Troca de Óleo</h1>
 
-    <% if(oilVehicles.length> 0) { %>
-      <table class="table table-bordered">
-        <thead>
-          <tr>
-            <th>ID</th>
-            <th>Placa</th>
-            <th>Nome</th>
-            <th>Km Atual</th>
-            <th>Última Troca de Óleo</th>
-            <th>Kms Desde Última Troca</th>
-            <th>Ação</th>
-          </tr>
-        </thead>
-        <tbody>
-          <% oilVehicles.forEach(function(veiculo) { %>
+    <% if(oilVehicles.length > 0) { %>
+      <div class="table-responsive">
+        <table class="table table-bordered">
+          <thead>
             <tr>
-              <td>
-                <%= veiculo.id %>
-              </td>
-              <td>
-                <%= veiculo.placa %>
-              </td>
-              <td>
-                <%= veiculo.nome %>
-              </td>
-              <td>
-                <%= veiculo.km %>
-              </td>
-              <td>
-                <%= veiculo.ultimaTrocaOleo %>
-              </td>
-              <td>
-                <%= veiculo.km - veiculo.ultimaTrocaOleo %>
-              </td>
-              <td>
-                <!-- Botão para marcar que a troca foi realizada -->
-                <form action="/troca-feita/<%= veiculo.id %>" method="POST"
-                  onsubmit="return confirm('Confirmar que a troca de óleo foi realizada?');">
-                  <button type="submit" class="btn btn-success btn-sm">Troca Realizada</button>
-                </form>
-              </td>
+              <th>ID</th>
+              <th>Placa</th>
+              <th>Nome</th>
+              <th>Km Atual</th>
+              <th>Última Troca de Óleo</th>
+              <th>Kms Desde Última Troca</th>
+              <th>Ação</th>
             </tr>
+          </thead>
+          <tbody>
+            <% oilVehicles.forEach(function(veiculo) { %>
+              <tr>
+                <td><%= veiculo.id %></td>
+                <td><%= veiculo.placa %></td>
+                <td><%= veiculo.nome %></td>
+                <td><%= veiculo.km %></td>
+                <td><%= veiculo.ultimaTrocaOleo %></td>
+                <td><%= veiculo.km - veiculo.ultimaTrocaOleo %></td>
+                <td>
+                  <!-- Botão para marcar que a troca foi realizada -->
+                  <form action="/troca-feita/<%= veiculo.id %>" method="POST" onsubmit="return confirm('A troca de óleo é irreversível. Deseja realmente confirmar que a troca foi realizada?');">
+                    <button type="submit" class="btn btn-success btn-sm">Troca Realizada</button>
+                  </form>
+                </td>
+              </tr>
             <% }); %>
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <div class="alert alert-info">
+        Nenhum veículo necessita de troca de óleo.
+      </div>
+    <% } %>
+
+    <!-- Seção para Notificações de Alteração de Quilometragem -->
+    <section class="mt-5">
+      <h2>Notificações de Alteração de Quilometragem</h2>
+      <% if(kmNotifications && kmNotifications.length > 0) { %>
+        <ul class="list-group">
+          <% kmNotifications.forEach(function(notif) { %>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <%= notif.mensagem %> - 
+                <small>
+                  <%= new Date(notif.data_hora).toLocaleString() %>
+                </small>
+              </div>
+              <form action="/excluir-notificacao-alteracao-km/<%= notif.id %>" method="POST"
+                onsubmit="return confirm('Excluir essa notificação é irreversível. Tem certeza que deseja excluir essa notificação?');" style="margin: 0;">
+                <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+              </form>
+            </li>
+          <% }); %>
+        </ul>
       <% } else { %>
-        <div class="alert alert-info">
-          Nenhum veículo necessita de troca de óleo.
-        </div>
-        <% } %>
+        <p>Nenhuma notificação de alteração de quilometragem.</p>
+      <% } %>
+    </section>
 
-          <!-- Seção para Notificações de Alteração de Quilometragem -->
-          <section class="mt-5">
-            <h2>Notificações de Alteração de Quilometragem</h2>
-            <% if(kmNotifications && kmNotifications.length> 0) { %>
-              <ul class="list-group">
-                <% kmNotifications.forEach(function(notif) { %>
-                  <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <div>
-                      <%= notif.mensagem %>
-                        - <small>
-                          <%= new Date(notif.data_hora).toLocaleString() %>
-                        </small>
-                    </div>
-                    <form action="/excluir-notificacao-alteracao-km/<%= notif.id %>" method="POST"
-                      onsubmit="return confirm('Tem certeza que deseja excluir essa notificação?');" style="margin: 0;">
-                      <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
-                    </form>
-                  </li>
-                  <% }); %>
-              </ul>
-              <% } else { %>
-                <p>Nenhuma notificação de alteração de quilometragem.</p>
-                <% } %>
-          </section>
+    <!-- Lista de notificações em tempo real via Socket.IO -->
+    <section class="mt-5">
+      <h2>Notificações em Tempo Real</h2>
+      <ul id="notificationList" class="list-group"></ul>
+    </section>
 
-
-          <!-- Lista de notificações em tempo real via Socket.IO -->
-          <section class="mt-5">
-            <h2>Notificações em Tempo Real</h2>
-            <ul id="notificationList" class="list-group"></ul>
-          </section>
-
-          <a href="/" class="btn btn-primary mt-3">Voltar</a>
+    <a href="/" class="btn btn-primary mt-3">Voltar</a>
   </div>
 
   <!-- Socket.IO -->
