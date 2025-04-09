@@ -44,32 +44,34 @@
     <div class="card mb-4">
       <div class="card-header">Reembolsos Cadastrados</div>
       <div class="card-body">
-        <table class="table table-striped">
-          <thead>
-            <tr>
-              <th>Motorista</th>
-              <th>Valor</th>
-              <th>Comprovante</th>
-              <th>Data</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% reembolsos.forEach(function(reembolso) { %>
+        <div class="table-responsive">
+          <table class="table table-striped">
+            <thead>
               <tr>
-                <td><%= reembolso.motorista_nome %></td>
-                <td>R$ <%= reembolso.valor %></td>
-                <td>
-                  <% if (reembolso.comprovante) { %>
-                    <a href="/uploads/<%= reembolso.comprovante %>" target="_blank">Visualizar</a>
-                  <% } else { %>
-                    Sem comprovante
-                  <% } %>
-                </td>
-                <td><%= new Date(reembolso.criado_em).toLocaleDateString('pt-BR') %></td>
+                <th>Motorista</th>
+                <th>Valor</th>
+                <th>Comprovante</th>
+                <th>Data</th>
               </tr>
-            <% }); %>
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              <% reembolsos.forEach(function(reembolso) { %>
+                <tr>
+                  <td><%= reembolso.motorista_nome %></td>
+                  <td>R$ <%= reembolso.valor %></td>
+                  <td>
+                    <% if (reembolso.comprovante) { %>
+                      <a href="/uploads/<%= reembolso.comprovante %>" target="_blank">Visualizar</a>
+                    <% } else { %>
+                      Sem comprovante
+                    <% } %>
+                  </td>
+                  <td><%= new Date(reembolso.criado_em).toLocaleDateString('pt-BR') %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
