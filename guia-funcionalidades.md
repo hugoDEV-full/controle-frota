@@ -251,6 +251,7 @@ Adicionar relatório de consumo estimado de combustível por uso /  veículo.
 🔹Relatorio consumo com pesquisa por motorista e intervalo de datas, ano e cor adicionado a registrar e editar veiculo e ao banco
 🔹 Outros
 Manutenções pendentes registradas.
+🔹 Revisão de senha forte e confirmação de senha.
 
 Gráfico de reembolso
 
