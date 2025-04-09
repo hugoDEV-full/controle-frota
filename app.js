@@ -1171,13 +1171,13 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
 
 
 app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
-    // Supondo que o objeto req.user contenha a identificação do usuário logado
-    // e que o campo 'motorista' enviado no corpo da requisição deva ser igual ao usuário logado.
+    //  objeto req.user contem o email do usuário logado
+    // campo 'motorista' enviado no corpo da requisição deva ser igual ao email do usuário logado.
     const { id } = req.params;
     const { motorista, km_final, data_hora_final, multas_id, multas_descricao, finalidade, descricao } = req.body;
 
     // Verifica se o usuário logado é o mesmo que está tentando editar o uso
-    if (req.user && req.user.username !== motorista) {
+    if (req.user && req.user.email !== motorista) {
         return res.status(403).send('Você não tem permissão para editar este uso.');
     }
 
