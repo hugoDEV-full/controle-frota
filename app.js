@@ -2217,6 +2217,148 @@ function parsePrice(priceStr) {
 
 
   */
+////////////////////////////////////////////////////////////////conserto viavel ou nao
+const axios = require('axios');
+
+//
+// --- ROTA GET /conserto-viavel ---
+// Certifique-se de que o query traz os campos marca e marca_nome
+app.get('/conserto-viavel',isAuthenticated, async (req, res) => {
+  try {
+    const registros = await query(
+      `SELECT 
+         id, marca, marca_nome, modelo, modelo_nome, ano, valor_fipe, custo_conserto, conserto_viavel, dataCadastro
+       FROM carro_reparo
+       ORDER BY dataCadastro DESC`
+    );
+    res.render('conserto-viavel', { registros });
+  } catch (err) {
+    console.error('Erro ao buscar registros:', err);
+    res.render('conserto-viavel', { registros: [] });
+  }
+});
+
+// --- ROTA POST /salvar-avaliacao ---
+app.post('/salvar-avaliacao', isAuthenticated, (req, res) => {
+  // Extração dos dados incluindo os dois campos para a marca
+  const { marca, marca_nome, modelo, modelo_nome, ano, valor_fipe, custo_conserto, conserto_viavel } = req.body;
+
+  const sql = `
+    INSERT INTO carro_reparo (marca, marca_nome, modelo, modelo_nome, ano, valor_fipe, custo_conserto, conserto_viavel)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const params = [marca, marca_nome, modelo, modelo_nome, ano, valor_fipe, custo_conserto, conserto_viavel];
+
+  db.query(sql, params, (err, result) => {
+    if (err) {
+      console.error("Erro ao salvar avaliação:", err);
+      return res.status(500).json({ error: 'Erro ao salvar avaliação.' });
+    }
+    res.json({ sucesso: true, mensagem: 'Avaliação salva com sucesso.' });
+  });
+});
+
+// --- ROTA POST /conserto-viavel (Avalia viabilidade sem salvar) ---
+// [Código existente para consulta FIPE e cálculo permanece inalterado]
+app.post('/conserto-viavel', isAuthenticated , async (req, res) => {
+  try {
+    const { marca, modelo, ano: anoCodigo, custo_conserto } = req.body;
+    if (!marca || !modelo || !anoCodigo || !custo_conserto) {
+      return res.status(400).json({ sucesso: false, error: 'Dados incompletos.' });
+    }
+
+    // Consulta FIPE
+    const urlFipe = `https://parallelum.com.br/fipe/api/v1/carros/marcas/${marca}/modelos/${modelo}/anos/${anoCodigo}`;
+    const { data: fipeData } = await axios.get(urlFipe);
+    const valorStr = fipeData.Valor; // ex: "R$ 50.000,00"
+    const valor_fipe = parseFloat(
+      valorStr.replace(/[R$\s.]/g, '').replace(',', '.')
+    );
+
+    const percentual = (parseFloat(custo_conserto) / valor_fipe) * 100;
+    const conserto_viavel = percentual <= 70;
+    // extrai só o ano numérico do código "1992-1"
+    const ano_numero = parseInt(anoCodigo.split('-')[0], 10);
+
+    return res.json({
+      sucesso: true,
+      valor_fipe,
+      percentual_custo: percentual,
+      conserto_viavel,
+      mensagem: conserto_viavel
+        ? 'Vale a pena fazer o conserto.'
+        : 'Não vale a pena o conserto, pois o custo ultrapassa 70% do valor do carro.',
+      ano_numero
+    });
+  } catch (error) {
+    console.error('Erro na rota /conserto-viavel:', error);
+    return res.status(500).json({ sucesso: false, error: error.message });
+  }
+});
+
+// --- Rotas da API FIPE (permanece inalterado) ---
+app.get('/api/marcas', isAuthenticated, async (req, res) => {
+  try {
+    const { data } = await axios.get(
+      'https://parallelum.com.br/fipe/api/v1/carros/marcas'
+    );
+    res.json({ sucesso: true, marcas: data });
+  } catch (error) {
+    res.status(500).json({ sucesso: false, error: error.message });
+  }
+});
+
+
+  app.get('/api/modelos', isAuthenticated, async (req, res) => {
+    const { marca } = req.query;
+    if (!marca) {
+      return res.status(400).json({ sucesso: false, error: 'Marca obrigatória.' });
+    }
+    try {
+      const { data } = await axios.get(
+        `https://parallelum.com.br/fipe/api/v1/carros/marcas/${marca}/modelos`
+      );
+      res.json({ sucesso: true, modelos: data.modelos });
+    } catch (error) {
+      res.status(500).json({ sucesso: false, error: error.message });
+    }
+  });
+  
+  app.get('/api/anos',isAuthenticated, async (req, res) => {
+    const { marca, modelo } = req.query;
+    if (!marca || !modelo) {
+      return res
+        .status(400)
+        .json({ sucesso: false, error: 'Marca e modelo obrigatórios.' });
+    }
+    try {
+      const { data } = await axios.get(
+        `https://parallelum.com.br/fipe/api/v1/carros/marcas/${marca}/modelos/${modelo}/anos`
+      );
+      res.json({ sucesso: true, anos: data });
+    } catch (error) {
+      res.status(500).json({ sucesso: false, error: error.message });
+    }
+  });
+
+  app.post('/excluir-avaliacao/:id', isAuthenticated, async (req, res) => {
+    const { id } = req.params;
+    console.log("Tentando excluir avaliação com id:", id);
+    try {
+      const result = await query("DELETE FROM carro_reparo WHERE id = ?", [id]);
+      console.log("Resultado da exclusão:", result);
+      // Verifica se algum registro foi afetado
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ sucesso: false, error: "Registro não encontrado." });
+      }
+      res.json({ sucesso: true, mensagem: "Registro excluído com sucesso!" });
+    } catch (err) {
+      console.error("Erro ao excluir avaliação:", err);
+      res.status(500).json({ sucesso: false, error: "Erro interno no servidor." });
+    }
+  });
+  
+  
 
 
 

@@ -114,8 +114,8 @@
     }
   </style>
 </head>
-
-<body>
+<!-- oncontextmenu="return false; para esconder o clique direito -->
+<body oncontextmenu="return false;">
   <!-- Navbar -->
   <nav class="navbar navbar-dark bg-dark">
     <div class="container-fluid">
@@ -226,6 +226,17 @@
         });
       });
     </script>
+    <script>
+      // Previne o uso do F12, Ctrl+Shift+I, Ctrl+Shift+J e Ctrl+U
+      document.addEventListener('keydown', function (e) {
+        if (e.key === "F12" || 
+            (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J")) || 
+            (e.ctrlKey && e.key === "U")) {
+          e.preventDefault();
+        }
+      });
+    </script>
+    
   </div>
 
   <!-- Rodapé -->
