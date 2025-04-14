@@ -6,13 +6,21 @@
     <link rel="stylesheet" href="/styles.css">
     <!-- Certifique-se de incluir o CSS do Bootstrap -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+      /* Estilo opcional para a versão de impressão */
+      @media print {
+        .no-print {
+          display: none;
+        }
+      }
+    </style>
   </head>
   <body>
     <div class="container mt-4">
-      <h1>Relatório de Consumo Estimado por Motorista</h1>
+      <h1>Relatório de Consumo e Reembolso por Motorista</h1>
 
       <!-- Formulário de Busca -->
-      <form method="get" action="/relatorio-consumo" class="form-inline mb-4">
+      <form method="get" action="/relatorio-consumo" class="form-inline mb-4 no-print">
         <select name="motorista" class="form-control mr-2">
           <option value="">Todos os Motoristas</option>
           <% motoristasList.forEach(m => { %>
@@ -25,94 +33,202 @@
         <!-- Datas de filtro -->
         <input type="date" name="startDate" value="<%= filtro.startDate || '' %>" class="form-control mr-2"/>
         <input type="date" name="endDate" value="<%= filtro.endDate || '' %>" class="form-control mr-2"/>
-
+        
         <button type="submit" class="btn btn-primary mr-2">Buscar</button>
-        <a href="/relatorio-consumo" class="btn btn-secondary">Limpar</a>
+        <a href="/relatorio-consumo" class="btn btn-secondary no-print">Limpar</a>
       </form>
 
+      <!-- Função de impressão -->
+      <script>
+        function printSection(sectionId) {
+          var printContents = document.getElementById(sectionId).innerHTML;
+          var originalContents = document.body.innerHTML;
+          document.body.innerHTML = printContents;
+          window.print();
+          document.body.innerHTML = originalContents;
+          location.reload(); // para restaurar os eventos e o layout original
+        }
+      </script>
+
+      <!-- Relatórios de Consumo e Reembolso -->
+
       <!-- Resumo Diário -->
-      <h3>Consumo Diário</h3>
-      <div class="table-responsive mb-4">
-        <table class="table table-sm table-bordered">
-          <thead>
-            <tr>
-              <th>Motorista</th>
-              <th>Dia</th>
-              <th>Consumo (l)</th>
-              <th>Custo (R$)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% resumoDiario.forEach(r => { 
-                const d = new Date(r.dia);
-                const dd   = ('0' + d.getDate()).slice(-2);
-                const mm   = ('0' + (d.getMonth() + 1)).slice(-2);
-                const yyyy = d.getFullYear();
-            %>
+      <div id="diario">
+        <h3>Consumo Diário</h3>
+        <div class="table-responsive mb-2">
+          <table class="table table-sm table-bordered">
+            <thead>
               <tr>
-                <td><%= r.motorista %></td>
-                <td><%= dd + '/' + mm + '/' + yyyy %></td>
-                <td><%= r.consumo_estimado %></td>
-                <td><%= r.custo_estimado %></td>
+                <th>Motorista</th>
+                <th>Dia</th>
+                <th>Consumo (l)</th>
+                <th>Custo (R$)</th>
               </tr>
-            <% }) %>
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              <% resumoDiario.forEach(r => { 
+                  const d = new Date(r.dia);
+                  const dd   = ('0' + d.getDate()).slice(-2);
+                  const mm   = ('0' + (d.getMonth() + 1)).slice(-2);
+                  const yyyy = d.getFullYear();
+              %>
+                <tr>
+                  <td><%= r.motorista %></td>
+                  <td><%= dd + '/' + mm + '/' + yyyy %></td>
+                  <td><%= r.consumo_estimado %></td>
+                  <td><%= r.custo_estimado %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <button onclick="printSection('diario')" class="btn btn-info no-print">Imprimir Consumo Diário</button>
+      </div>
+
+      <!-- Resumo Diário de Reembolso -->
+      <div id="diarioReembolso" class="mt-4">
+        <h3>Reembolso Diário</h3>
+        <div class="table-responsive mb-2">
+          <table class="table table-sm table-bordered">
+            <thead>
+              <tr>
+                <th>Motorista</th>
+                <th>Dia</th>
+                <th>Reembolso (R$)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% reembolsoDiario.forEach(r => { 
+                  const d = new Date(r.dia);
+                  const dd   = ('0' + d.getDate()).slice(-2);
+                  const mm   = ('0' + (d.getMonth() + 1)).slice(-2);
+                  const yyyy = d.getFullYear();
+              %>
+                <tr>
+                  <td><%= r.motorista %></td>
+                  <td><%= dd + '/' + mm + '/' + yyyy %></td>
+                  <td><%= r.reembolso %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <button onclick="printSection('diarioReembolso')" class="btn btn-info no-print">Imprimir Reembolso Diário</button>
       </div>
 
       <!-- Resumo Mensal -->
-      <h3>Consumo Mensal</h3>
-      <div class="table-responsive mb-4">
-        <table class="table table-sm table-bordered">
-          <thead>
-            <tr>
-              <th>Motorista</th>
-              <th>Mês/Ano</th>
-              <th>Consumo (l)</th>
-              <th>Custo (R$)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% resumoMensal.forEach(r => { 
-                const [ano, mes] = r.mes.split('-');
-            %>
+      <div id="mensal" class="mt-4">
+        <h3>Consumo Mensal</h3>
+        <div class="table-responsive mb-2">
+          <table class="table table-sm table-bordered">
+            <thead>
               <tr>
-                <td><%= r.motorista %></td>
-                <td><%= mes + '/' + ano %></td>
-                <td><%= r.consumo_estimado %></td>
-                <td><%= r.custo_estimado %></td>
+                <th>Motorista</th>
+                <th>Mês/Ano</th>
+                <th>Consumo (l)</th>
+                <th>Custo (R$)</th>
               </tr>
-            <% }) %>
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              <% resumoMensal.forEach(r => { 
+                  const [ano, mes] = r.mes.split('-');
+              %>
+                <tr>
+                  <td><%= r.motorista %></td>
+                  <td><%= mes + '/' + ano %></td>
+                  <td><%= r.consumo_estimado %></td>
+                  <td><%= r.custo_estimado %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <button onclick="printSection('mensal')" class="btn btn-info no-print">Imprimir Consumo Mensal</button>
+      </div>
+
+      <!-- Resumo Mensal de Reembolso -->
+      <div id="mensalReembolso" class="mt-4">
+        <h3>Reembolso Mensal</h3>
+        <div class="table-responsive mb-2">
+          <table class="table table-sm table-bordered">
+            <thead>
+              <tr>
+                <th>Motorista</th>
+                <th>Mês/Ano</th>
+                <th>Reembolso (R$)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% reembolsoMensal.forEach(r => { 
+                  const [ano, mes] = r.mes.split('-');
+              %>
+                <tr>
+                  <td><%= r.motorista %></td>
+                  <td><%= mes + '/' + ano %></td>
+                  <td><%= r.reembolso %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <button onclick="printSection('mensalReembolso')" class="btn btn-info no-print">Imprimir Reembolso Mensal</button>
       </div>
 
       <!-- Resumo Anual -->
-      <h3>Consumo Anual</h3>
-      <div class="table-responsive mb-4">
-        <table class="table table-sm table-bordered">
-          <thead>
-            <tr>
-              <th>Motorista</th>
-              <th>Ano</th>
-              <th>Consumo (l)</th>
-              <th>Custo (R$)</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% resumoAnual.forEach(r => { %>
+      <div id="anual" class="mt-4">
+        <h3>Consumo Anual</h3>
+        <div class="table-responsive mb-2">
+          <table class="table table-sm table-bordered">
+            <thead>
               <tr>
-                <td><%= r.motorista %></td>
-                <td><%= r.ano %></td>
-                <td><%= r.consumo_estimado %></td>
-                <td><%= r.custo_estimado %></td>
+                <th>Motorista</th>
+                <th>Ano</th>
+                <th>Consumo (l)</th>
+                <th>Custo (R$)</th>
               </tr>
-            <% }) %>
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              <% resumoAnual.forEach(r => { %>
+                <tr>
+                  <td><%= r.motorista %></td>
+                  <td><%= r.ano %></td>
+                  <td><%= r.consumo_estimado %></td>
+                  <td><%= r.custo_estimado %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <button onclick="printSection('anual')" class="btn btn-info no-print">Imprimir Consumo Anual</button>
       </div>
 
-      <a href="/" class="btn btn-primary">Voltar</a>
+      <!-- Resumo Anual de Reembolso -->
+      <div id="anualReembolso" class="mt-4">
+        <h3>Reembolso Anual</h3>
+        <div class="table-responsive mb-2">
+          <table class="table table-sm table-bordered">
+            <thead>
+              <tr>
+                <th>Motorista</th>
+                <th>Ano</th>
+                <th>Reembolso (R$)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% reembolsoAnual.forEach(r => { %>
+                <tr>
+                  <td><%= r.motorista %></td>
+                  <td><%= r.ano %></td>
+                  <td><%= r.reembolso %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <button onclick="printSection('anualReembolso')" class="btn btn-info no-print">Imprimir Reembolso Anual</button>
+      </div>
+
+      <a href="/" class="btn btn-primary mt-4 no-print">Voltar</a>
     </div>
 
     <!-- Scripts do Bootstrap (dependências Popper e jQuery) -->
@@ -121,3 +237,4 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
   </body>
 </html>
+

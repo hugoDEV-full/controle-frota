@@ -8,13 +8,20 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Importa o adapter para escalas de tempo -->
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+  <style>
+    @media print {
+      .no-print {
+        display: none;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="container my-5">
     <h1 class="mb-4">Gerenciar Reembolsos</h1>
 
     <!-- Formulário para cadastro de reembolso -->
-    <div class="card mb-4">
+    <div class="card mb-4 no-print">
       <div class="card-header">Novo Reembolso</div>
       <div class="card-body">
         <form action="/reembolsos" method="POST" enctype="multipart/form-data" onsubmit="return confirm('Revisou as informações? Deseja realmente confirmar registrar reembolso?');">
@@ -40,7 +47,7 @@
       </div>
     </div>
 
-    <!-- Lista de reembolsos cadastrados -->
+    <!-- Lista de reembolsos detalhados -->
     <div class="card mb-4">
       <div class="card-header">Reembolsos Cadastrados</div>
       <div class="card-body">
@@ -75,6 +82,96 @@
       </div>
     </div>
 
+    <!-- Seção para reembolsos agregados por dia -->
+    <div id="reembolsosDiario" class="card mb-4">
+      <div class="card-header">Reembolsos Diários</div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered">
+            <thead>
+              <tr>
+                <th>Motorista</th>
+                <th>Dia</th>
+                <th>Total Reembolso (R$)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% reembolsoDiario.forEach(function(r) { %>
+                <tr>
+                  <td><%= r.motorista_nome %></td>
+                  <td><%= new Date(r.dia).toLocaleDateString('pt-BR') %></td>
+                  <td>R$ <%= r.total_reembolso %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <button onclick="printSection('reembolsosDiario')" class="btn btn-info no-print">Imprimir Reembolsos Diários</button>
+      </div>
+    </div>
+
+    <!-- Seção para reembolsos agregados por mês -->
+    <div id="reembolsosMensal" class="card mb-4">
+      <div class="card-header">Reembolsos Mensais</div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered">
+            <thead>
+              <tr>
+                <th>Motorista</th>
+                <th>Mês/Ano</th>
+                <th>Total Reembolso (R$)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% reembolsoMensal.forEach(function(r) { %>
+                <tr>
+                  <td><%= r.motorista_nome %></td>
+                  <% 
+                    // r.mes está no formato "YYYY-MM"
+                    const partes = r.mes.split('-');
+                    const ano = partes[0];
+                    const mes = partes[1];
+                  %>
+                  <td><%= mes + '/' + ano %></td>
+                  <td>R$ <%= r.total_reembolso %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <button onclick="printSection('reembolsosMensal')" class="btn btn-info no-print">Imprimir Reembolsos Mensais</button>
+      </div>
+    </div>
+
+    <!-- Seção para reembolsos agregados por ano -->
+    <div id="reembolsosAnual" class="card mb-4">
+      <div class="card-header">Reembolsos Anuais</div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered">
+            <thead>
+              <tr>
+                <th>Motorista</th>
+                <th>Ano</th>
+                <th>Total Reembolso (R$)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% reembolsoAnual.forEach(function(r) { %>
+                <tr>
+                  <td><%= r.motorista_nome %></td>
+                  <td><%= r.ano %></td>
+                  <td>R$ <%= r.total_reembolso %></td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+        <button onclick="printSection('reembolsosAnual')" class="btn btn-info no-print">Imprimir Reembolsos Anuais</button>
+      </div>
+    </div>
+
     <!-- Gráfico dos Reembolsos -->
     <div class="card">
       <div class="card-header">Gráfico de Reembolsos</div>
@@ -82,16 +179,30 @@
         <canvas id="reembolsosChart"></canvas>
       </div>
     </div>
+    
+    <a href="/" class="btn btn-primary my-4 no-print">Voltar</a>
   </div>
+
+  <!-- Função de impressão -->
+  <script>
+    function printSection(sectionId) {
+      var printContents = document.getElementById(sectionId).innerHTML;
+      var originalContents = document.body.innerHTML;
+      document.body.innerHTML = printContents;
+      window.print();
+      document.body.innerHTML = originalContents;
+      location.reload();
+    }
+  </script>
 
   <!-- Scripts do Bootstrap -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
-  
+
   <script>
     // Dados do gráfico vindos do servidor
     const reembolsosData = <%- JSON.stringify(reembolsosGrafico) %>;
   
-    // Agrupar valores por motorista
+    // Agrupar valores por motorista para o gráfico
     const reembolsosPorMotorista = {};
     reembolsosData.forEach(item => {
       if (!reembolsosPorMotorista[item.motorista_nome]) {
@@ -138,6 +249,5 @@
       }
     });
   </script>
-  
 </body>
 </html>

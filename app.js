@@ -1904,25 +1904,64 @@ app.post('/reembolsos', upload.single('comprovante'), isAuthenticated,async (req
         res.status(500).send('Erro ao cadastrar reembolso');
     }
 });
-// Rota para exibir o formulário, a lista de reembolsos e os dados para o gráfico
+// Rota para exibir o formulário, a lista de reembolsos detalhados, os dados para o gráfico e os reembolsos agregados
 app.get('/reembolsos', isAuthenticated, async (req, res) => {
     try {
-        // Consulta para buscar os reembolsos cadastrados com os dados do motorista
+        // Consulta para buscar os reembolsos detalhados com os dados do motorista
         const reembolsos = await query(`
-        SELECT r.*, m.nome as motorista_nome 
-        FROM reembolsos r 
-        JOIN motoristas m ON r.motorista_id = m.id 
-        ORDER BY r.criado_em ASC
-      `);
+            SELECT r.*, m.nome as motorista_nome 
+            FROM reembolsos r 
+            JOIN motoristas m ON r.motorista_id = m.id 
+            ORDER BY r.criado_em ASC
+        `);
 
         // Consulta para buscar motoristas para o formulário
         const motoristas = await query('SELECT id, nome FROM motoristas');
 
-        // Envie os dados completos dos reembolsos para a tabela e para o gráfico
+        // Agregação diária: soma dos valores de reembolso por motorista e por dia
+        const reembolsoDiario = await query(`
+            SELECT 
+              m.nome as motorista_nome,
+              DATE(r.criado_em) AS dia,
+              ROUND(SUM(r.valor), 2) AS total_reembolso
+            FROM reembolsos r
+            JOIN motoristas m ON r.motorista_id = m.id
+            GROUP BY m.nome, DATE(r.criado_em)
+            ORDER BY DATE(r.criado_em) DESC, m.nome
+        `);
+
+        // Agregação mensal: soma dos valores de reembolso por motorista e por mês
+        const reembolsoMensal = await query(`
+            SELECT 
+              m.nome as motorista_nome,
+              DATE_FORMAT(r.criado_em, '%Y-%m') AS mes,
+              ROUND(SUM(r.valor), 2) AS total_reembolso
+            FROM reembolsos r
+            JOIN motoristas m ON r.motorista_id = m.id
+            GROUP BY m.nome, DATE_FORMAT(r.criado_em, '%Y-%m')
+            ORDER BY DATE_FORMAT(r.criado_em, '%Y-%m') DESC, m.nome
+        `);
+
+        // Agregação anual: soma dos valores de reembolso por motorista e por ano
+        const reembolsoAnual = await query(`
+            SELECT 
+              m.nome as motorista_nome,
+              YEAR(r.criado_em) AS ano,
+              ROUND(SUM(r.valor), 2) AS total_reembolso
+            FROM reembolsos r
+            JOIN motoristas m ON r.motorista_id = m.id
+            GROUP BY m.nome, YEAR(r.criado_em)
+            ORDER BY YEAR(r.criado_em) DESC, m.nome
+        `);
+
+        // Renderiza a view enviando os dados para a tabela detalhada, gráfico e agregações
         res.render('reembolsos', {
             reembolsos,
             motoristas,
-            reembolsosGrafico: reembolsos, // mesma lista, utilizada também para o gráfico
+            reembolsosGrafico: reembolsos, // mesma lista utilizada para o gráfico
+            reembolsoDiario,
+            reembolsoMensal,
+            reembolsoAnual,
             title: 'Gerenciar Reembolsos',
             activePage: 'reembolsos'
         });
@@ -1932,13 +1971,14 @@ app.get('/reembolsos', isAuthenticated, async (req, res) => {
     }
 });
 
+
 app.get('/relatorio-consumo', isAuthenticated, async (req, res) => {
     try {
         // 1) Parâmetros de busca
         const { motorista, startDate, endDate } = req.query;
 
         // 2) Constantes de negócio
-        const eficiencia = 10;    // km por litro
+        const eficiencia = 10;       // km por litro
         const precoGasolina = 6.45;  // R$
 
         // 3) Carrega a lista de motoristas (id e email) para popular o <select>
@@ -1950,7 +1990,6 @@ app.get('/relatorio-consumo', isAuthenticated, async (req, res) => {
         const filters = ['uso.km_final IS NOT NULL'];
         const params = [];
 
-        // Filtra pelo e-mail do motorista (com lower e trim)
         if (motorista) {
             filters.push('LOWER(TRIM(motoristas.email)) = LOWER(TRIM(?))');
             params.push(motorista);
@@ -1965,10 +2004,7 @@ app.get('/relatorio-consumo', isAuthenticated, async (req, res) => {
         }
         const whereClause = filters.length ? 'WHERE ' + filters.join(' AND ') : '';
 
-        //console.log('WHERE CLAUSE:', whereClause);
-        //console.log('PARAMS:', params);
-
-        // 5) Função auxiliar para agregar por dia, mês ou ano
+        // 5) Função auxiliar para agregar consumo e custo (reembolso) por período
         const agregar = async (groupExpr, label) => {
             const sql = `
           SELECT
@@ -1982,34 +2018,55 @@ app.get('/relatorio-consumo', isAuthenticated, async (req, res) => {
           ${whereClause}
           GROUP BY motoristas.email, ${groupExpr}
           ORDER BY ${groupExpr} DESC, motoristas.email
-        `;
+            `;
             console.log('SQL:', sql);
             return await query(sql, [eficiencia, eficiencia, precoGasolina, ...params]);
         };
 
-        // 6) Executa as agregações
+        // 6) Função auxiliar para agregar apenas reembolso (baseado no custo)
+        const agregarReembolso = async (groupExpr, label) => {
+            const sql = `
+          SELECT
+            motoristas.email AS motorista,
+            ${groupExpr} AS ${label},
+            ROUND(SUM((uso.km_final - uso.km_inicial) / ? * ?), 2) AS reembolso
+          FROM uso_veiculos AS uso
+          JOIN veiculos ON uso.veiculo_id = veiculos.id
+          JOIN motoristas ON motoristas.email = uso.motorista
+          ${whereClause}
+          GROUP BY motoristas.email, ${groupExpr}
+          ORDER BY ${groupExpr} DESC, motoristas.email
+            `;
+            console.log('SQL Reembolso:', sql);
+            return await query(sql, [eficiencia, precoGasolina, ...params]);
+        };
+
+        // 7) Executa as agregações para consumo/custo e para reembolso
         const resumoDiario = await agregar("DATE(uso.data_criacao)", "dia");
         const resumoMensal = await agregar("DATE_FORMAT(uso.data_criacao, '%Y-%m')", "mes");
         const resumoAnual = await agregar("YEAR(uso.data_criacao)", "ano");
 
-        //console.log('Resumo Diário:', resumoDiario);
-        // console.log('Resumo Mensal:', resumoMensal);
-        //console.log('Resumo Anual:', resumoAnual);
+        const reembolsoDiario = await agregarReembolso("DATE(uso.data_criacao)", "dia");
+        const reembolsoMensal = await agregarReembolso("DATE_FORMAT(uso.data_criacao, '%Y-%m')", "mes");
+        const reembolsoAnual = await agregarReembolso("YEAR(uso.data_criacao)", "ano");
 
-        // 7) Renderiza a view
+        // 8) Renderiza a view, passando os resumos de consumo e reembolso
         res.render('relatorioConsumo', {
-            title: 'Relatório de Consumo por Motorista',
+            title: 'Relatório de Consumo e Reembolso por Motorista',
             activePage: 'relatorioConsumo',
             filtro: { motorista, startDate, endDate },
             motoristasList,
             resumoDiario,
             resumoMensal,
-            resumoAnual
+            resumoAnual,
+            reembolsoDiario,
+            reembolsoMensal,
+            reembolsoAnual
         });
 
     } catch (err) {
         console.error(err);
-        res.status(500).send('Erro no servidor ao gerar relatório de consumo.');
+        res.status(500).send('Erro no servidor ao gerar relatório.');
     }
 });
 
