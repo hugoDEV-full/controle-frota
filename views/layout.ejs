@@ -114,8 +114,8 @@
     }
   </style>
 </head>
-<!-- oncontextmenu="return false; para esconder o clique direito -->
-<body oncontextmenu="return false;">
+<!-- oncontextmenu="return false;" para esconder o clique direito -->
+<body >
   <!-- Navbar -->
   <nav class="navbar navbar-dark bg-dark">
     <div class="container-fluid">
@@ -143,50 +143,57 @@
     <!-- Sidebar fixa -->
     <aside id="sidebar" class="sidebar collapsed">
       <ul class="nav flex-column">
-        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Dashboard">
-          <a class="nav-link <%= (activePage === 'dashboard' ? 'active' : '') %>" href="/">
-            <i class="bi bi-speedometer2"></i>
-            <span class="menu-text">Dashboard</span>
-          </a>
-        </li>
-        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatório de Uso">
-          <a class="nav-link <%= (activePage === 'uso' ? 'active' : '') %>" href="/relatorio-uso">
-            <i class="bi bi-bar-chart"></i>
-            <span class="menu-text">Rel. de Uso</span>
-          </a>
-        </li>
-        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatório de Multas">
-          <a class="nav-link <%= (activePage === 'multas' ? 'active' : '') %>" href="/relatorio-multas">
-            <i class="bi bi-file-earmark-text"></i>
-            <span class="menu-text">Rel. de Multas</span>
-          </a>
-        </li>
-        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Registro de Motorista">
-          <a class="nav-link <%= (activePage === 'motorista' ? 'active' : '') %>" href="/registro-motorista">
-            <i class="bi bi-person-plus"></i>
-            <span class="menu-text">Reg. de Motorista</span>
-          </a>
-        </li>
-
-        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Manutenções">
-          <a class="nav-link <%= (activePage === 'manutencoes' ? 'active' : '') %>" href="/manutencoes">
-            <i class="bi bi-tools"></i>
-            <span class="menu-text">Manutenções</span>
-          </a>
-        </li>
-
-        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Reembolsos">
-          <a class="nav-link <%= (activePage === 'reembolsos' ? 'active' : '') %>" href="/reembolsos">
-            <i class="bi bi-cash-stack"></i>
-            <span class="menu-text">Reembolsos</span>
-          </a>
-        </li>
-        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatório de Consumo">
-          <a class="nav-link <%= (activePage === 'relatorioConsumo' ? 'active' : '') %>" href="/relatorio-consumo">
-            <i class="bi bi-speedometer2"></i>
-            <span class="menu-text">Relatório Consumo</span>
-          </a>
-        </li>
+        <ul class="menu">
+          <!-- Itens comuns para todos -->
+          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Dashboard">
+            <a class="nav-link <%= (activePage === 'dashboard' ? 'active' : '') %>" href="/">
+              <i class="bi bi-speedometer2"></i>
+              <span class="menu-text">Dashboard</span>
+            </a>
+          </li>
+          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatório de Uso">
+            <a class="nav-link <%= (activePage === 'uso' ? 'active' : '') %>" href="/relatorio-uso">
+              <i class="bi bi-bar-chart"></i>
+              <span class="menu-text">Rel. de Uso</span>
+            </a>
+          </li>
+          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Reembolsos">
+            <a class="nav-link <%= (activePage === 'reembolsos' ? 'active' : '') %>" href="/reembolsos">
+              <i class="bi bi-cash-stack"></i>
+              <span class="menu-text">Reembolsos</span>
+            </a>
+          </li>
+          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Registro de Motorista">
+            <a class="nav-link <%= (activePage === 'motorista' ? 'active' : '') %>" href="/registro-motorista">
+              <i class="bi bi-person-plus"></i>
+              <span class="menu-text">Reg. de Motorista</span>
+            </a>
+          </li>
+        
+          <!-- Itens adicionais para admin -->
+          <% if (user.role === 'admin') { %>
+            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatório de Multas">
+              <a class="nav-link <%= (activePage === 'multas' ? 'active' : '') %>" href="/relatorio-multas">
+                <i class="bi bi-file-earmark-text"></i>
+                <span class="menu-text">Rel. de Multas</span>
+              </a>
+            </li>
+           
+            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Manutenções">
+              <a class="nav-link <%= (activePage === 'manutencoes' ? 'active' : '') %>" href="/manutencoes">
+                <i class="bi bi-tools"></i>
+                <span class="menu-text">Manutenções</span>
+              </a>
+            </li>
+            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatório de Consumo">
+              <a class="nav-link <%= (activePage === 'relatorioConsumo' ? 'active' : '') %>" href="/relatorio-consumo">
+                <i class="bi bi-speedometer2"></i>
+                <span class="menu-text">Relatório Consumo</span>
+              </a>
+            </li>
+          <% } %>
+        </ul>
+        
 
 
 

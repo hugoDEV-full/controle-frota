@@ -623,72 +623,91 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
 });
 */
 
-app.get('/relatorio-uso', isAuthenticated, (req, res) => {
-    res.render('relatorio_uso', {
+app.get('/relatorio-uso', isAuthenticated, async (req, res) => {
+    try {
+      let usoData;
+      if (req.user.role === 'user') {
+        // Para usuários com role "user", filtra os registros pelo email ou outro identificador
+        usoData = await query(
+          'SELECT * FROM uso_veiculos WHERE motorista = ? ORDER BY data_criacao DESC',
+          [req.user.email]
+        );
+      } else {
+        // Para administradores, traz todos os registros
+        usoData = await query(
+          'SELECT * FROM uso_veiculos ORDER BY data_criacao DESC'
+        );
+      }
+      
+      res.render('relatorio_uso', {
         title: 'Relatório de uso de veículos',
         layout: 'layout',
-        activePage: 'relatorio_uso'
-    });
-});
-
-app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
+        activePage: 'relatorio_uso',
+        user: req.user,
+        usoData: usoData
+      });
+    } catch (err) {
+      console.error('Erro ao buscar registros de uso:', err);
+      res.status(500).send('Erro no servidor ao obter relatório de uso.');
+    }
+  });
+  
+  app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
     // Parâmetros do DataTables
     let draw = req.query.draw || 0;
     let start = parseInt(req.query.start) || 0;
     let length = parseInt(req.query.length) || 10;
     let searchValue = req.query.search ? req.query.search.value : '';
-
-    // Mapeamento dos índices para as colunas ordenáveis
-    // Ordem visual da tabela:
-    // 0: Checkbox (não ordenável)
-    // 1: Veículo (veiculos.placa)
-    // 2: Motorista (uso_veiculos.motorista)
-    // 3: KM Inicial (uso_veiculos.km_inicial)
-    // 4: KM Final (uso_veiculos.km_final)
-    // 5: Finalidade (uso_veiculos.finalidade)  <-- Novo
-    // 6: Descrição (uso_veiculos.descricao)    <-- Novo
-    // 7: Data de Início (data_hora_inicial)
-    // 8: Data de Fim (data_hora_final)
-    // 9: Data de Criação (data_criacao)
-    // 10: Foto de Quilometragem (não ordenável)
-    // 11: Multas (não ordenável)
-    // 12: Ações (não ordenável)
+  
+    // Mapeamento dos índices para as colunas ordenáveis (conforme ordem visual)
     let columns = [
-        null,
-        'veiculos.placa',
-        'uso_veiculos.motorista',
-        'uso_veiculos.km_inicial',
-        'uso_veiculos.km_final',
-        'uso_veiculos.finalidade', // novo campo
-        'uso_veiculos.descricao',  // novo campo
-        'data_hora_inicial',
-        'data_hora_final',
-        'data_criacao'
+      null,
+      'veiculos.placa',
+      'uso_veiculos.motorista',
+      'uso_veiculos.km_inicial',
+      'uso_veiculos.km_final',
+      'uso_veiculos.finalidade', // novo campo
+      'uso_veiculos.descricao',  // novo campo
+      'data_hora_inicial',
+      'data_hora_final',
+      'data_criacao'
     ];
-
-    // Obtém o índice da coluna para ordenação
+  
+    // Parâmetros para ordenação
     let orderColumnIndex = 1; // padrão
     let orderDir = 'asc'; // padrão
     if (req.query.order && req.query.order[0]) {
-        orderColumnIndex = parseInt(req.query.order[0].column);
-        orderDir = req.query.order[0].dir || 'asc';
+      orderColumnIndex = parseInt(req.query.order[0].column);
+      orderDir = req.query.order[0].dir || 'asc';
     }
-    // Se o índice não estiver entre 1 e 9 (colunas ordenáveis), define padrão
     if (orderColumnIndex < 1 || orderColumnIndex > 9) {
-        orderColumnIndex = 7; // data_hora_inicial
+      orderColumnIndex = 7; // padrão: data_hora_inicial
     }
     let orderColumn = columns[orderColumnIndex] || 'data_hora_inicial';
-
-    // Monta a cláusula WHERE se houver busca
+  
+    // Constrói a cláusula WHERE base:
+    // Se o usuário for "user", restringe os registros ao email do motorista (ou outro identificador)
     let whereClause = '';
     let params = [];
-    if (searchValue) {
-        whereClause = `WHERE (veiculos.placa LIKE ? OR uso_veiculos.motorista LIKE ? OR uso_veiculos.km_inicial LIKE ? OR uso_veiculos.km_final LIKE ? OR uso_veiculos.finalidade LIKE ? OR uso_veiculos.descricao LIKE ? )`;
-        const searchParam = '%' + searchValue + '%';
-        params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
+    if (req.user.role === 'user') {
+      whereClause = 'WHERE uso_veiculos.motorista = ?';
+      params.push(req.user.email);
     }
-
-    // Consulta principal com os novos campos
+  
+    // Se existir termo de busca, adiciona à cláusula WHERE utilizando AND se já houver filtro
+    if (searchValue) {
+      const searchCondition = ` (veiculos.placa LIKE ? OR uso_veiculos.motorista LIKE ? OR uso_veiculos.km_inicial LIKE ? OR uso_veiculos.km_final LIKE ? OR uso_veiculos.finalidade LIKE ? OR uso_veiculos.descricao LIKE ?)`;
+      if (whereClause) {
+        whereClause += ' AND' + searchCondition;
+      } else {
+        whereClause = 'WHERE' + searchCondition;
+      }
+      const searchParam = '%' + searchValue + '%';
+      // Adiciona os parâmetros de busca (6 vezes)
+      params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
+    }
+  
+    // Consulta principal (com joins e agrupamento)
     let sql = `
       SELECT uso_veiculos.*, 
              veiculos.placa, 
@@ -704,47 +723,65 @@ app.get('/api/relatorio-uso', isAuthenticated, (req, res) => {
     `;
     // Adiciona os parâmetros para LIMIT e OFFSET
     params.push(length, start);
-
+  
     db.query(sql, params, (err, results) => {
-        if (err) {
-            console.error("Erro na consulta principal:", err);
-            return res.status(500).json({ error: "Erro na consulta principal" });
-        }
-
-        // Consulta para obter a contagem dos registros filtrados
-        let countSql = `
+      if (err) {
+        console.error("Erro na consulta principal:", err);
+        return res.status(500).json({ error: "Erro na consulta principal" });
+      }
+  
+      // Consulta para a contagem dos registros filtrados
+      let countSql = `
         SELECT COUNT(DISTINCT uso_veiculos.id) AS total 
         FROM uso_veiculos
         JOIN veiculos ON uso_veiculos.veiculo_id = veiculos.id
         LEFT JOIN multas ON uso_veiculos.id = multas.uso_id
         ${whereClause}
       `;
-        let countParams = searchValue ? params.slice(0, 6) : [];
-
-        db.query(countSql, countParams, (err, countResult) => {
-            if (err) {
-                console.error("Erro na consulta de contagem filtrada:", err);
-                return res.status(500).json({ error: "Erro na consulta de contagem filtrada" });
-            }
-            let totalRecords = countResult[0].total;
-
-            // Consulta para obter o total de registros (sem filtro)
-            db.query('SELECT COUNT(*) AS total FROM uso_veiculos', (err, totalResult) => {
-                if (err) {
-                    console.error("Erro na consulta de contagem total:", err);
-                    return res.status(500).json({ error: "Erro na consulta de contagem total" });
-                }
-                let totalRecordsUnfiltered = totalResult[0].total;
-                res.json({
-                    draw: parseInt(draw),
-                    recordsTotal: totalRecordsUnfiltered,
-                    recordsFiltered: totalRecords,
-                    data: results
-                });
-            });
+      // Os parâmetros para contagem são os mesmos que os usados para a condição WHERE
+      let countParams = [];
+      if (req.user.role === 'user') {
+        countParams.push(req.user.email);
+      }
+      if (searchValue) {
+        const searchParam = '%' + searchValue + '%';
+        countParams.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
+      }
+  
+      db.query(countSql, countParams, (err, countResult) => {
+        if (err) {
+          console.error("Erro na consulta de contagem filtrada:", err);
+          return res.status(500).json({ error: "Erro na consulta de contagem filtrada" });
+        }
+        let totalRecords = countResult[0].total;
+  
+        // Consulta para o total de registros sem filtro:
+        // Note que para usuários "user", normalmente faz sentido restringir também essa contagem
+        let totalSql = '';
+        let totalParams = [];
+        if (req.user.role === 'user') {
+          totalSql = 'SELECT COUNT(*) AS total FROM uso_veiculos WHERE motorista = ?';
+          totalParams.push(req.user.email);
+        } else {
+          totalSql = 'SELECT COUNT(*) AS total FROM uso_veiculos';
+        }
+        db.query(totalSql, totalParams, (err, totalResult) => {
+          if (err) {
+            console.error("Erro na consulta de contagem total:", err);
+            return res.status(500).json({ error: "Erro na consulta de contagem total" });
+          }
+          let totalRecordsUnfiltered = totalResult[0].total;
+          res.json({
+            draw: parseInt(draw),
+            recordsTotal: totalRecordsUnfiltered,
+            recordsFiltered: totalRecords,
+            data: results
+          });
         });
+      });
     });
-});
+  });
+  
 
 
 
@@ -910,7 +947,8 @@ app.get('/relatorio-multas', isAuthenticated, (req, res) => {
             multas: multasResult,
             title: 'Relatório de Multas',
             layout: 'layout',
-            activePage: 'relatorioMultas'
+            activePage: 'relatorioMultas',
+            user: req.user
         });
     });
 });
@@ -937,7 +975,8 @@ app.get('/editar-uso/:id', isAuthenticated, (req, res) => {
                 multas: multasResult,
                 title: 'Editar Uso',
                 layout: 'layout',
-                activePage: 'editarUso'
+                activePage: 'editarUso',
+                user: req.user
             });
         });
     });
@@ -979,7 +1018,8 @@ app.get('/usar/:id', isAuthenticated, (req, res) => {
                 motoristaEmail, // Passa o email do usuário autenticado
                 title: 'Usar Veículo',
                 layout: 'layout',
-                activePage: 'usar'
+                activePage: 'usar',
+                user: req.user
             });
         });
     });
@@ -1862,7 +1902,8 @@ app.get('/manutencoes', isAuthenticated,  (req, res) => {
             title: 'Manutenções',
             layout: 'layout',
             activePage: 'manutencoes',
-            manutencoes: results
+            manutencoes: results,
+            user: req.user // Passa o usuário autenticado para o template
         });
     });
 });
@@ -1963,7 +2004,8 @@ app.get('/reembolsos', isAuthenticated, async (req, res) => {
             reembolsoMensal,
             reembolsoAnual,
             title: 'Gerenciar Reembolsos',
-            activePage: 'reembolsos'
+            activePage: 'reembolsos',
+            user: req.user // Passa o usuário autenticado para o template
         });
     } catch (err) {
         console.error(err);
@@ -2061,7 +2103,8 @@ app.get('/relatorio-consumo', isAuthenticated, async (req, res) => {
             resumoAnual,
             reembolsoDiario,
             reembolsoMensal,
-            reembolsoAnual
+            reembolsoAnual,
+            user: req.user // Passa o usuário autenticado para o template
         });
 
     } catch (err) {

@@ -3,7 +3,9 @@
 
 <head>
   <meta charset="UTF-8">
-  <title><%= title %></title>
+  <title>
+    <%= title %>
+  </title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <!-- Importa o Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -33,8 +35,10 @@
             <select name="motorista_id" id="motorista_id" class="form-select" required>
               <option value="">Selecione um motorista</option>
               <% motoristas.forEach(function(motorista) { %>
-                <option value="<%= motorista.id %>"><%= motorista.nome %></option>
-              <% }); %>
+                <option value="<%= motorista.id %>">
+                  <%= motorista.nome %>
+                </option>
+                <% }); %>
             </select>
           </div>
           <div class="mb-3">
@@ -50,8 +54,7 @@
         </form>
       </div>
     </div>
-
-    <% if (user.role === 'admin') { %>
+    <% if (user.role==='admin' ) { %>
       <!-- Lista de reembolsos detalhados -->
       <div class="card mb-4">
         <div class="card-header">Reembolsos Cadastrados</div>
@@ -69,18 +72,23 @@
               <tbody>
                 <% reembolsos.forEach(function(reembolso) { %>
                   <tr>
-                    <td><%= reembolso.motorista_nome %></td>
-                    <td>R$ <%= reembolso.valor %></td>
+                    <td>
+                      <%= reembolso.motorista_nome %>
+                    </td>
+                    <td>R$ <%= reembolso.valor %>
+                    </td>
                     <td>
                       <% if (reembolso.comprovante) { %>
                         <a href="/uploads/<%= reembolso.comprovante %>" target="_blank">Visualizar</a>
-                      <% } else { %>
-                        Sem comprovante
-                      <% } %>
+                        <% } else { %>
+                          Sem comprovante
+                          <% } %>
                     </td>
-                    <td><%= new Date(reembolso.criado_em).toLocaleDateString('pt-BR') %></td>
+                    <td>
+                      <%= new Date(reembolso.criado_em).toLocaleDateString('pt-BR') %>
+                    </td>
                   </tr>
-                <% }); %>
+                  <% }); %>
               </tbody>
             </table>
           </div>
@@ -103,17 +111,21 @@
               <tbody>
                 <% reembolsoDiario.forEach(function(r) { %>
                   <tr>
-                    <td><%= r.motorista_nome %></td>
-                    <td><%= new Date(r.dia).toLocaleDateString('pt-BR') %></td>
-                    <td>R$ <%= r.total_reembolso %></td>
+                    <td>
+                      <%= r.motorista_nome %>
+                    </td>
+                    <td>
+                      <%= new Date(r.dia).toLocaleDateString('pt-BR') %>
+                    </td>
+                    <td>R$ <%= r.total_reembolso %>
+                    </td>
                   </tr>
-                <% }); %>
+                  <% }); %>
               </tbody>
             </table>
           </div>
-          <button onclick="printSection('reembolsosDiario')" class="btn btn-info no-print">
-            Imprimir Reembolsos Diários
-          </button>
+          <button onclick="printSection('reembolsosDiario')" class="btn btn-info no-print">Imprimir Reembolsos
+            Diários</button>
         </div>
       </div>
 
@@ -131,22 +143,25 @@
                 </tr>
               </thead>
               <tbody>
-                <% reembolsoMensal.forEach(function(r) { 
-                     const partes = r.mes ? r.mes.split('-') : ['', ''];
-                     const ano = partes[0], mes = partes[1];
-                %>
+                <% reembolsoMensal.forEach(function(r) { %>
                   <tr>
                     <td><%= r.motorista_nome %></td>
-                    <td><%= mes && ano ? mes + '/' + ano : 'N/A' %></td>
+                    <% if (r.mes) { 
+                         const partes = r.mes.split('-'); 
+                         const ano = partes[0]; 
+                         const mes = partes[1]; %>
+                      <td><%= mes + '/' + ano %></td>
+                    <% } else { %>
+                      <td>N/A</td>
+                    <% } %>
                     <td>R$ <%= r.total_reembolso %></td>
                   </tr>
                 <% }); %>
               </tbody>
             </table>
           </div>
-          <button onclick="printSection('reembolsosMensal')" class="btn btn-info no-print">
-            Imprimir Reembolsos Mensais
-          </button>
+          <button onclick="printSection('reembolsosMensal')" class="btn btn-info no-print">Imprimir Reembolsos
+            Mensais</button>
         </div>
       </div>
 
@@ -166,52 +181,53 @@
               <tbody>
                 <% reembolsoAnual.forEach(function(r) { %>
                   <tr>
-                    <td><%= r.motorista_nome %></td>
-                    <td><%= r.ano %></td>
-                    <td>R$ <%= r.total_reembolso %></td>
+                    <td>
+                      <%= r.motorista_nome %>
+                    </td>
+                    <td>
+                      <%= r.ano %>
+                    </td>
+                    <td>R$ <%= r.total_reembolso %>
+                    </td>
                   </tr>
-                <% }); %>
+                  <% }); %>
               </tbody>
             </table>
           </div>
-          <button onclick="printSection('reembolsosAnual')" class="btn btn-info no-print">
-            Imprimir Reembolsos Anuais
-          </button>
+          <button onclick="printSection('reembolsosAnual')" class="btn btn-info no-print">Imprimir Reembolsos
+            Anuais</button>
         </div>
       </div>
 
       <!-- Gráfico dos Reembolsos -->
-      <div class="card mb-4">
+      <div class="card">
         <div class="card-header">Gráfico de Reembolsos</div>
         <div class="card-body">
           <canvas id="reembolsosChart"></canvas>
         </div>
       </div>
-
+      
       <a href="/" class="btn btn-primary my-4 no-print">Voltar</a>
-    <% } %>
-
   </div>
+  
+    <!-- Função de impressão -->
+    <script>
+      function printSection(sectionId) {
+        var printContents = document.getElementById(sectionId).innerHTML;
+        var originalContents = document.body.innerHTML;
+        document.body.innerHTML = printContents;
+        window.print();
+        document.body.innerHTML = originalContents;
+        location.reload();
+      }
+    </script>
 
-  <!-- Função de impressão -->
-  <script>
-    function printSection(sectionId) {
-      var printContents = document.getElementById(sectionId).innerHTML;
-      var originalContents = document.body.innerHTML;
-      document.body.innerHTML = printContents;
-      window.print();
-      document.body.innerHTML = originalContents;
-      location.reload();
-    }
-  </script>
+    <!-- Scripts do Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
 
-  <!-- Scripts do Bootstrap -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
-
-  <% if (user.role === 'admin') { %>
     <script>
       // Dados do gráfico vindos do servidor
-      const reembolsosData = <%- JSON.stringify(reembolsosGrafico) %>;
+      const reembolsosData = <% - JSON.stringify(reembolsosGrafico) %>;
 
       // Agrupar valores por motorista para o gráfico
       const reembolsosPorMotorista = {};
@@ -260,8 +276,7 @@
         }
       });
     </script>
-  <% } %>
-
+    <% } %>
 </body>
 
 </html>
