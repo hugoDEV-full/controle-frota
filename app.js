@@ -1654,7 +1654,8 @@ app.get('/notificacoes', isAuthenticated, isAdmin, (req, res) => {
                 kmNotifications: notifResults,
                 title: 'Notificações',
                 layout: 'layout',
-                activePage: 'notificacoes'
+                activePage: 'notificacoes',
+                user: req.user // Passa o usuário autenticado para o template
             });
         });
     });

@@ -130,9 +130,9 @@
       </form>
 
       <div>
-
+        <% if (user.role === 'admin') { %>
         <a href="/notificacoes" class="btn btn-primary me-2">Notificações</a>
-
+        <% } %>
         <a href="/logout" class="btn btn-primary">Sair</a>
       </div>
     </div>
