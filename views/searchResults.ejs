@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>Resultados da Busca</title>
   <link rel="stylesheet" href="/styles.css">
- 
 </head>
 <body>
   <div class="container mt-4">
@@ -17,6 +16,7 @@
         <ul>
           <% results.veiculos.forEach(v => { %>
             <li>
+              <strong>ID:</strong> <%= v.id %> - 
               <a href="/editar-veiculo/<%= v.id %>">
                 <%= v.nome %> - <%= v.placa %>
               </a>
@@ -30,6 +30,7 @@
         <ul>
           <% results.usos.forEach(u => { %>
             <li>
+              <strong>ID:</strong> <%= u.id %> - 
               <a href="/editar-uso/<%= u.id %>">
                 <%= u.motorista %> (KM Inicial: <%= u.km_inicial %> - KM Final: <%= u.km_final %>)
               </a>
@@ -42,7 +43,9 @@
         <h2>Multas</h2>
         <ul>
           <% results.multas.forEach(m => { %>
-            <li><%= m.multa %> – <%= m.motorista %></li>
+            <li>
+              <strong>ID:</strong> <%= m.id %> - <%= m.multa %> – <%= m.motorista %>
+            </li>
           <% }); %>
         </ul>
       <% } %>
@@ -51,7 +54,9 @@
         <h2>Motoristas</h2>
         <ul>
           <% results.motoristas.forEach(m => { %>
-            <li><%= m.nome %> – CPF: <%= m.cpf %></li>
+            <li>
+              <strong>ID:</strong> <%= m.id %> - <%= m.nome %> – CPF: <%= m.cpf %>
+            </li>
           <% }); %>
         </ul>
       <% } %>

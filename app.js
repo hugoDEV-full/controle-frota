@@ -696,15 +696,15 @@ app.get('/relatorio-uso', isAuthenticated, async (req, res) => {
   
     // Se existir termo de busca, adiciona à cláusula WHERE utilizando AND se já houver filtro
     if (searchValue) {
-      const searchCondition = ` (veiculos.placa LIKE ? OR uso_veiculos.motorista LIKE ? OR uso_veiculos.km_inicial LIKE ? OR uso_veiculos.km_final LIKE ? OR uso_veiculos.finalidade LIKE ? OR uso_veiculos.descricao LIKE ?)`;
+      const searchCondition = ` (veiculos.placa LIKE ? OR uso_veiculos.motorista LIKE ? OR uso_veiculos.km_inicial LIKE ? OR uso_veiculos.km_final LIKE ? OR uso_veiculos.finalidade LIKE ? OR uso_veiculos.descricao LIKE ? OR uso_veiculos.id LIKE ?)`;
       if (whereClause) {
         whereClause += ' AND' + searchCondition;
       } else {
         whereClause = 'WHERE' + searchCondition;
       }
       const searchParam = '%' + searchValue + '%';
-      // Adiciona os parâmetros de busca (6 vezes)
-      params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
+      // Adiciona os parâmetros de busca (7 vezes)
+      params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
     }
   
     // Consulta principal (com joins e agrupamento)
@@ -745,7 +745,7 @@ app.get('/relatorio-uso', isAuthenticated, async (req, res) => {
       }
       if (searchValue) {
         const searchParam = '%' + searchValue + '%';
-        countParams.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
+        countParams.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
       }
   
       db.query(countSql, countParams, (err, countResult) => {
@@ -781,6 +781,7 @@ app.get('/relatorio-uso', isAuthenticated, async (req, res) => {
       });
     });
   });
+  
   
 
 
@@ -1283,7 +1284,7 @@ app.post('/editar-uso/:id', isAuthenticated, uploadMultiple, (req, res) => {
                     if (isNaN(kmFinalParsed)) {
                         return renderError('KM final inválido.');
                     }
-                    if (kmFinalParsed < kmInicialValue) {
+                    if (kmFinalParsed <= kmInicialValue) {
                         return renderError('KM final não pode ser menor que KM inicial.');
                     }
                     const autonomiaUno = 700;
@@ -2123,44 +2124,67 @@ app.get('/search', isAuthenticated, async (req, res) => {
     const q = req.query.q || '';
     // Se não houver consulta, renderiza a view sem resultados
     if (!q.trim()) {
-        return res.render('searchResults', { q, results: {} });
+        return res.render('searchResults', { 
+            q, 
+            results: {}, 
+            user: req.user 
+        });
     }
 
     try {
-        // Busca em veículos (nome e placa)
+        // Busca em veículos (id, nome e placa)
         const veiculos = await query(
-            "SELECT id, nome, placa FROM veiculos WHERE nome LIKE ? OR placa LIKE ?",
-            ['%' + q + '%', '%' + q + '%']
+            `SELECT id, nome, placa 
+             FROM veiculos 
+             WHERE id = ? 
+               OR nome LIKE ? 
+               OR placa LIKE ?`,
+            [q, `%${q}%`, `%${q}%`]
         );
-        // Busca em usos de veículos (motorista)
+
+        // Busca em usos de veículos (id e motorista)
         const usos = await query(
-            "SELECT id, motorista, km_inicial, km_final FROM uso_veiculos WHERE motorista LIKE ?",
-            ['%' + q + '%']
+            `SELECT id, motorista, km_inicial, km_final 
+             FROM uso_veiculos 
+             WHERE id = ? 
+               OR motorista LIKE ?`,
+            [q, `%${q}%`]
         );
-        // Busca em multas (descrição da multa)
+
+        // Busca em multas (id e descrição)
         const multas = await query(
-            "SELECT id, multa, motorista FROM multas WHERE multa LIKE ?",
-            ['%' + q + '%']
+            `SELECT id, multa, motorista 
+             FROM multas 
+             WHERE id = ? 
+               OR multa LIKE ?`,
+            [q, `%${q}%`]
         );
-        // Busca em motoristas (nome e CPF)
+
+        // Busca em motoristas (id, nome e CPF)
         const motoristas = await query(
-            "SELECT id, nome, cpf FROM motoristas WHERE nome LIKE ? OR cpf LIKE ?",
-            ['%' + q + '%', '%' + q + '%']
+            `SELECT id, nome, cpf 
+             FROM motoristas 
+             WHERE id = ? 
+               OR nome LIKE ? 
+               OR cpf LIKE ?`,
+            [q, `%${q}%`, `%${q}%`]
         );
 
-        const results = {
-            veiculos,
-            usos,
-            multas,
-            motoristas
-        };
+        const results = { veiculos, usos, multas, motoristas };
 
-        res.render('searchResults', { q, results });
+        // Renderiza passando sempre o usuário autenticado
+        res.render('searchResults', { 
+            q, 
+            results, 
+            user: req.user 
+        });
+
     } catch (err) {
         console.error(err);
         res.status(500).send("Erro no servidor ao realizar busca.");
     }
 });
+
 /*
 /// API FIPE
 const axios = require('axios');

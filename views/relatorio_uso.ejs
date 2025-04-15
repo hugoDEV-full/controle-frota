@@ -39,12 +39,13 @@
             <thead class="table-dark">
               <tr>
                 <th><input type="checkbox" id="selectAll"></th>
+                <th>ID</th> <!-- Coluna adicionada -->
                 <th>Veículo</th>
                 <th>Motorista</th>
                 <th>KM Inicial</th>
                 <th>KM Final</th>
-                <th>Finalidade</th> <!-- Novo campo -->
-                <th>Descrição</th>  <!-- Novo campo -->
+                <th>Finalidade</th>
+                <th>Descrição</th>
                 <th>Data de Início</th>
                 <th>Data de Fim</th>
                 <th>Data de Criação</th>
@@ -89,12 +90,13 @@
     function updateModalImage(imgSrc) {
       document.getElementById('modalImage').src = imgSrc;
     }
-
+  
     $(document).ready(function () {
       var table = $('#usoTable').DataTable({
         "serverSide": true,
         "ajax": "/api/relatorio-uso",
-        "order": [[9, "desc"]], // Ordena pela data de criação (índice 9)
+        // Agora ordena pela data de criação, que passou a ser a coluna de índice 10
+        "order": [[10, "desc"]],
         "pageLength": 25,
         "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "Todos"]],
         "language": {
@@ -119,19 +121,24 @@
           }
         },
         "columns": [
-          {
+          { // Coluna do checkbox (não pesquisável)
             "data": "id",
             "orderable": false,
+            "searchable": false,
             "render": function (data) {
               return `<input type="checkbox" class="selectRow" value="${data}">`;
             }
+          },
+          { 
+            "data": "id", // Coluna que exibe o ID – agora explicitamente pesquisável
+            "searchable": true
           },
           { "data": "placa" },
           { "data": "motorista" },
           { "data": "km_inicial" },
           { "data": "km_final" },
-          { "data": "finalidade" }, // Novo campo
-          { "data": "descricao" },  // Novo campo
+          { "data": "finalidade" },
+          { "data": "descricao" },
           {
             "data": "data_hora_inicial",
             "render": function (data) {
@@ -165,6 +172,7 @@
           {
             "data": "foto_km",
             "orderable": false,
+            "searchable": false,
             "render": function (data) {
               return data
                 ? `<img src="/uploads/${data}" alt="Foto Quilometragem" class="img-thumbnail img-fluid" style="max-width: 100px; cursor: pointer;" data-bs-toggle="modal" data-bs-target="#imageModal" onclick="updateModalImage('/uploads/${data}')">`
@@ -174,6 +182,7 @@
           {
             "data": "multas",
             "orderable": false,
+            "searchable": false,
             "render": function (data, type, row) {
               let html = "";
               if (data) {
@@ -186,6 +195,7 @@
           {
             "data": "id",
             "orderable": false,
+            "searchable": false,
             "render": function (data) {
               return `
                 <div class="d-flex gap-2">
@@ -199,27 +209,27 @@
           }
         ]
       });
-
+  
       // Seleciona ou desmarca todos os checkboxes
       $('#selectAll').on('click', function () {
         $('.selectRow').prop('checked', this.checked);
       });
-
+  
       // Ação para excluir os registros selecionados
       $('#deleteSelected').on('click', function () {
         var selectedIds = $('.selectRow:checked').map(function () {
           return this.value;
         }).get();
-
+  
         if (selectedIds.length === 0) {
           alert('Nenhum registro selecionado.');
           return;
         }
-
+  
         if (!confirm('Tem certeza que deseja excluir os registros selecionados?')) {
           return;
         }
-
+  
         $.ajax({
           url: '/excluir-multiplos-usos',
           type: 'POST',
@@ -236,6 +246,7 @@
       });
     });
   </script>
+  
 </body>
 
 </html>
