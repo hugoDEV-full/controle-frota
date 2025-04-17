@@ -115,7 +115,7 @@
   </style>
 </head>
 <!-- oncontextmenu="return false;" para esconder o clique direito -->
-<body >
+<body  oncontextmenu="return false;" >
   <!-- Navbar -->
   <nav class="navbar navbar-dark bg-dark">
     <div class="container-fluid">
@@ -269,6 +269,21 @@
       sidebar.classList.toggle('collapsed');
     });
   </script>
+
+<script>
+  /**
+   * Bloqueia o menu de contexto (clique direito)
+   * @param {MouseEvent|Event} e
+   * @returns {boolean}
+   */
+  function disableContextMenu(e) {
+    e.preventDefault();
+    return false;
+  }
+
+  // Garantir que qualquer outro disparo de contextmenu seja bloqueado
+  document.addEventListener('contextmenu', disableContextMenu);
+</script>
 </body>
 
 </html>
