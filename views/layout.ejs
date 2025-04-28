@@ -3,6 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
+  <meta name="csrf-token" content="<%= csrfToken %>">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>
     <%= typeof title !=='undefined' ? title : 'Controle de Frota' %>
@@ -115,7 +116,8 @@
   </style>
 </head>
 <!-- oncontextmenu="return false;" para esconder o clique direito -->
-<body  oncontextmenu="return false;" >
+
+<body oncontextmenu="return false;">
   <!-- Navbar -->
   <nav class="navbar navbar-dark bg-dark">
     <div class="container-fluid">
@@ -125,15 +127,18 @@
       </button>
       <span class="navbar-brand mb-0 h1"></span>
       <form action="/search" method="GET" class="d-flex ms-3">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+
         <input class="form-control me-2" type="search" placeholder="Buscar..." aria-label="Buscar" name="q">
         <button class="btn btn-outline-success" type="submit">Buscar</button>
       </form>
 
       <div>
-        <% if (user.role === 'admin') { %>
-        <a href="/notificacoes" class="btn btn-primary me-2">Notificações</a>
-        <% } %>
-        <a href="/logout" class="btn btn-primary">Sair</a>
+        <% if (user.role==='admin' ) { %>
+          <a href="/notificacoes" class="btn btn-primary me-2">Notificações</a>
+          <% } %>
+            <a href="/logout" class="btn btn-primary">Sair</a>
       </div>
     </div>
   </nav>
@@ -143,64 +148,93 @@
     <!-- Sidebar fixa -->
     <aside id="sidebar" class="sidebar collapsed">
       <ul class="nav flex-column">
-        <ul class="menu">
-          <!-- Itens comuns para todos -->
-          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Dashboard">
-            <a class="nav-link <%= (activePage === 'dashboard' ? 'active' : '') %>" href="/">
-              <i class="bi bi-speedometer2"></i>
-              <span class="menu-text">Dashboard</span>
+
+        <!-- Itens comuns para todos -->
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Dashboard">
+          <a class="nav-link <%= (activePage === 'dashboard' ? 'active' : '') %>" href="/">
+            <i class="bi bi-speedometer2"></i>
+            <span class="menu-text">Dashboard</span>
+          </a>
+        </li>
+
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatório de Uso">
+          <a class="nav-link <%= (activePage === 'relatorio_uso' ? 'active' : '') %>" href="/relatorio-uso">
+            <i class="bi bi-bar-chart-line"></i>
+            <span class="menu-text">Rel. de Uso</span>
+          </a>
+        </li>
+
+        <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Registro de Motorista">
+          <a class="nav-link <%= (activePage === 'registro-motorista' ? 'active' : '') %>" href="/registro-motorista">
+            <i class="bi bi-person-plus"></i>
+            <span class="menu-text">Reg. Motorista</span>
+          </a>
+        </li>
+
+
+
+        <% if (user.role==='admin' ) { %>
+          <!-- Seção de administrador -->
+          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Editar Motorista">
+            <a class="nav-link <%= (activePage === 'motoristas' ? 'active' : '') %>" href="/motoristas">
+              <i class="bi bi-person-badge"></i>
+              <span class="menu-text">Editar Motorista</span>
             </a>
           </li>
-          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatório de Uso">
-            <a class="nav-link <%= (activePage === 'uso' ? 'active' : '') %>" href="/relatorio-uso">
-              <i class="bi bi-bar-chart"></i>
-              <span class="menu-text">Rel. de Uso</span>
+
+          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatório de Multas">
+            <a class="nav-link <%= (activePage === 'relatorio-multas' ? 'active' : '') %>" href="/relatorio-multas">
+              <i class="bi bi-file-earmark-text"></i>
+              <span class="menu-text">Rel. Multas</span>
             </a>
           </li>
-          
-          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Registro de Motorista">
-            <a class="nav-link <%= (activePage === 'motorista' ? 'active' : '') %>" href="/registro-motorista">
-              <i class="bi bi-person-plus"></i>
-              <span class="menu-text">Reg. de Motorista</span>
+
+          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Reembolsos">
+            <a class="nav-link <%= (activePage === 'reembolsos' ? 'active' : '') %>" href="/reembolsos">
+              <i class="bi bi-cash-stack"></i>
+              <span class="menu-text">Reembolsos</span>
             </a>
           </li>
-        
-          <!-- Itens adicionais para admin -->
-          <% if (user.role === 'admin') { %>
-            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatório de Multas">
-              <a class="nav-link <%= (activePage === 'multas' ? 'active' : '') %>" href="/relatorio-multas">
-                <i class="bi bi-file-earmark-text"></i>
-                <span class="menu-text">Rel. de Multas</span>
-              </a>
-            </li>
-            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Reembolsos">
-              <a class="nav-link <%= (activePage === 'reembolsos' ? 'active' : '') %>" href="/reembolsos">
-                <i class="bi bi-cash-stack"></i>
-                <span class="menu-text">Reembolsos</span>
-              </a>
-            </li>
-           
-            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Manutenções">
-              <a class="nav-link <%= (activePage === 'manutencoes' ? 'active' : '') %>" href="/manutencoes">
-                <i class="bi bi-tools"></i>
-                <span class="menu-text">Manutenções</span>
-              </a>
-            </li>
-            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatório de Consumo">
-              <a class="nav-link <%= (activePage === 'relatorioConsumo' ? 'active' : '') %>" href="/relatorio-consumo">
-                <i class="bi bi-speedometer2"></i>
-                <span class="menu-text">Relatório Consumo</span>
-              </a>
-            </li>
+
+          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Manutenções">
+            <a class="nav-link <%= (activePage === 'manutencoes' ? 'active' : '') %>" href="/manutencoes">
+              <i class="bi bi-tools"></i>
+              <span class="menu-text">Manutenções</span>
+            </a>
+          </li>
+
+          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Relatório de Consumo">
+            <a class="nav-link <%= (activePage === 'relatorio-consumo' ? 'active' : '') %>" href="/relatorio-consumo">
+              <i class="bi bi-speedometer"></i>
+              <span class="menu-text">Rel. Consumo</span>
+            </a>
+          </li>
+
+          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Registrar Usuário">
+            <a class="nav-link <%= (activePage === 'register' ? 'active' : '') %>" href="/register">
+              <i class="bi bi-person-plus-fill"></i>
+              <span class="menu-text">Reg. Usuário</span>
+            </a>
+          </li>
+
+          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Editar Usuários">
+            <a class="nav-link <%= (activePage === 'usuarios' ? 'active' : '') %>" href="/usuarios">
+              <i class="bi bi-people-fill"></i>
+              <span class="menu-text">Editar Usuários</span>
+            </a>
+          </li>
+
+          <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" title="Conserto Viável">
+            <a class="nav-link <%= (activePage === 'conserto-viavel' ? 'active' : '') %>" href="/conserto-viavel">
+              <i class="bi bi-wrench-adjustable-circle"></i>
+              <span class="menu-text">Conserto Viável</span>
+            </a>
+          </li>
           <% } %>
-        </ul>
-        
-
-
-
 
       </ul>
     </aside>
+
 
     <!-- Conteúdo Principal -->
     <main>
@@ -212,6 +246,12 @@
       <i id="scrollIcon" class="bi bi-chevron-expand"></i>
 
     </button>
+    <script>
+
+      const csrfToken = document
+        .querySelector('meta[name="csrf-token"]')
+        .getAttribute('content');
+    </script>
 
     <script>
       document.addEventListener("DOMContentLoaded", function () {
@@ -235,16 +275,16 @@
       });
     </script>
     <script>
-      // Previne o uso do F12, Ctrl+Shift+I, Ctrl+Shift+J e Ctrl+U
+       //Previne o uso do F12, Ctrl+Shift+I, Ctrl+Shift+J e Ctrl+U
       document.addEventListener('keydown', function (e) {
-        if (e.key === "F12" || 
-            (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J")) || 
-            (e.ctrlKey && e.key === "U")) {
+        if (e.key === "F12" ||
+          (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J")) ||
+          (e.ctrlKey && e.key === "U")) {
           e.preventDefault();
         }
-      });
+      }); 
     </script>
-    
+
   </div>
 
   <!-- Rodapé -->
@@ -270,20 +310,20 @@
     });
   </script>
 
-<script>
-  /**
-   * Bloqueia o menu de contexto (clique direito)
-   * @param {MouseEvent|Event} e
-   * @returns {boolean}
-   */
-  function disableContextMenu(e) {
-    e.preventDefault();
-    return false;
-  }
+  <script>
+    /**
+     * Bloqueia o menu de contexto (clique direito)
+     * @param {MouseEvent|Event} e
+     * @returns {boolean}
+     */
+    function disableContextMenu(e) {
+      e.preventDefault();
+      return false;
+    }
 
-  // Garantir que qualquer outro disparo de contextmenu seja bloqueado
-  document.addEventListener('contextmenu', disableContextMenu);
-</script>
+    // Garantir que qualquer outro disparo de contextmenu seja bloqueado
+    document.addEventListener('contextmenu', disableContextMenu);
+  </script>
 </body>
 
 </html>

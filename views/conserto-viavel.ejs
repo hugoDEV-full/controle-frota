@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
+  <meta name="csrf-token" content="<%= csrfToken %>">
   <title>Conserto Viável</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <!-- Bootstrap 5 CSS -->
@@ -26,6 +27,7 @@
           </div>
           <div class="card-body">
             <form id="formConserto">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
               <div class="mb-3">
                 <label for="marca" class="form-label">Marca</label>
                 <select id="marca" class="form-select" required>
@@ -130,7 +132,7 @@
       if (confirm("Você tem certeza que deseja excluir este registro?")) {
         fetch(`/excluir-avaliacao/${id}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': csrfToken  }
         })
         .then(response => response.json())
         .then(data => {
@@ -218,7 +220,7 @@
 
       const res = await fetch('/conserto-viavel', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'CSRF-Token': csrfToken  },
         body: JSON.stringify({ marca, modelo, ano, custo_conserto: custo })
       });
       const json = await res.json();
@@ -260,7 +262,7 @@
       document.getElementById('btnSalvar').addEventListener('click', async () => {
         const resp = await fetch('/salvar-avaliacao', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'CSRF-Token': csrfToken  },
           body: JSON.stringify(avaliacaoDados)
         });
         const js = await resp.json();

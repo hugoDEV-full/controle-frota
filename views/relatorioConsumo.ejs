@@ -21,6 +21,7 @@
 
       <!-- Formulário de Busca -->
       <form method="get" action="/relatorio-consumo" class="form-inline mb-4 no-print">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <select name="motorista" class="form-control mr-2">
           <option value="">Todos os Motoristas</option>
           <% motoristasList.forEach(m => { %>

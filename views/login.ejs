@@ -62,6 +62,8 @@
          class="logo-inova mb-3">
     <h1>Login</h1>
     <form action="/login" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
       <div class="mb-3">
         <label for="email" class="form-label">Email:</label>
         <input type="email" name="email" class="form-control" id="email" required>

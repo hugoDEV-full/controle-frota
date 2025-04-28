@@ -28,6 +28,7 @@
       <div class="card-body">
         <form action="/reembolsos" method="POST" enctype="multipart/form-data"
           onsubmit="return confirm('Revisou as informações? Deseja realmente confirmar registrar reembolso?');">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
           <div class="mb-3">
             <label for="motorista_id" class="form-label">Motorista</label>
             <select name="motorista_id" id="motorista_id" class="form-select" required>

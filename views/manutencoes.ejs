@@ -51,6 +51,7 @@
                 <td>
                   <% if(manutencao.status==='pendente' ) { %>
                     <form action="/manutencoes/realizada/<%= manutencao.id %>" method="POST" onsubmit="return confirm('Marcar como realizada é irreversível. Deseja realmente confirmar marcar como manutenção realizada?');">
+                      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                       <button type="submit" class="btn btn-sm btn-warning" >Marcar como realizada</button>
                     </form>
                     <% } else { %>

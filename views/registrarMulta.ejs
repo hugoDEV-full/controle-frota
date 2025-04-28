@@ -18,7 +18,7 @@
     <% } %>
 
     <form action="/registrar-multa/<%= veiculo.id %>" method="POST" onsubmit="return confirm(' Você revisou as informações ? Deseja realmente confirmar registrar multa?');">
-
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       <div class="mb-3">
         <label for="data_multa" class="form-label">Data e Hora da Multa</label>
         <input type="datetime-local" class="form-control" id="data_multa" name="data_multa" required>

@@ -112,21 +112,32 @@
                   <i class="bi bi-play-circle"></i> Registrar Uso
                 </a>
                 <% if (user.role==='admin' ) { %>
-                <a href="/registrar-multa/<%= veiculo.id %>" class="btn btn-danger">
-                  <i class="bi bi-exclamation-triangle"></i> Registrar Multas
-                </a>
-                <% } %>
-                <a href="/editar-veiculo/<%= veiculo.id %>" class="btn btn-warning">
-                  <i class="bi bi-pencil-square"></i> Editar
-                </a>
-                <% if (user.role==='admin' ) { %>
-                  <form action="/excluir-veiculo/<%= veiculo.id %>" method="POST" style="display:inline;">
-                    <button type="submit" class="btn btn-danger"
-                      onclick="return confirm('Excluir este veículo é irreversível. Tem certeza que deseja realmente excluir este veículo?');">
-                      <i class="bi bi-trash"></i> Excluir
-                    </button>
-                  </form>
+                  <a href="/registrar-multa/<%= veiculo.id %>" class="btn btn-danger">
+                    <i class="bi bi-exclamation-triangle"></i> Registrar Multas
+                  </a>
                   <% } %>
+                    <a href="/editar-veiculo/<%= veiculo.id %>" class="btn btn-warning">
+                      <i class="bi bi-pencil-square"></i> Editar
+                    </a>
+                    <% if (user.role === 'admin') { %>
+                      <form
+                        action="/excluir-veiculo/<%= veiculo.id %>"
+                        method="POST"
+                        style="display:inline;"
+                        onsubmit="
+                          if (!confirm('Esse veículo tem <%= veiculo.manutCount %> manutenção(ões) vinculada(s). Deseja prosseguir e removê-las?')) return false;
+                          if (!confirm('Esse veículo tem <%= veiculo.multaCount %> multa(s) vinculada(s). Deseja prosseguir e removê-las?')) return false;
+                          if (!confirm('Esse veículo tem <%= veiculo.usoCount %> uso(s) vinculados. Deseja prosseguir e removê-los?')) return false;
+                          return confirm('Exclusão final: isto é irreversível. Tem certeza?');
+                        "
+                      >
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <button type="submit" class="btn btn-danger">
+                          <i class="bi bi-trash"></i> Excluir
+                        </button>
+                      </form>
+                    <% } %>
+                    
               </td>
             </tr>
             <% }); %>
@@ -144,501 +155,468 @@
       </div>
     </div>
     <% if (user.role==='admin' ) { %>
-      <!-- Seção: Estatísticas Gerais -->
-      <div class="row mb-4">
-        <h4 class="mb-3">Informações Gerais</h4>
-        <!-- Motoristas com CNH válida -->
-        <div class="col-md-3">
-          <div class="card standard-card text-white bg-success mb-3">
-            <div class="card-header">
-              <i class="bi bi-check-circle"></i> Motoristas que Podem Dirigir
-            </div>
-            <div class="card-body">
-              <p class="card-text display-6">
-                <%= totalMotoristasValidos || 0 %>
-              </p>
-              <p class="card-text">CNH válida</p>
-            </div>
-          </div>
-        </div>
-        <!-- Motoristas com CNH vencida -->
-        <div class="col-md-3">
-          <div class="card standard-card text-white bg-danger mb-3">
-            <div class="card-header">
-              <i class="bi bi-x-circle"></i> Motoristas que Não Podem Dirigir
-            </div>
-            <div class="card-body">
-              <p class="card-text display-6">
-                <%= totalMotoristasInvalidos || 0 %>
-              </p>
-              <p class="card-text">CNH vencida</p>
-            </div>
-          </div>
-        </div>
-        <!-- Lista: Motoristas Válidos -->
-        <div class="col-md-3">
-          <div class="card mb-3">
-            <div class="card-header bg-success text-white">
-              Motoristas que Podem Dirigir
-            </div>
-            <div class="card-body" style="max-height: 200px; overflow-y: auto;">
-              <ul class="list-group list-group-flush">
-                <% motoristasValidosList.forEach(function(motorista) { %>
-                  <li class="list-group-item">
-                    <strong>
-                      <%= motorista.nome %>
-                    </strong> - <%= motorista.email %><br>
-                      <small>Validade: <%= motorista.validade %></small>
-                  </li>
-                  <% }); %>
-              </ul>
-            </div>
-          </div>
-        </div>
-        <!-- Lista: Motoristas Inválidos -->
-        <div class="col-md-3">
-          <div class="card mb-3">
-            <div class="card-header bg-danger text-white">
-              Motoristas que Não Podem Dirigir
-            </div>
-            <div class="card-body" style="max-height: 200px; overflow-y: auto;">
-              <ul class="list-group list-group-flush">
-                <% motoristasInvalidosList.forEach(function(motorista) { %>
-                  <li class="list-group-item">
-                    <strong>
-                      <%= motorista.nome %>
-                    </strong> - <%= motorista.email %><br>
-                      <small>Validade: <%= motorista.validade %></small>
-                  </li>
-                  <% }); %>
-              </ul>
-            </div>
-          </div>
-        </div>
-        <!-- Veículos, Multas, Uso e Motoristas Ativos -->
-        <div class="col-md-3">
-          <div class="card standard-card text-white bg-primary mb-3">
-            <div class="card-header">
-              <i class="bi bi-truck"></i> Veículos
-            </div>
-            <div class="card-body">
-              <p class="card-text display-6">
-                <%= totalVeiculos || 0 %>
-              </p>
-              <p class="card-text">Veículos cadastrados</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card standard-card text-white bg-danger mb-3">
-            <div class="card-header">
-              <i class="bi bi-exclamation-octagon"></i> Multas
-            </div>
-            <div class="card-body">
-              <p class="card-text display-6">
-                <%= totalMultas || 0 %>
-              </p>
-              <p class="card-text">Multas registradas</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card standard-card text-white bg-success mb-3">
-            <div class="card-header">
-              <i class="bi bi-speedometer2"></i> Uso
-            </div>
-            <div class="card-body">
-              <p class="card-text display-6">
-                <%= totalUso || 0 %>
-              </p>
-              <p class="card-text">Registros de uso</p>
-            </div>
-          </div>
-        </div>
-        <div class="col-md-3">
-          <div class="card standard-card text-white bg-warning mb-3">
-            <div class="card-header">
-              <i class="bi bi-people"></i> Motoristas Ativos
-            </div>
-            <div class="card-body">
-              <p class="card-text display-6">
-                <%= totalMotoristasAtivos || 0 %>
-              </p>
-              <p class="card-text">Em atividade</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <div class="accordion" id="statsAccordion">
 
-      <!-- Seção: Relatórios de Uso -->
-      <div class="row mb-4">
-        <h4 class="mb-3">Relatórios de Uso</h4>
-        <!-- Uso por Dia -->
-        <div class="col-md-4">
-          <div class="card standard-card text-white bg-info mb-3">
-            <div class="card-header">
-              <i class="bi bi-calendar-day"></i> Uso por Dia
-            </div>
-            <div class="card-body">
-              <% if (usoDia.length> 0) { %>
-                <% usoDia.forEach(item=> { %>
-                  <p class="mb-1">
-                    <strong>
-                      <%= new Intl.DateTimeFormat('pt-BR', { weekday: 'long' , day: '2-digit' , month: '2-digit' ,
-                        year: 'numeric' }) .format(new Date(item.dia)) %>:
-                    </strong>
-                    <%= item.totalUsoDia %> usos<br>
-                      <small>🕒 <%= item.primeiroUso %> / 🕛 <%= item.ultimoUso %></small>
-                  </p>
-                  <% }); %>
-                    <% } else { %>
-                      <p>Nenhum uso registrado.</p>
-                      <% } %>
-            </div>
-          </div>
-        </div>
-        <!-- Uso por Mês -->
-        <div class="col-md-4">
-          <div class="card standard-card text-white bg-success mb-3">
-            <div class="card-header">
-              <i class="bi bi-calendar3"></i> Uso por Mês
-            </div>
-            <div class="card-body">
-              <% if (usoMes.length> 0) { %>
-                <% usoMes.forEach(item=> { %>
-                  <p class="mb-1">
-                    <strong>
-                      <%= item.mes %>:
-                    </strong>
-                    <%= item.totalUsoMes %> usos
-                  </p>
-                  <% }); %>
-                    <% } else { %>
-                      <p>Nenhum uso registrado.</p>
-                      <% } %>
-            </div>
-          </div>
-        </div>
-        <!-- Uso por Ano -->
-        <div class="col-md-4">
-          <div class="card standard-card text-white bg-warning mb-3">
-            <div class="card-header">
-              <i class="bi bi-calendar4"></i> Uso por Ano
-            </div>
-            <div class="card-body">
-              <% if (usoAno.length> 0) { %>
-                <% usoAno.forEach(item=> { %>
-                  <p class="mb-1">
-                    <strong>
-                      <%= item.ano %>:
-                    </strong>
-                    <%= item.totalUsoAno %> usos
-                  </p>
-                  <% }); %>
-                    <% } else { %>
-                      <p>Nenhum uso registrado.</p>
-                      <% } %>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Seção: Relatórios de Multas -->
-      <div class="row mb-4">
-        <h4 class="mb-3">Relatórios de Multas</h4>
-        <!-- Multas por Mês -->
-        <div class="col-md-4">
-          <div class="card standard-card text-white bg-secondary mb-3">
-            <div class="card-header">
-              <i class="bi bi-calendar3"></i> Multas por Mês
-            </div>
-            <div class="card-body">
-              <% if (multasMes.length> 0) { %>
-                <% multasMes.forEach(item=> { %>
-                  <p class="mb-1">
-                    <strong>
-                      <%= item.mes %>:
-                    </strong>
-                    <%= item.totalMultasMes %> multas
-                  </p>
-                  <% }); %>
-                    <% } else { %>
-                      <p>Nenhuma multa registrada.</p>
-                      <% } %>
-            </div>
-          </div>
-        </div>
-        <!-- Multas por Ano -->
-        <div class="col-md-4">
-          <div class="card standard-card text-white bg-dark mb-3">
-            <div class="card-header">
-              <i class="bi bi-calendar4"></i> Multas por Ano
-            </div>
-            <div class="card-body">
-              <% if (multasAno.length> 0) { %>
-                <% multasAno.forEach(item=> { %>
-                  <p class="mb-1">
-                    <strong>
-                      <%= item.ano %>:
-                    </strong>
-                    <%= item.totalMultasAno %> multas
-                  </p>
-                  <% }); %>
-                    <% } else { %>
-                      <p>Nenhuma multa registrada.</p>
-                      <% } %>
-            </div>
-          </div>
-        </div>
-        <!-- Multas por Motorista -->
-        <div class="col-md-4">
-          <div class="card standard-card text-white bg-info mb-3">
-            <div class="card-header">
-              <i class="bi bi-people"></i> Multas por Motorista
-            </div>
-            <div class="card-body">
-              <% if (multasMotorista.length> 0) { %>
-                <% multasMotorista.forEach(item=> { %>
-                  <p class="mb-1">
-                    <strong>
-                      <%= item.motorista %>:
-                    </strong>
-                    <%= item.totalMultasMotorista %> multas
-                  </p>
-                  <% }); %>
-                    <% } else { %>
-                      <p>Nenhuma multa registrada.</p>
-                      <% } %>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Seção: Relatórios de Viagens -->
-      <div class="row mb-4">
-        <h4 class="mb-3">Relatórios de Viagens</h4>
-        <!-- Viagens por Dia -->
-        <div class="col-md-4">
-          <div class="card standard-card text-white bg-secondary mb-3">
-            <div class="card-header">
-              <i class="bi bi-calendar-day"></i> Viagens por Dia
-            </div>
-            <div class="card-body">
-              <% if ((viagensTrabalhoDia && viagensTrabalhoDia.length> 0) || (viagensPessoalDia &&
-                viagensPessoalDia.length > 0)) { %>
-                <h6 class="text-white">Trabalho</h6>
-                <% viagensTrabalhoDia.forEach(item=> { %>
-                  <p class="mb-1">
-                    <strong>
-                      <%= new Intl.DateTimeFormat('pt-BR', { weekday: 'long' , day: '2-digit' , month: '2-digit' ,
-                        year: 'numeric' }) .format(new Date(item.dia)) %>:
-                    </strong>
-                    <%= item.totalViagensTrabalho %> viagens
-                  </p>
-                  <% }); %>
-                    <h6 class="text-white mt-3">Pessoal</h6>
-                    <% viagensPessoalDia.forEach(item=> { %>
-                      <p class="mb-1">
-                        <strong>
-                          <%= new Intl.DateTimeFormat('pt-BR', { weekday: 'long' , day: '2-digit' , month: '2-digit' ,
-                            year: 'numeric' }) .format(new Date(item.dia)) %>:
-                        </strong>
-                        <%= item.totalViagensPessoal %> viagens
-                      </p>
-                      <% }); %>
-                        <% } else { %>
-                          <p>Nenhuma viagem registrada.</p>
-                          <% } %>
-            </div>
-          </div>
-        </div>
-        <!-- Viagens por Mês -->
-        <div class="col-md-4">
-          <div class="card standard-card text-white bg-info mb-3">
-            <div class="card-header">
-              <i class="bi bi-calendar3"></i> Viagens por Mês
-            </div>
-            <div class="card-body">
-              <% if ((viagensTrabalhoMes && viagensTrabalhoMes.length> 0) || (viagensPessoalMes &&
-                viagensPessoalMes.length > 0)) { %>
-                <h6 class="text-white">Trabalho</h6>
-                <% viagensTrabalhoMes.forEach(item=> { %>
-                  <p class="mb-1">
-                    <strong>
-                      <%= item.mes %>:
-                    </strong>
-                    <%= item.totalViagensTrabalho %> viagens
-                  </p>
-                  <% }); %>
-                    <h6 class="text-white mt-3">Pessoal</h6>
-                    <% viagensPessoalMes.forEach(item=> { %>
-                      <p class="mb-1">
-                        <strong>
-                          <%= item.mes %>:
-                        </strong>
-                        <%= item.totalViagensPessoal %> viagens
-                      </p>
-                      <% }); %>
-                        <% } else { %>
-                          <p>Nenhuma viagem registrada.</p>
-                          <% } %>
-            </div>
-          </div>
-        </div>
-        <!-- Viagens por Ano -->
-        <div class="col-md-4">
-          <div class="card standard-card text-white bg-dark mb-3">
-            <div class="card-header">
-              <i class="bi bi-calendar4"></i> Viagens por Ano
-            </div>
-            <div class="card-body">
-              <% if ((viagensTrabalhoAno && viagensTrabalhoAno.length> 0) || (viagensPessoalAno &&
-                viagensPessoalAno.length > 0)) { %>
-                <h6 class="text-white">Trabalho</h6>
-                <% viagensTrabalhoAno.forEach(item=> { %>
-                  <p class="mb-1">
-                    <strong>
-                      <%= item.ano %>:
-                    </strong>
-                    <%= item.totalViagensTrabalho %> viagens
-                  </p>
-                  <% }); %>
-                    <h6 class="text-white mt-3">Pessoal</h6>
-                    <% viagensPessoalAno.forEach(item=> { %>
-                      <p class="mb-1">
-                        <strong>
-                          <%= item.ano %>:
-                        </strong>
-                        <%= item.totalViagensPessoal %> viagens
-                      </p>
-                      <% }); %>
-                        <% } else { %>
-                          <p>Nenhuma viagem registrada.</p>
-                          <% } %>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Seção: Viagens por Motorista -->
-      <div class="row mb-4">
-        <h4 class="mb-3">Viagens por Motorista</h4>
-        <div class="col-md-12">
-          <div class="card standard-card text-white bg-primary mb-3">
-            <div class="card-header">
-              <i class="bi bi-people"></i> Viagens por Motorista
-            </div>
-            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
-              <% if (viagensMotorista && viagensMotorista.length> 0) { %>
-                <ul class="list-group list-group-flush">
-                  <% viagensMotorista.forEach(item=> { %>
-                    <li class="list-group-item">
-                      <strong>
-                        <%= item.motorista %>
-                      </strong> (<%= item.finalidade %>) - <%= item.totalViagens %> viagens
-                    </li>
-                    <% }); %>
-                </ul>
-                <% } else { %>
-                  <p>Nenhuma viagem registrada.</p>
-                  <% } %>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Seção: Estatísticas - Tempo de Uso -->
-      <section id="tempo-uso" class="mt-4">
-        <div class="container">
-          <h2 class="mb-4">Estatísticas: Tempo de Uso</h2>
-          <div class="row">
-            <!-- Card: Tempo de Uso - Dia -->
-            <div class="col-md-3 mb-3">
-              <div class="card">
-                <div class="card-header bg-primary text-white">
-                  Tempo de Uso - Dia
+        <!-- 1) Informações Gerais -->
+        <div class="accordion-item">
+          <h2 class="accordion-header" id="headingGeneral">
+            <button class="accordion-button" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#collapseGeneral"
+                    aria-expanded="true" aria-controls="collapseGeneral">
+              <i class="bi bi-bar-chart-fill me-2"></i> Informações Gerais
+            </button>
+          </h2>
+          <div id="collapseGeneral" class="accordion-collapse collapse show"
+               aria-labelledby="headingGeneral" data-bs-parent="#statsAccordion">
+            <div class="accordion-body">
+              <div class="row mb-4">
+                <h4 class="mb-3">Informações Gerais</h4>
+                <!-- Motoristas com CNH válida -->
+                <div class="col-md-3">
+                  <div class="card standard-card text-white bg-success mb-3">
+                    <div class="card-header"><i class="bi bi-check-circle"></i> Motoristas que Podem Dirigir</div>
+                    <div class="card-body">
+                      <p class="display-6"><%= totalMotoristasValidos || 0 %></p>
+                      <p>CNH válida</p>
+                    </div>
+                  </div>
                 </div>
-                <div class="card-body" style="max-height: 200px; overflow-y: auto;">
-                  <% if (tempoUsoDia && tempoUsoDia.length) { %>
-                    <% tempoUsoDia.forEach(function(item) { %>
-                      <p><strong>
-                          <%= item.dia %>:
-                        </strong>
-                        <%= item.totalTempoUsoDia %>
-                      </p>
-                      <% }); %>
-                        <% } else { %>
-                          <p>Nenhum dado disponível</p>
-                          <% } %>
+                <!-- Motoristas com CNH vencida -->
+                <div class="col-md-3">
+                  <div class="card standard-card text-white bg-danger mb-3">
+                    <div class="card-header"><i class="bi bi-x-circle"></i> Motoristas que Não Podem Dirigir</div>
+                    <div class="card-body">
+                      <p class="display-6"><%= totalMotoristasInvalidos || 0 %></p>
+                      <p>CNH vencida</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <!-- Card: Tempo de Uso - Mês -->
-            <div class="col-md-3 mb-3">
-              <div class="card">
-                <div class="card-header bg-success text-white">
-                  Tempo de Uso - Mês
+                <!-- Lista: Motoristas Válidos -->
+                <div class="col-md-3">
+                  <div class="card mb-3">
+                    <div class="card-header bg-success text-white">Motoristas que Podem Dirigir</div>
+                    <div class="card-body" style="max-height:200px;overflow-y:auto">
+                      <ul class="list-group list-group-flush">
+                        <% motoristasValidosList.forEach(motorista => { %>
+                          <li class="list-group-item">
+                            <strong><%= motorista.nome %></strong> - <%= motorista.email %><br>
+                            <small>Validade: <%= motorista.validade %></small>
+                          </li>
+                        <% }) %>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
-                <div class="card-body">
-                  <% if (tempoUsoMes && tempoUsoMes.length) { %>
-                    <% tempoUsoMes.forEach(function(item) { %>
-                      <p><strong>
-                          <%= item.mes %>:
-                        </strong>
-                        <%= item.totalTempoUsoMes %>
-                      </p>
-                      <% }); %>
-                        <% } else { %>
-                          <p>Nenhum dado disponível</p>
-                          <% } %>
+                <!-- Lista: Motoristas Inválidos -->
+                <div class="col-md-3">
+                  <div class="card mb-3">
+                    <div class="card-header bg-danger text-white">Motoristas que Não Podem Dirigir</div>
+                    <div class="card-body" style="max-height:200px;overflow-y:auto">
+                      <ul class="list-group list-group-flush">
+                        <% motoristasInvalidosList.forEach(motorista => { %>
+                          <li class="list-group-item">
+                            <strong><%= motorista.nome %></strong> - <%= motorista.email %><br>
+                            <small>Validade: <%= motorista.validade %></small>
+                          </li>
+                        <% }) %>
+                      </ul>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <!-- Card: Tempo de Uso - Ano -->
-            <div class="col-md-3 mb-3">
-              <div class="card">
-                <div class="card-header bg-warning text-dark">
-                  Tempo de Uso - Ano
+                <!-- Veículos -->
+                <div class="col-md-3">
+                  <div class="card standard-card text-white bg-primary mb-3">
+                    <div class="card-header"><i class="bi bi-truck"></i> Veículos</div>
+                    <div class="card-body">
+                      <p class="display-6"><%= totalVeiculos || 0 %></p>
+                      <p>Veículos cadastrados</p>
+                    </div>
+                  </div>
                 </div>
-                <div class="card-body">
-                  <% if (tempoUsoAno && tempoUsoAno.length) { %>
-                    <% tempoUsoAno.forEach(function(item) { %>
-                      <p><strong>
-                          <%= item.ano %>:
-                        </strong>
-                        <%= item.totalTempoUsoAno %>
-                      </p>
-                      <% }); %>
-                        <% } else { %>
-                          <p>Nenhum dado disponível</p>
-                          <% } %>
+                <!-- Multas -->
+                <div class="col-md-3">
+                  <div class="card standard-card text-white bg-danger mb-3">
+                    <div class="card-header"><i class="bi bi-exclamation-octagon"></i> Multas</div>
+                    <div class="card-body">
+                      <p class="display-6"><%= totalMultas || 0 %></p>
+                      <p>Multas registradas</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-            <!-- Card: Tempo de Uso - Motorista -->
-            <div class="col-md-3 mb-3">
-              <div class="card">
-                <div class="card-header bg-danger text-white">
-                  Tempo de Uso - Motorista
+                <!-- Uso -->
+                <div class="col-md-3">
+                  <div class="card standard-card text-white bg-success mb-3">
+                    <div class="card-header"><i class="bi bi-speedometer2"></i> Uso</div>
+                    <div class="card-body">
+                      <p class="display-6"><%= totalUso || 0 %></p>
+                      <p>Registros de uso</p>
+                    </div>
+                  </div>
                 </div>
-                <div class="card-body" style="max-height: 200px; overflow-y: auto;">
-                  <% if (tempoUsoMotorista && tempoUsoMotorista.length) { %>
-                    <% tempoUsoMotorista.forEach(function(item) { %>
-                      <p><strong>
-                          <%= item.motorista %>:
-                        </strong>
-                        <%= item.totalTempoUsoMotorista %>
-                      </p>
-                      <% }); %>
-                        <% } else { %>
-                          <p>Nenhum dado disponível</p>
-                          <% } %>
+                <!-- Motoristas Ativos -->
+                <div class="col-md-3">
+                  <div class="card standard-card text-white bg-warning mb-3">
+                    <div class="card-header"><i class="bi bi-people"></i> Motoristas Ativos</div>
+                    <div class="card-body">
+                      <p class="display-6"><%= totalMotoristasAtivos || 0 %></p>
+                      <p>Em atividade</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+      
+          <!-- 2) Relatórios de Uso -->
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingUso">
+              <button class="accordion-button collapsed" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#collapseUso"
+                      aria-expanded="false" aria-controls="collapseUso">
+                <i class="bi bi-calendar-day me-2"></i> Relatórios de Uso
+              </button>
+            </h2>
+            <div id="collapseUso" class="accordion-collapse collapse"
+                 aria-labelledby="headingUso" data-bs-parent="#statsAccordion">
+              <div class="accordion-body">
+                <div class="row mb-4">
+                  <h4 class="mb-3">Relatórios de Uso</h4>
+                  <!-- Uso por Dia -->
+                  <div class="col-md-4">
+                    <div class="card standard-card text-white bg-info mb-3">
+                      <div class="card-header"><i class="bi bi-calendar-day"></i> Uso por Dia</div>
+                      <div class="card-body">
+                        <% if (usoDia.length > 0) { %>
+                          <% usoDia.forEach(item => { %>
+                            <p class="mb-1">
+                              <strong>
+                                <%= new Intl.DateTimeFormat('pt-BR', { weekday:'long', day:'2-digit', month:'2-digit', year:'numeric' }).format(new Date(item.dia)) %>:
+                              </strong>
+                              <%= item.totalUsoDia %> usos<br>
+                              <small>🕒 <%= item.primeiroUso %> / <%= item.ultimoUso %></small>
+                            </p>
+                          <% }) %>
+                        <% } else { %>
+                          <p>Nenhum uso registrado.</p>
+                        <% } %>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Uso por Mês -->
+                  <div class="col-md-4">
+                    <div class="card standard-card text-white bg-success mb-3">
+                      <div class="card-header"><i class="bi bi-calendar3"></i> Uso por Mês</div>
+                      <div class="card-body">
+                        <% if (usoMes.length > 0) { %>
+                          <% usoMes.forEach(item => { %>
+                            <p class="mb-1"><strong><%= item.mes %>:</strong> <%= item.totalUsoMes %> usos</p>
+                          <% }) %>
+                        <% } else { %>
+                          <p>Nenhum uso registrado.</p>
+                        <% } %>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Uso por Ano -->
+                  <div class="col-md-4">
+                    <div class="card standard-card text-white bg-warning mb-3">
+                      <div class="card-header"><i class="bi bi-calendar4"></i> Uso por Ano</div>
+                      <div class="card-body">
+                        <% if (usoAno.length > 0) { %>
+                          <% usoAno.forEach(item => { %>
+                            <p class="mb-1"><strong><%= item.ano %>:</strong> <%= item.totalUsoAno %> usos</p>
+                          <% }) %>
+                        <% } else { %>
+                          <p>Nenhum uso registrado.</p>
+                        <% } %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+      
+          <!-- 3) Relatórios de Multas -->
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingMultas">
+              <button class="accordion-button collapsed" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#collapseMultas"
+                      aria-expanded="false" aria-controls="collapseMultas">
+                <i class="bi bi-exclamation-octagon me-2"></i> Relatórios de Multas
+              </button>
+            </h2>
+            <div id="collapseMultas" class="accordion-collapse collapse"
+                 aria-labelledby="headingMultas" data-bs-parent="#statsAccordion">
+              <div class="accordion-body">
+                <div class="row mb-4">
+                  <h4 class="mb-3">Relatórios de Multas</h4>
+                  <!-- Multas por Mês -->
+                  <div class="col-md-4">
+                    <div class="card standard-card text-white bg-secondary mb-3">
+                      <div class="card-header"><i class="bi bi-calendar3"></i> Multas por Mês</div>
+                      <div class="card-body">
+                        <% if (multasMes.length > 0) { %>
+                          <% multasMes.forEach(item => { %>
+                            <p class="mb-1"><strong><%= item.mes %>:</strong> <%= item.totalMultasMes %> multas</p>
+                          <% }) %>
+                        <% } else { %>
+                          <p>Nenhuma multa registrada.</p>
+                        <% } %>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Multas por Ano -->
+                  <div class="col-md-4">
+                    <div class="card standard-card text-white bg-dark mb-3">
+                      <div class="card-header"><i class="bi bi-calendar4"></i> Multas por Ano</div>
+                      <div class="card-body">
+                        <% if (multasAno.length > 0) { %>
+                          <% multasAno.forEach(item => { %>
+                            <p class="mb-1"><strong><%= item.ano %>:</strong> <%= item.totalMultasAno %> multas</p>
+                          <% }) %>
+                        <% } else { %>
+                          <p>Nenhuma multa registrada.</p>
+                        <% } %>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Multas por Motorista -->
+                  <div class="col-md-4">
+                    <div class="card standard-card text-white bg-info mb-3">
+                      <div class="card-header"><i class="bi bi-people"></i> Multas por Motorista</div>
+                      <div class="card-body">
+                        <% if (multasMotorista.length > 0) { %>
+                          <% multasMotorista.forEach(item => { %>
+                            <p class="mb-1"><strong><%= item.motorista %>:</strong> <%= item.totalMultasMotorista %> multas</p>
+                          <% }) %>
+                        <% } else { %>
+                          <p>Nenhuma multa registrada.</p>
+                        <% } %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+      
+          <!-- 4) KM Rodados -->
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingKm">
+              <button class="accordion-button collapsed" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#collapseKm"
+                      aria-expanded="false" aria-controls="collapseKm">
+                <i class="bi bi-speedometer2 me-2"></i> KM Rodados
+              </button>
+            </h2>
+            <div id="collapseKm" class="accordion-collapse collapse"
+                 aria-labelledby="headingKm" data-bs-parent="#statsAccordion">
+              <div class="accordion-body">
+                <div class="row mb-4">
+                  <h4 class="mb-3">KM Rodados</h4>
+                  <!-- KM por Motorista -->
+                  <div class="col-md-3">
+                    <div class="card mb-3">
+                      <div class="card-header bg-primary text-white">KM por Motorista</div>
+                      <div class="card-body" style="max-height:200px;overflow-y:auto">
+                        <ul class="list-group list-group-flush">
+                          <% kmMotorista.forEach(m => { %>
+                            <li class="list-group-item"><strong><%= m.motorista %></strong>: <%= m.totalKm %> km</li>
+                          <% }) %>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- KM por Viagem -->
+                  <div class="col-md-3">
+                    <div class="card mb-3">
+                      <div class="card-header bg-secondary text-white">KM por Viagem (Últ.10)</div>
+                      <div class="card-body" style="max-height:200px;overflow-y:auto">
+                        <ul class="list-group list-group-flush">
+                          <% kmViagem.forEach(v => { %>
+                            <li class="list-group-item">Viagem #<%= v.viagemId %>: <%= v.kmViagem %> km</li>
+                          <% }) %>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- KM por Dia -->
+                  <div class="col-md-3">
+                    <div class="card mb-3">
+                      <div class="card-header bg-info text-white">KM por Dia (Últ.7 dias)</div>
+                      <div class="card-body" style="max-height:200px;overflow-y:auto">
+                        <ul class="list-group list-group-flush">
+                          <% kmDia.forEach(d => { %>
+                            <li class="list-group-item"><strong><%= d.dia %></strong>: <%= d.totalKmDia %> km</li>
+                          <% }) %>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- KM por Mês -->
+                  <div class="col-md-3">
+                    <div class="card mb-3">
+                      <div class="card-header bg-warning text-dark">KM por Mês (Últ.6 meses)</div>
+                      <div class="card-body" style="max-height:200px;overflow-y:auto">
+                        <ul class="list-group list-group-flush">
+                          <% kmMes.forEach(m => { %>
+                            <li class="list-group-item"><strong><%= m.mes %></strong>: <%= m.totalKmMes %> km</li>
+                          <% }) %>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- KM por Ano -->  
+                  <div class="col-md-3">
+                    <div class="card mb-3">
+                      <div class="card-header bg-dark text-white">KM por Ano (Últ.5 anos)</div>
+                      <div class="card-body" style="max-height:200px;overflow-y:auto">
+                        <ul class="list-group list-group-flush">
+                          <% kmAno.forEach(a => { %>
+                            <li class="list-group-item"><strong><%= a.ano %></strong>: <%= a.totalKmAno %> km</li>
+                          <% }) %>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+      
+          <!-- 5) Relatórios de Viagens -->
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingViagens">
+              <button class="accordion-button collapsed" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#collapseViagens"
+                      aria-expanded="false" aria-controls="collapseViagens">
+                <i class="bi bi-geo-alt me-2"></i> Relatórios de Viagens
+              </button>
+            </h2>
+            <div id="collapseViagens" class="accordion-collapse collapse"
+                 aria-labelledby="headingViagens" data-bs-parent="#statsAccordion">
+              <div class="accordion-body">
+                <div class="row mb-4">
+                  <h4 class="mb-3">Relatórios de Viagens</h4>
+                  <!-- Viagens por Dia -->
+                  <div class="col-md-4">
+                    <div class="card standard-card text-white bg-secondary mb-3">
+                      <div class="card-header"><i class="bi bi-calendar-day"></i> Viagens por Dia</div>
+                      <div class="card-body">
+                        <% viagensTrabalhoDia.forEach(item => { %>
+                          <p class="mb-1">
+                            <strong><%= new Intl.DateTimeFormat('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(item.dia)) %> (Trabalho):</strong>
+                            <%= item.totalViagensTrabalho %> viagens
+                          </p>
+                        <% }) %>
+                        <% viagensPessoalDia.forEach(item => { %>
+                          <p class="mb-1">
+                            <strong><%= new Intl.DateTimeFormat('pt-BR',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'}).format(new Date(item.dia)) %> (Pessoal):</strong>
+                            <%= item.totalViagensPessoal %> viagens
+                          </p>
+                        <% }) %>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Viagens por Mês -->
+                  <div class="col-md-4">
+                    <div class="card standard-card text-white bg-info mb-3">
+                      <div class="card-header"><i class="bi bi-calendar3"></i> Viagens por Mês</div>
+                      <div class="card-body">
+                        <% viagensTrabalhoMes.forEach(item => { %>
+                          <p class="mb-1"><strong><%= item.mes %> (Trabalho):</strong> <%= item.totalViagensTrabalho %> viagens</p>
+                        <% }) %>
+                        <% viagensPessoalMes.forEach(item => { %>
+                          <p class="mb-1"><strong><%= item.mes %> (Pessoal):</strong> <%= item.totalViagensPessoal %> viagens</p>
+                        <% }) %>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Viagens por Ano -->
+                  <div class="col-md-4">
+                    <div class="card standard-card text-white bg-dark mb-3">
+                      <div class="card-header"><i class="bi bi-calendar4"></i> Viagens por Ano</div>
+                      <div class="card-body">
+                        <% viagensTrabalhoAno.forEach(item => { %>
+                          <p class="mb-1"><strong><%= item.ano %> (Trabalho):</strong> <%= item.totalViagensTrabalho %> viagens</p>
+                        <% }) %>
+                        <% viagensPessoalAno.forEach(item => { %>
+                          <p class="mb-1"><strong><%= item.ano %> (Pessoal):</strong> <%= item.totalViagensPessoal %> viagens</p>
+                        <% }) %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+      
+          <!-- 6) Tempo de Uso -->
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="headingTempo">
+              <button class="accordion-button collapsed" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#collapseTempo"
+                      aria-expanded="false" aria-controls="collapseTempo">
+                <i class="bi bi-clock-history me-2"></i> Tempo de Uso
+              </button>
+            </h2>
+            <div id="collapseTempo" class="accordion-collapse collapse"
+                 aria-labelledby="headingTempo" data-bs-parent="#statsAccordion">
+              <div class="accordion-body">
+                <div class="row mb-4">
+                  <h4 class="mb-3">Estatísticas: Tempo de Uso</h4>
+                  <!-- Tempo de Uso por Dia -->
+                  <div class="col-md-3 mb-3">
+                    <div class="card">
+                      <div class="card-header bg-primary text-white">Tempo de Uso - Dia</div>
+                      <div class="card-body" style="max-height:200px;overflow-y:auto">
+                        <% tempoUsoDia.forEach(item => { %>
+                          <p><strong><%= item.dia %>:</strong> <%= item.totalTempoUsoDia %></p>
+                        <% }) %>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Tempo de Uso por Mês -->
+                  <div class="col-md-3 mb-3">
+                    <div class="card">
+                      <div class="card-header bg-success text-white">Tempo de Uso - Mês</div>
+                      <div class="card-body" style="max-height:200px;overflow-y:auto">
+                        <% tempoUsoMes.forEach(item => { %>
+                          <p><strong><%= item.mes %>:</strong> <%= item.totalTempoUsoMes %></p>
+                        <% }) %>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Tempo de Uso por Ano -->
+                  <div class="col-md-3 mb-3">
+                    <div class="card">
+                      <div class="card-header bg-warning text-dark">Tempo de Uso - Ano</div>
+                      <div class="card-body" style="max-height:200px;overflow-y:auto">
+                        <% tempoUsoAno.forEach(item => { %>
+                          <p><strong><%= item.ano %>:</strong> <%= item.totalTempoUsoAno %></p>
+                        <% }) %>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Tempo de Uso por Motorista -->
+                  <div class="col-md-3 mb-3">
+                    <div class="card">
+                      <div class="card-header bg-danger text-white">Tempo de Uso - Motorista</div>
+                      <div class="card-body" style="max-height:200px;overflow-y:auto">
+                        <% tempoUsoMotorista.forEach(item => { %>
+                          <p><strong><%= item.motorista %>:</strong> <%= item.totalTempoUsoMotorista %></p>
+                        <% }) %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+      
+        </div><!-- /accordion -->
+      
 
       <!-- Mapa e Menu de Veículos -->
       <div class="container mt-4">
@@ -702,6 +680,7 @@
                       </td>
                       <td>
                         <form action="/manutencoes/realizada/<%= m.id %>" method="POST">
+                          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                           <button type="submit" class="btn btn-sm btn-success"
                             onclick="return confirm('Marcar como manutenção realizada é irreversível. Tem certeza que deseja realmente marcar como realizada?');">Marcar
                             como Realizada</button>

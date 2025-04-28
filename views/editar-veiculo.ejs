@@ -39,6 +39,7 @@
   <div class="container mt-4">
     <h1>Editar Veículo</h1>
     <form action="/editar-veiculo/<%= veiculo.id %>" method="POST">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
       
       <!-- Campos editáveis somente para administradores ficam readonly para usuários -->
       <div class="mb-3">

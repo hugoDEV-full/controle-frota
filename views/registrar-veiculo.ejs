@@ -13,37 +13,135 @@
     <p>
       Usuário: <strong><%= user.email %></strong> | Permissão: <strong><%= user.role %></strong>
     </p>
-    <form action="/registrar-veiculo" method="POST">
+    <% if (errors && errors.length) { %>
+      <div class="alert alert-danger">
+        <ul class="mb-0">
+          <% errors.forEach(err => { %>
+            <li><%= err.msg %></li>
+          <% }) %>
+        </ul>
+      </div>
+    <% } %>
+    
+    <form action="/registrar-veiculo" method="POST" novalidate>
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    
       <div class="mb-3">
         <label for="nome" class="form-label">Nome do Veículo</label>
-        <input type="text" class="form-control" id="nome" name="nome" required>
+        <input
+          type="text"
+          class="form-control <%= errorFields.includes('nome') ? 'is-invalid' : '' %>"
+          id="nome"
+          name="nome"
+          required
+          value="<%= data.nome || '' %>"
+        >
+        <div class="invalid-feedback">Nome é obrigatório.</div>
       </div>
+    
       <div class="mb-3">
         <label for="placa" class="form-label">Placa</label>
-        <input type="text" class="form-control" id="placa" name="placa" required>
+        <input
+          type="text"
+          class="form-control <%= errorFields.includes('placa') ? 'is-invalid' : '' %>"
+          id="placa"
+          name="placa"
+          required
+          pattern="[A-Z]{3}-\d{4}"
+          title="Formato: ABC-1234"
+          value="<%= data.placa || '' %>"
+        >
+        <div class="invalid-feedback">Informe uma placa no formato ABC-1234.</div>
       </div>
+    
       <div class="mb-3">
         <label for="km" class="form-label">Quilometragem</label>
-        <input type="number" class="form-control" id="km" name="km" required>
+        <input
+          type="number"
+          class="form-control <%= errorFields.includes('km') ? 'is-invalid' : '' %>"
+          id="km"
+          name="km"
+          required
+          min="0"
+          value="<%= data.km || '' %>"
+        >
+        <div class="invalid-feedback">Quilometragem deve ser um número >= 0.</div>
       </div>
+    
       <div class="mb-3">
         <label for="ultimaTrocaOleo" class="form-label">Última Troca de Óleo (km)</label>
-        <input type="number" class="form-control" id="ultimaTrocaOleo" name="ultimaTrocaOleo" required>
+        <input
+          type="number"
+          class="form-control <%= errorFields.includes('ultimaTrocaOleo') ? 'is-invalid' : '' %>"
+          id="ultimaTrocaOleo"
+          name="ultimaTrocaOleo"
+          required
+          min="0"
+          value="<%= data.ultimaTrocaOleo || '' %>"
+        >
+        <div class="invalid-feedback">Informe a quilometragem da última troca.</div>
       </div>
+    
       <div class="mb-3">
         <label for="modelo" class="form-label">Modelo</label>
-        <input type="text" class="form-control" id="modelo" name="modelo" required>
+        <input
+          type="text"
+          class="form-control <%= errorFields.includes('modelo') ? 'is-invalid' : '' %>"
+          id="modelo"
+          name="modelo"
+          required
+          value="<%= data.modelo || '' %>"
+        >
+        <div class="invalid-feedback">Modelo é obrigatório.</div>
       </div>
+    
       <div class="mb-3">
         <label for="ano" class="form-label">Ano</label>
-        <input type="number" class="form-control" id="ano" name="ano" required>
+        <input
+          type="number"
+          class="form-control <%= errorFields.includes('ano') ? 'is-invalid' : '' %>"
+          id="ano"
+          name="ano"
+          required
+          min="1900"
+          max="<%= new Date().getFullYear() %>"
+          value="<%= data.ano || '' %>"
+        >
+        <div class="invalid-feedback">Ano deve estar entre 1900 e <%= new Date().getFullYear() %>.</div>
       </div>
+    
       <div class="mb-3">
         <label for="cor" class="form-label">Cor</label>
-        <input type="text" class="form-control" id="cor" name="cor" required>
+        <input
+          type="text"
+          class="form-control <%= errorFields.includes('cor') ? 'is-invalid' : '' %>"
+          id="cor"
+          name="cor"
+          required
+          value="<%= data.cor || '' %>"
+        >
+        <div class="invalid-feedback">Cor é obrigatória.</div>
       </div>
+    
       <button type="submit" class="btn btn-primary">Registrar</button>
     </form>
+    
+    <script>
+    // Ativando feedback do Bootstrap para validação HTML5
+    (() => {
+      'use strict';
+      const forms = document.querySelectorAll('form[novalidate]');
+      Array.from(forms).forEach(form => {
+        form.addEventListener('submit', e => {
+          if (!form.checkValidity()) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          form.classList.add('was-validated');
+        }, false);
+      });
+    })();
+    </script>
     <a href="/" class="btn btn-secondary mt-3">Voltar</a>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>

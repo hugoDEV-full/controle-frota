@@ -38,6 +38,7 @@
                 <td>
                   <!-- Botão para marcar que a troca foi realizada -->
                   <form action="/troca-feita/<%= veiculo.id %>" method="POST" onsubmit="return confirm('A troca de óleo é irreversível. Deseja realmente confirmar que a troca foi realizada?');">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <button type="submit" class="btn btn-success btn-sm">Troca Realizada</button>
                   </form>
                 </td>
@@ -67,6 +68,7 @@
               </div>
               <form action="/excluir-notificacao-alteracao-km/<%= notif.id %>" method="POST"
                 onsubmit="return confirm('Excluir essa notificação é irreversível. Tem certeza que deseja excluir essa notificação?');" style="margin: 0;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
               </form>
             </li>

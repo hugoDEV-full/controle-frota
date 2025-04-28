@@ -201,6 +201,7 @@
                 <div class="d-flex gap-2">
                   <a href="/editar-uso/${data}" class="btn btn-warning btn-sm">Editar</a>
                   <form action="/excluir-uso/${data}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este uso?');">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
                   </form>
                 </div>
