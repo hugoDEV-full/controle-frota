@@ -2,7 +2,8 @@
 
 ## Visão Geral
 
-Esse sistema é um app de gerenciamento de frota feito em Node.js com Express e MySQL. Ele junta várias features: autenticação com Passport, controle de sessões, upload de imagens, registro e gerenciamento de veículos, controle de multas, recuperação de senha, notificações em tempo real e suporte a PWA pra funcionar offline e ser adicionado à tela inicial. Cada usuário só vê o que tem permissão pra ver, com autorização por roles.
+Esse sistema é um app de gerenciamento de frota feito em Node.js com Express e MySQL. Ele junta várias features: autenticação com Passport, controle de sessões, upload de imagens, registro e gerenciamento de veículos, controle de multas, recuperação de senha, notificações em tempo real. 
+Cada usuário só vê o que tem permissão pra ver, com autorização por roles.
 
 ## Tecnologias
 
@@ -13,8 +14,7 @@ Esse sistema é um app de gerenciamento de frota feito em Node.js com Express e 
 - **Multer:** Upload de imagens.
 - **Socket.IO:** Notificações em tempo real.
 - **Nodemailer:** Envio de emails (pra reset de senha e alertas de manutenção).
-- **PWA:** Service Worker e Manifest (offline e "Add to Home Screen").
-- **EJS:** Motor de template pra renderizar as views.
+- **EJS:** Renderizar as views.
 
 ## Funcionalidades
 
@@ -43,14 +43,13 @@ Os admins têm acesso a funções extras, como:
   - Receber alertas quando um veículo atingir 10.000 km depois da última troca de óleo.
   - Marcar que a troca foi feita, atualizando os dados do veículo.
 - **Controle Total:** Acesso a todos os relatórios e funções administrativas.
+- **Registrar Multa**
 
 ## Funcionalidades Extras
 
 - **Notificações & Manutenção Preventiva:**  
-  O sistema monitora o km dos veículos e, se a diferença entre o km atual e a última troca de óleo for igual ou maior que 10.000 km, manda uma notificação em tempo real via Socket.IO e dispara um email avisando que tá na hora da manutenção.
+  O sistema monitora o km dos veículos e, se a diferença entre o km atual e a última troca de óleo for igual ou maior que 10.000 km, manda uma notificação em tempo real via Socket.IO e dispara um email avisando que está na hora da manutenção.
 
-- **PWA (Progressive Web App):**  
-  Tem um `manifest.json` e um `service-worker.js` pra funcionar offline e ser instalado na tela inicial, deixando o acesso muito mais rápido e imersivo, principalmente em mobile.
 
 - **Atualização de Localização via GPS:**  
   Uma rota específica recebe atualizações de localização (latitude e longitude) dos veículos, usando CORS pra permitir requisições de domínios específicos — ideal pra integração com apps de monitoramento.
@@ -80,7 +79,7 @@ Os admins têm acesso a funções extras, como:
 ### Testando
 
 - Use o navegador pra acessar as páginas de login, perfil e demais funcionalidades de uso dos veículos.
-- Se o app estiver configurado como PWA, adicione-o à tela inicial no seu mobile e teste também o modo offline.
+- Adicione-o à tela inicial no seu mobile
 
 
 
