@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const expressLayouts = require('express-ejs-layouts');
 const mysql = require('mysql2');
@@ -11,13 +12,38 @@ const bcrypt = require('bcrypt');
 const session = require('express-session');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
-require('dotenv').config();
+
 //time zone
 process.env.TZ = 'America/Sao_Paulo';
 // servidor HTTP  , Socket.IO
-const http = require('http');
+const https = require('https');
+
 const app = express();
-const server = http.createServer(app);
+
+let server;
+
+const HTTPS_ENABLED = process.env.HTTPS_ENABLED === 'true';
+
+if (HTTPS_ENABLED) {
+  const sslKeyPath = process.env.SSL_KEY_PATH || '/certs/privkey.pem';
+  const sslCertPath = process.env.SSL_CERT_PATH || '/certs/fullchain.pem';
+
+  const privateKey = fs.readFileSync(sslKeyPath, 'utf8');
+  const certificate = fs.readFileSync(sslCertPath, 'utf8');
+
+  const credentials = { key: privateKey, cert: certificate };
+
+  const https = require('https');
+  server = https.createServer(credentials, app);
+
+  console.log("Servidor HTTPS configurado.");
+} else {
+  const http = require('http');
+  server = http.createServer(app);
+
+  console.log("Servidor HTTP configurado.");
+}
+
 const { Server } = require('socket.io');
 
 const TRUSTED_ORIGINS = ["http://localhost:3000"];
@@ -221,17 +247,21 @@ app.use(
 
 
 
+  const isProduction = process.env.NODE_ENV === 'production';
+ 
+  
   app.use(session({
     secret: process.env.SECRET_SESSION,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 30 * 60 * 1000,  // 30 minutos
-      secure: false,           //
+      maxAge: 30 * 60 * 1000, // 30 minutos
+      secure: HTTPS_ENABLED, // Se HTTPS, cookie só via HTTPS
       httpOnly: true,
-      sameSite: 'lax'          // Lax funciona cross-site em GET, e envia o cookie em POST
+      sameSite: HTTPS_ENABLED ? 'none' : 'lax'
     }
   }));
+  
 
 
 // sanitização global POST
@@ -1294,7 +1324,7 @@ app.get('/usar/:id', isAuthenticated, csrfProtection, (req, res) => {
 //rota para auto gerar manutenção
 
 function autoGenerateMaintenance(veiculo) {
-    console.log(`🔍 Verificando manutenção para veículo ${veiculo.id} (${veiculo.placa}) com KM=${veiculo.km}`);
+   // console.log(`🔍 Verificando manutenção para veículo ${veiculo.id} (${veiculo.placa}) com KM=${veiculo.km}`);
 
     const regrasManutencao = [
         { tipo: 'Troca de Pneus', kmIntervalo: 100 },
@@ -1324,7 +1354,7 @@ function autoGenerateMaintenance(veiculo) {
 
     regrasManutencao.forEach(regra => {
         if (Number(veiculo.km) >= regra.kmIntervalo) {
-            console.log(`⚠️ Veículo ${veiculo.id} ultrapassou ${regra.kmIntervalo} km para ${regra.tipo}`);
+            //console.log(`⚠️ Veículo ${veiculo.id} ultrapassou ${regra.kmIntervalo} km para ${regra.tipo}`);
 
             const queryVerifica = `
               SELECT * FROM manutencoes 
@@ -3261,5 +3291,4 @@ if ('serviceWorker' in navigator) {
 //     console.log(`Servidor rodando na porta ${port}`);
 // });
 */
-
 
