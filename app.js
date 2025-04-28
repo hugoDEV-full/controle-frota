@@ -410,7 +410,7 @@ function checkOilChangeForVehicle(veiculo_id) {
             const veiculo = results[0];
             const km = Number(veiculo.km);
             const ultimaTroca = Number(veiculo.ultimaTrocaOleo);
-            console.log(`Checando veículo ${veiculo.id}: km=${km}, última troca=${ultimaTroca}, diff=${km - ultimaTroca}`);
+           // console.log(`Checando veículo ${veiculo.id}: km=${km}, última troca=${ultimaTroca}, diff=${km - ultimaTroca}`);
             if ((km - ultimaTroca) >= 10000) {
                 io.emit('oilChangeNotification', veiculo);
                 sendOilChangeEmail(veiculo);
@@ -1335,28 +1335,28 @@ function autoGenerateMaintenance(veiculo) {
                     console.error(`Erro ao verificar manutenção ${regra.tipo}:`, err);
                     return;
                 }
-                console.log(`Resultado da verificação para ${regra.tipo}: ${results.length} registros encontrados.`);
+                //console.log(`Resultado da verificação para ${regra.tipo}: ${results.length} registros encontrados.`);
                 if (results.length === 0) {
                     const descricao = `Manutenção automática disparada ao atingir ${veiculo.km} km.`;
                     const queryInsert = `
                        INSERT INTO manutencoes (veiculo_id, tipo, descricao, km_agendado, status)
                        VALUES (?, ?, ?, ?, 'pendente')
                     `;
-                    console.log(`Tentando inserir manutenção "${regra.tipo}" para o veículo ${veiculo.placa}.`);
+                    //console.log(`Tentando inserir manutenção "${regra.tipo}" para o veículo ${veiculo.placa}.`);
                     db.query(queryInsert, [veiculo.id, regra.tipo, descricao, regra.kmIntervalo], (err, result) => {
                         if (err) {
                             console.error(`Erro ao inserir manutenção ${regra.tipo}:`, err);
                         } else {
-                            console.log(`✅ Manutenção "${regra.tipo}" gerada para o veículo ${veiculo.placa}.`);
+                            //console.log(`✅ Manutenção "${regra.tipo}" gerada para o veículo ${veiculo.placa}.`);
                             sendMaintenanceNotification(veiculo, { tipo: regra.tipo, descricao });
                         }
                     });
                 } else {
-                    console.log(`✅ Já existe manutenção pendente para ${regra.tipo} no veículo ${veiculo.placa}.`);
+                    //console.log(`✅ Já existe manutenção pendente para ${regra.tipo} no veículo ${veiculo.placa}.`);
                 }
             });
         } else {
-            console.log(`Veículo ${veiculo.id} com KM=${veiculo.km} não atingiu ${regra.kmIntervalo} para ${regra.tipo}.`);
+           // console.log(`Veículo ${veiculo.id} com KM=${veiculo.km} não atingiu ${regra.kmIntervalo} para ${regra.tipo}.`);
         }
     });
 }
@@ -1458,7 +1458,7 @@ app.post('/usar/:id', isAuthenticated, uploadSingleFoto, csrfProtection, (req, r
                                     if (err) {
                                         console.error("Erro ao atualizar km:", err);
                                     } else {
-                                        console.log(`🚗 Veículo ${id} atualizado para km=${kmFinalValue}`);
+                                       // console.log(` Veículo ${id} atualizado para km=${kmFinalValue}`);
                                         // Verifica troca de óleo
                                         checkOilChangeForVehicle(id);
                                         // Busca dados atualizados do veículo e chama autoGenerateMaintenance
@@ -1466,7 +1466,7 @@ app.post('/usar/:id', isAuthenticated, uploadSingleFoto, csrfProtection, (req, r
                                             if (err) {
                                                 console.error("Erro ao buscar veículo atualizado:", err);
                                             } else if (updatedResult.length > 0) {
-                                                console.log("📊 Dados atualizados do veículo:", updatedResult[0]);
+                                                //console.log(" Dados atualizados do veículo:", updatedResult[0]);
                                                 autoGenerateMaintenance(updatedResult[0]);
                                             }
                                         });
@@ -1773,7 +1773,7 @@ app.post('/excluir-multiplos-usos', isAuthenticated, isAdmin, csrfProtection, (r
         return res.status(400).json({ message: 'IDs inválidos.' });
     }
 
-    console.log('IDs para exclusão:', ids);
+    //console.log('IDs para exclusão:', ids);
 
     // Obtém uma conexão do pool
     db.getConnection((err, connection) => {
@@ -2416,7 +2416,7 @@ app.get('/relatorio-consumo', isAuthenticated, csrfProtection, async (req, res) 
           GROUP BY motoristas.email, ${groupExpr}
           ORDER BY ${groupExpr} DESC, motoristas.email
             `;
-            console.log('SQL:', sql);
+            //console.log('SQL:', sql);
             return await query(sql, [eficiencia, eficiencia, precoGasolina, ...params]);
         };
 
@@ -2434,7 +2434,7 @@ app.get('/relatorio-consumo', isAuthenticated, csrfProtection, async (req, res) 
           GROUP BY motoristas.email, ${groupExpr}
           ORDER BY ${groupExpr} DESC, motoristas.email
             `;
-            console.log('SQL Reembolso:', sql);
+            //console.log('SQL Reembolso:', sql);
             return await query(sql, [eficiencia, precoGasolina, ...params]);
         };
 
@@ -2842,10 +2842,10 @@ app.get('/api/anos', isAuthenticated, csrfProtection, async (req, res) => {
 
 app.post('/excluir-avaliacao/:id', isAuthenticated, csrfProtection, async (req, res) => {
     const { id } = req.params;
-    console.log("Tentando excluir avaliação com id:", id);
+    //console.log("Tentando excluir avaliação com id:", id);
     try {
         const result = await query("DELETE FROM carro_reparo WHERE id = ?", [id]);
-        console.log("Resultado da exclusão:", result);
+        //console.log("Resultado da exclusão:", result);
         // Verifica se algum registro foi afetado
         if (result.affectedRows === 0) {
             return res.status(404).json({ sucesso: false, error: "Registro não encontrado." });
