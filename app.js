@@ -222,19 +222,25 @@ app.use(
 
 
 
-// Configuração sessões e Passport
-app.use(session({
+  const isProd = process.env.NODE_ENV === 'production';
+
+  if (isProd) {
+    app.set('trust proxy', 1);
+  }
+  
+  app.use(session({
     secret: process.env.SECRET_SESSION,
     resave: false,
     saveUninitialized: false,
     cookie: {
-        maxAge: 30 * 60 * 1000,
-        secure: process.env.NODE_ENV === 'production',  // só em HTTPS
-        httpOnly: true,
-        sameSite: 'lax'
+      maxAge: 30 * 60 * 1000,        // 30 minutos
+      secure: isProd,                // HTTPS em produção
+      httpOnly: true,
+      sameSite: isProd ? 'none'      // Only None <-> secure:true browsers-OK
+                           : 'lax'    // Em dev, Lax (padrão) funciona em HTTP
     }
-}));
-
+  }));
+  
 
 // sanitização global POST
 app.use((req, res, next) => {
