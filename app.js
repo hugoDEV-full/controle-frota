@@ -142,9 +142,9 @@ app.use((req, res, next) => {
 
 app.use(
     helmet({
-        
+
         contentSecurityPolicy: false,
-        
+
         crossOriginEmbedderPolicy: false
     })
 );
@@ -221,26 +221,18 @@ app.use(
 
 
 
-
-  const isProd = process.env.NODE_ENV === 'production';
-
-  if (isProd) {
-    app.set('trust proxy', 1);
-  }
-  
   app.use(session({
     secret: process.env.SECRET_SESSION,
     resave: false,
     saveUninitialized: false,
     cookie: {
-      maxAge: 30 * 60 * 1000,        // 30 minutos
-      secure: isProd,                // HTTPS em produção
+      maxAge: 30 * 60 * 1000,  // 30 minutos
+      secure: false,           //
       httpOnly: true,
-      sameSite: isProd ? 'none'      // Only None <-> secure:true browsers-OK
-                           : 'lax'    // Em dev, Lax (padrão) funciona em HTTP
+      sameSite: 'lax'          // Lax funciona cross-site em GET, e envia o cookie em POST
     }
   }));
-  
+
 
 // sanitização global POST
 app.use((req, res, next) => {
@@ -639,7 +631,7 @@ app.get('/', isAuthenticated, csrfProtection, async (req, res) => {
           ORDER BY motorista, totalViagens DESC
         `);
 
-       
+
 
         // KM Rodados por motorista (top 10)
         const kmMotoristaResult = await query(`
@@ -2061,33 +2053,33 @@ function validarCPF(cpf) {
 
 app.get('/registro-motorista', isAuthenticated, csrfProtection, async (req, res) => {
     try {
-      // Verifica se já existe um registro de motorista com o email do usuário
-      const resultados = await query(
-        'SELECT * FROM motoristas WHERE email = ?',
-        [req.user.email]
-      );
-  
-      const jaCadastrado = resultados.length > 0;
-      const motorista   = jaCadastrado ? resultados[0] : null;
-  
-      //  Renderiza a view, sempre passando errors, errorFields e data (mesmo vazios)
-      res.render('registro-motorista', {
-        activePage: 'registro-motorista',
-        user: req.user,
-        csrfToken: req.csrfToken(),
-        title: 'Cadastro de Motorista',
-        layout: 'layout',
-        isMotorista: jaCadastrado,    // flag para o EJS
-        motorista,                     // dados do motorista (se existir)
-        errors: [],
-        errorFields: [],
-        data: {}
-      });
+        // Verifica se já existe um registro de motorista com o email do usuário
+        const resultados = await query(
+            'SELECT * FROM motoristas WHERE email = ?',
+            [req.user.email]
+        );
+
+        const jaCadastrado = resultados.length > 0;
+        const motorista = jaCadastrado ? resultados[0] : null;
+
+        //  Renderiza a view, sempre passando errors, errorFields e data (mesmo vazios)
+        res.render('registro-motorista', {
+            activePage: 'registro-motorista',
+            user: req.user,
+            csrfToken: req.csrfToken(),
+            title: 'Cadastro de Motorista',
+            layout: 'layout',
+            isMotorista: jaCadastrado,    // flag para o EJS
+            motorista,                     // dados do motorista (se existir)
+            errors: [],
+            errorFields: [],
+            data: {}
+        });
     } catch (err) {
-      console.error('Erro ao buscar motorista:', err);
-      res.status(500).send('Erro interno');
+        console.error('Erro ao buscar motorista:', err);
+        res.status(500).send('Erro interno');
     }
-  });
+});
 
 
 
@@ -3057,27 +3049,27 @@ app.delete(
     isAuthenticated,
     csrfProtection,
     async (req, res) => {
-      const { id } = req.params;
-      try {
-        // 1) Apaga todos os reembolsos desse motorista
-        await query('DELETE FROM reembolsos WHERE motorista_id = ?', [id]);
-  
-        // 2) Em seguida, apaga o motorista
-        await query('DELETE FROM motoristas WHERE id = ?', [id]);
-  
-        return res.json({
-          success: true,
-          message: 'Motorista e reembolsos associados excluídos com sucesso.'
-        });
-      } catch (err) {
-        console.error('Erro ao excluir motorista:', err);
-        return res
-          .status(500)
-          .json({ success: false, message: 'Não foi possível excluir o motorista.' });
-      }
+        const { id } = req.params;
+        try {
+            // 1) Apaga todos os reembolsos desse motorista
+            await query('DELETE FROM reembolsos WHERE motorista_id = ?', [id]);
+
+            // 2) Em seguida, apaga o motorista
+            await query('DELETE FROM motoristas WHERE id = ?', [id]);
+
+            return res.json({
+                success: true,
+                message: 'Motorista e reembolsos associados excluídos com sucesso.'
+            });
+        } catch (err) {
+            console.error('Erro ao excluir motorista:', err);
+            return res
+                .status(500)
+                .json({ success: false, message: 'Não foi possível excluir o motorista.' });
+        }
     }
-  );
-  
+);
+
 
 // === EDITAR USUÁRIO ===
 //  exibe formulário com email e role
