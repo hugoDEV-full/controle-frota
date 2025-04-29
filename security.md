@@ -28,5 +28,7 @@
 
 15- Cookie Secure: ```secure: process.env.NODE_ENV==='production' ``` Exige HTTPS em produção.
 
-16- Nonce para scripts: ```res.locals.nonce = crypto.randomBytes(16).toString('base64');``` Suporte a CSP .
+16- Nonce para scripts: ```res.locals.nonce = crypto.randomBytes(16).toString('base64');``` Suporte a CSP  proteger contra ataques XSS.
+
+17- HTTPS: Servidor configurado com TLS usando certificados em `/certs/fullchain.pem` e `/certs/privkey.pem`.
 
