@@ -3215,7 +3215,7 @@ app.post('/api/editar-motorista/:id', isAuthenticated, uploadFoto, csrfProtectio
         return res.status(400).json({ success: false, message: 'CNH vencida.' });
     if (!validarCPF(cpf))
         return res.status(400).json({ success: false, message: 'CPF inválido.' });
-    if (!/^[0-9]{11}$/.test(cnh.replace(/\D/g, '')))
+    if (!/^[0-9]{9}$/.test(cnh.replace(/\D/g, '')))
         return res.status(400).json({ success: false, message: 'CNH inválida.' });
 
     // duplicidade cpf

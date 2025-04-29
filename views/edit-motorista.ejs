@@ -81,7 +81,7 @@
   <script>
     $(function(){
       $('#cpf').mask('000.000.000-00', {reverse:true});
-      $('#cnh').mask('00000000000');
+      $('#cnh').mask('000000000');
 
       // --- SALVAR EDIÇÃO (PUT) ---
       $('#formEdit').on('submit', async function(e){
@@ -95,7 +95,7 @@
 
         try {
           const res = await fetch(`/api/editar-motorista/${id}`, {
-            method: 'PUT',
+            method: 'POST',
             headers: { 'CSRF-Token': $('input[name="_csrf"]').val() },
             body: formData
           });
