@@ -49,6 +49,8 @@ services:
       MYSQL_USER: ${DB_USER}
       MYSQL_PASSWORD: ${DB_PASSWORD}
       TZ: America/Sao_Paulo
+    volumes:
+      - mysql_data:/var/lib/mysql   # Persistência de dados do MySQL
     restart: unless-stopped
     networks:
       - controleveiculos_network
@@ -58,4 +60,5 @@ networks:
     driver: bridge
 
 volumes:
-  node_modules:
+  node_modules:            # Persistência de módulos Node
+  mysql_data:             # Persistência de dados do MySQL

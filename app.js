@@ -401,6 +401,7 @@ app.get('/logout', (req, res, next) => {
         if (err) return next(err);
         req.session.destroy(() => {
             console.log("Sessão encerrada. Usuário deslogado.");
+            authLimiter.resetKey(req.ip); //zera o contagem pro ip em authlimiter
             res.redirect('/login');
         });
     });
