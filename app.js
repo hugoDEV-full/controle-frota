@@ -281,7 +281,7 @@ app.use((req, res, next) => {
 const rateLimit = require('express-rate-limit');
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 min
-    max: 10,                  // até 10 tentativas
+    max: 100,                  // até 10 tentativas
     message: "Muitas tentativas, aguarde 15 minutos."
 });
 
