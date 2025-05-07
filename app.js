@@ -3295,74 +3295,123 @@ app.post('/usuarios/:id/edit', isAuthenticated, csrfProtection, (req, res) => {
 //const methodOverride = require('method-override');
 //app.use(methodOverride('_method'));
 
-//  exibe formulário com todos os campos
-app.get('/motoristas/:id/edit', isAuthenticated, csrfProtection, (req, res) => {
-    const { id } = req.params;
-    pool.query('SELECT * FROM motoristas WHERE id = ?', [id], (err, results) => {
-        if (err || !results.length) {
-            return res.redirect('/motoristas');
+// exibe formulário com todos os campos, incluindo fotoCNH
+app.get(
+    '/motoristas/:id/edit',
+    isAuthenticated,
+    csrfProtection,
+    async (req, res) => {
+      const { id } = req.params;
+      try {
+        const resultados = await query(
+          'SELECT * FROM motoristas WHERE id = ?',
+          [id]
+        );
+        if (!resultados.length) {
+          return res.redirect('/motoristas');
         }
+  
+        const motorista = resultados[0];
+        let fotoCNH = null;
+        if (motorista.foto_cnh) {
+          fotoCNH = Buffer
+            .from(motorista.foto_cnh)
+            .toString('base64');
+        }
+  
         res.render('edit-motorista', {
-            user: req.user,
-            csrfToken: req.csrfToken(),
-            erros: [],
-            motorista: results[0]
+          user: req.user,
+          csrfToken: req.csrfToken(),
+          erros: [],
+          motorista,
+          fotoCNH    
         });
-    });
-});
+  
+      } catch (err) {
+        console.error('Erro ao buscar motorista para edição:', err);
+        res.redirect('/motoristas');
+      }
+    }
+  );
+  
 
-
-const uploadFoto = multer({
-    storage,
+  /*const uploadFotoBanco = multer({
+    storage: multer.memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
-        if (!file.mimetype.startsWith('image/')) {
-            return cb(new Error('Só imagens são permitidas'), false);
-        }
-        cb(null, true);
+      if (!file.mimetype.startsWith('image/')) {
+        return cb(new Error('Só imagens são permitidas'), false);
+      }
+      cb(null, true);
     }
-}).single('foto');
-
-
-
-app.post('/api/editar-motorista/:id', isAuthenticated, uploadFoto, csrfProtection, (req, res) => {
-    const { id } = req.params;
-    const { nome, cpf, cnh, dataValidade, categoria } = req.body;
-    const foto = req.file ? req.file.filename : null;
-    const email = req.user.email;
-
-    // validações 
-    if (!nome || !cpf || !cnh || !dataValidade || !categoria)
+  }).single('foto');*/
+  
+  app.post(
+    '/api/editar-motorista/:id',
+    isAuthenticated,
+    uploadFotoBanco,
+    csrfProtection,
+    async (req, res) => {
+      const { id } = req.params;
+      const { nome, cpf, cnh, dataValidade, categoria } = req.body;
+      const bufferFoto = req.file ? req.file.buffer : null;
+      const email = req.user.email;
+  
+      // validações
+      if (!nome || !cpf || !cnh || !dataValidade || !categoria) {
         return res.status(400).json({ success: false, message: 'Preencha todos os campos.' });
-    if (moment(dataValidade).isBefore(moment(), 'day'))
+      }
+      if (moment(dataValidade).isBefore(moment(), 'day')) {
         return res.status(400).json({ success: false, message: 'CNH vencida.' });
-    if (!validarCPF(cpf))
+      }
+      if (!validarCPF(cpf)) {
         return res.status(400).json({ success: false, message: 'CPF inválido.' });
-    if (!/^[0-9]{9}$/.test(cnh.replace(/\D/g, '')))
+      }
+      if (!/^[0-9]{9}$/.test(cnh.replace(/\D/g, ''))) {
         return res.status(400).json({ success: false, message: 'CNH inválida.' });
-
-    // duplicidade cpf
-    db.query('SELECT id FROM motoristas WHERE cpf=? AND id<>?', [cpf, id], (e, cpfRes) => {
-        if (e) return res.status(500).json({ success: false, message: 'Erro ao verificar CPF.' });
-        if (cpfRes.length) return res.status(400).json({ success: false, message: 'CPF já cadastrado.' });
-
-        // duplicidade cnh
-        db.query('SELECT id FROM motoristas WHERE cnh=? AND id<>?', [cnh, id], (e2, cnhRes) => {
-            if (e2) return res.status(500).json({ success: false, message: 'Erro ao verificar CNH.' });
-            if (cnhRes.length) return res.status(400).json({ success: false, message: 'CNH já cadastrada.' });
-
-            // update
-            const fields = [nome, email, cpf, cnh, dataValidade, categoria];
-            let sql = 'UPDATE motoristas SET nome=?,email=?,cpf=?,cnh=?,data_validade=?,categoria=?';
-            if (foto) { sql += ',foto=?'; fields.push(foto); }
-            sql += ' WHERE id=?'; fields.push(id);
-            db.query(sql, fields, (err) => {
-                if (err) return res.status(500).json({ success: false, message: 'Erro ao atualizar.' });
-                res.json({ success: true, message: 'Motorista atualizado!' });
-            });
-        });
-    });
-});
+      }
+  
+      try {
+        // duplicidade CPF
+        const existingCPF = await query(
+          'SELECT id FROM motoristas WHERE cpf = ? AND id <> ?',
+          [cpf, id]
+        );
+        if (existingCPF.length) {
+          return res.status(400).json({ success: false, message: 'CPF já cadastrado.' });
+        }
+  
+        // duplicidade CNH
+        const existingCNH = await query(
+          'SELECT id FROM motoristas WHERE cnh = ? AND id <> ?',
+          [cnh, id]
+        );
+        if (existingCNH.length) {
+          return res.status(400).json({ success: false, message: 'CNH já cadastrada.' });
+        }
+  
+        // build do UPDATE
+        const fields = [nome, email, cpf, cnh, dataValidade, categoria];
+        let sql = 'UPDATE motoristas SET nome=?, email=?, cpf=?, cnh=?, data_validade=?, categoria=?';
+  
+        if (bufferFoto) {
+          sql += ', foto_cnh = ?';
+          fields.push(bufferFoto);
+        }
+  
+        sql += ' WHERE id = ?';
+        fields.push(id);
+  
+        await query(sql, fields);
+        res.json({ success: true, message: 'Motorista atualizado!' });
+  
+      } catch (err) {
+        console.error('Erro ao atualizar motorista:', err);
+        res.status(500).json({ success: false, message: 'Erro interno.' });
+      }
+    }
+  );
+  
 
 
 //////////////////////////////////fim editar ususarios e motoristas
