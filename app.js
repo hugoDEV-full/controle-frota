@@ -378,21 +378,54 @@ app.use(async (req, res, next) => {
     }
     next();
   });
-
-  // somente admin pode ver
-app.get('/auditoria', isAuthenticated, isAdmin, csrfProtection, async (req, res) => {
+// auditoria 
+  app.get('/auditoria', isAuthenticated, isAdmin, csrfProtection, async (req, res) => {
     try {
-      // buscar últimos 100 logs
+      const { usuario, data, rota, metodo } = req.query;
+      const filtros = [];
+      const valores = [];
+  
+      if (usuario) {
+        filtros.push('usuario LIKE ?');
+        valores.push(`%${usuario}%`);
+      }
+      if (data) {
+        filtros.push('DATE(criado_em) = ?');
+        valores.push(data);
+      }
+      if (rota) {
+        filtros.push('rota LIKE ?');
+        valores.push(`%${rota}%`);
+      }
+      if (metodo) {
+        filtros.push('metodo = ?');
+        valores.push(metodo);
+      }
+  
+      const where = filtros.length > 0 ? 'WHERE ' + filtros.join(' AND ') : '';
+  
       const logs = await query(
-        'SELECT usuario, rota, metodo, detalhes, DATE_FORMAT(criado_em, "%d/%m/%Y %H:%i:%s") AS criado_em ' +
-        'FROM auditoria ORDER BY criado_em DESC LIMIT 100'
+        `SELECT usuario, rota, metodo, detalhes, DATE_FORMAT(criado_em, "%d/%m/%Y %H:%i:%s") AS criado_em 
+         FROM auditoria ${where} 
+         ORDER BY criado_em DESC 
+         LIMIT 100`,
+        valores
       );
-      res.render('auditoria', { layout: 'layout', activePage: 'auditoria', logs,  csrfToken: req.csrfToken(), user: req.user });
+  
+      res.render('auditoria', {
+        layout: 'layout',
+        activePage: 'auditoria',
+        logs,
+        filtro: req.query,
+        csrfToken: req.csrfToken(),
+        user: req.user
+      });
     } catch (err) {
       console.error(err);
       res.status(500).send('Erro ao carregar auditoria');
     }
   });
+  
   
   
 // GET /login — gera e envia o token para a view

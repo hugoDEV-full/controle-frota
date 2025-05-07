@@ -1,6 +1,29 @@
 <div class="container py-4">
     <h1 class="mb-4">Logs de Auditoria</h1>
-  
+    <form method="GET" class="row g-3 mb-4">
+      
+      <div class="col-md-3">
+        <input type="text" class="form-control" name="usuario" placeholder="Usuário" value="<%= filtro?.usuario || '' %>">
+      </div>
+      <div class="col-md-2">
+        <input type="date" class="form-control" name="data" value="<%= filtro?.data || '' %>">
+      </div>
+      <div class="col-md-3">
+        <input type="text" class="form-control" name="rota" placeholder="Rota" value="<%= filtro?.rota || '' %>">
+      </div>
+      <div class="col-md-2">
+        <select class="form-select" name="metodo">
+          <option value="">Método</option>
+          <% ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'LOGIN', 'LOGOUT'].forEach(m => { %>
+            <option value="<%= m %>" <%= filtro?.metodo === m ? 'selected' : '' %>><%= m %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+      </div>
+    </form>
+    
     <div class="table-responsive">
       <table class="table table-striped table-bordered align-middle">
         <thead class="table-dark">
