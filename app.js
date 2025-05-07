@@ -2082,88 +2082,211 @@ function validarCPF(cpf) {
     return true;
 }
 
+const storageBanco = multer.memoryStorage();
+
+const uploadFotoBanco = multer({
+  storage: storageBanco,           // <- aqui
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      return cb(new Error('Só imagens são permitidas'));
+    }
+    cb(null, true);
+  }
+}).single('foto');
+
+
 app.get('/registro-motorista', isAuthenticated, csrfProtection, async (req, res) => {
     try {
-        // Verifica se já existe um registro de motorista com o email do usuário
-        const resultados = await query(
-            'SELECT * FROM motoristas WHERE email = ?',
-            [req.user.email]
-        );
-
-        const jaCadastrado = resultados.length > 0;
-        const motorista = jaCadastrado ? resultados[0] : null;
-
-        //  Renderiza a view, sempre passando errors, errorFields e data (mesmo vazios)
-        res.render('registro-motorista', {
-            activePage: 'registro-motorista',
-            user: req.user,
-            csrfToken: req.csrfToken(),
-            title: 'Cadastro de Motorista',
-            layout: 'layout',
-            isMotorista: jaCadastrado,    // flag para o EJS
-            motorista,                     // dados do motorista (se existir)
-            errors: [],
-            errorFields: [],
-            data: {}
-        });
+      // Busca dados do motorista pelo email
+      const resultados = await query(
+        'SELECT * FROM motoristas WHERE email = ?',
+        [req.user.email]
+      );
+  
+      const jaCadastrado = resultados.length > 0;
+      let motorista = null;
+      let fotoBase64 = null;
+  
+      if (jaCadastrado) {
+        motorista = resultados[0];
+        // Converte BLOB em base64 se existir
+        if (motorista.foto_cnh) {
+          fotoBase64 = Buffer.from(motorista.foto_cnh).toString('base64');
+        }
+      }
+  
+      res.render('registro-motorista', {
+        activePage: 'registro-motorista',
+        user: req.user,
+        csrfToken: req.csrfToken(),
+        title: 'Cadastro de Motorista',
+        layout: 'layout',
+        isMotorista: jaCadastrado,
+        motorista,
+        fotoCNH: fotoBase64,   // passe pro EJS para exibir <img src="data:image/jpeg;base64,...">
+        errors: [],
+        errorFields: [],
+        data: {}
+      });
+  
     } catch (err) {
-        console.error('Erro ao buscar motorista:', err);
-        res.status(500).send('Erro interno');
+      console.error('Erro ao buscar motorista:', err);
+      res.status(500).send('Erro interno');
     }
-});
+  });
+  
 
 
 
 
 
 // Rota para cadastro de motoristas
-app.post('/api/cadastro-motorista', isAuthenticated, upload.single('foto'), csrfProtection, async (req, res) => {
-    //console.log('Dados do corpo:', req.body);
-    //console.log('Dados do arquivo:', req.file);
-
-    const { nome, cpf, cnh, dataValidade, categoria } = req.body;
-    const foto = req.file ? req.file.filename : null;
-
-    // O email vem do usuário autenticado (tabela "usuarios")
-    const email = req.user.email;
-
-    // Validação da data de validade da CNH
-    if (moment(dataValidade).isBefore(moment(), 'day')) {
-        return res.status(400).json({ success: false, message: 'CNH vencida. Cadastro não permitido.' });
-    }
-
-    // Validação do CPF
-    if (!validarCPF(cpf)) {
-        return res.status(400).json({ success: false, message: 'CPF inválido.' });
-    }
-
-    // Verifica se o CPF já está cadastrado
-    db.query('SELECT id FROM motoristas WHERE cpf = ?', [cpf], (err, results) => {
-        if (err) {
-            console.error('Erro ao verificar CPF:', err);
-            return res.status(500).json({ success: false, message: 'Erro ao verificar CPF.' });
+app.post(
+    '/api/cadastro-motorista',
+    isAuthenticated,
+    uploadFotoBanco,
+    csrfProtection,
+    async (req, res) => {
+      try {
+        const { nome, cpf, cnh, dataValidade, categoria } = req.body;
+        const bufferFoto = req.file ? req.file.buffer : null;
+        const email = req.user.email;
+  
+        // 1) Validações
+        if (!nome || !cpf || !cnh || !dataValidade || !categoria) {
+          return res.status(400).json({ success: false, message: 'Preencha todos os campos.' });
         }
-
-        if (results.length > 0) {
-            return res.status(400).json({ success: false, message: 'CPF já cadastrado.' });
+        if (moment(dataValidade).isBefore(moment(), 'day')) {
+          return res.status(400).json({ success: false, message: 'CNH vencida. Cadastro não permitido.' });
         }
+        if (!validarCPF(cpf)) {
+          return res.status(400).json({ success: false, message: 'CPF inválido.' });
+        }
+  
+        // 2) Verifica duplicidade de CPF
+        const rowsCPF = await query(
+          'SELECT id FROM motoristas WHERE cpf = ?',
+          [cpf]
+        );
+        if (rowsCPF.length > 0) {
+          return res.status(400).json({ success: false, message: 'CPF já cadastrado.' });
+        }
+  
+        // 3) Insere novo motorista (com BLOB)
+        const sql = `
+          INSERT INTO motoristas
+            (nome, email, cpf, cnh, data_validade, categoria, foto_cnh)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `;
+        const params = [nome, email, cpf, cnh, dataValidade, categoria, bufferFoto];
+        await query(sql, params);
+  
+        return res.status(200).json({ success: true, message: 'Motorista cadastrado com sucesso!' });
+  
+      } catch (err) {
+        console.error('Erro ao cadastrar motorista:', err);
+        return res.status(500).json({ success: false, message: 'Erro interno.' });
+      }
+    }
+  );
 
-        // Se o CPF não existe, insere o novo motorista, incluindo o campo email
-        const query = `
-        INSERT INTO motoristas (nome, email, cpf, cnh, data_validade, categoria, foto)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `;
-        const values = [nome, email, cpf, cnh, dataValidade, categoria, foto];
 
-        db.query(query, values, (err, results) => {
-            if (err) {
-                console.error('Erro ao cadastrar motorista:', err);
-                return res.status(500).json({ success: false, message: 'Erro ao cadastrar motorista.' });
-            }
-            return res.status(200).json({ success: true, message: 'Motorista cadastrado com sucesso!' });
+  // servir foto cnh 
+  // GET /api/motorista/:id/cnh
+app.get(
+    '/api/motorista/:id/cnh',
+    isAuthenticated,
+    isAdmin,
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        // busca apenas o campo foto_cnh
+        const rows = await query(
+          'SELECT foto_cnh FROM motoristas WHERE id = ?',
+          [id]
+        );
+        if (!rows.length || !rows[0].foto_cnh) {
+          return res.status(404).json({ success: false, message: 'CNH não encontrada.' });
+        }
+        const blob = rows[0].foto_cnh;
+        // transforma em base64 e já coloca o prefixo data URI
+        const base64 = `data:image/jpeg;base64,${Buffer.from(blob).toString('base64')}`;
+        res.json({ success: true, fotoCNH: base64 });
+      } catch (err) {
+        console.error('Erro ao buscar CNH:', err);
+        res.status(500).json({ success: false, message: 'Erro interno.' });
+      }
+    }
+  );
+  
+
+// GET /motoristas/fotos-cnh  exibir pagina fotos cnh
+app.get(
+    '/motoristas/fotos-cnh',
+    isAuthenticated,
+    isAdmin,
+    csrfProtection,
+    async (req, res) => {
+      try {
+        const motoristas = await query(
+          `SELECT
+             id,
+             nome,
+             cpf,
+             cnh,
+             data_validade,
+             categoria,
+             foto_cnh
+           FROM motoristas
+           ORDER BY nome`,
+          []
+        );
+  
+        // Renderiza o EJS fotosCnh.ejs
+        res.render('fotosCnh', {
+          motoristas,
+          csrfToken: req.csrfToken(),
+          user: req.user
         });
-    });
-});
+      } catch (err) {
+        console.error('Erro ao buscar motoristas para fotosCnh:', err);
+        res.status(500).send('Erro interno ao carregar fotos de CNH.');
+      }
+    }
+  );
+  
+  // DELETE /api/deletar-motorista/:id
+app.delete(
+    '/api/deletar-motorista/:id',
+    isAuthenticated,
+    csrfProtection,
+    async (req, res) => {
+      try {
+        const { id } = req.params;
+        // verificar que o motorista existe antes de apagar
+        const rows = await query(
+          'SELECT id FROM motoristas WHERE id = ?',
+          [id]
+        );
+        if (!rows.length) {
+          return res.status(404).json({ success: false, message: 'Motorista não encontrado.' });
+        }
+  
+        // apaga o motorista
+        await query(
+          'DELETE FROM motoristas WHERE id = ?',
+          [id]
+        );
+        return res.json({ success: true, message: 'Motorista excluído com sucesso!' });
+      } catch (err) {
+        console.error('Erro ao excluir motorista:', err);
+        return res.status(500).json({ success: false, message: 'Erro interno.' });
+      }
+    }
+  );
+  
+  
 
 //  Manutenções adicionais (rodízio de pneus, troca de pneus, pastilhas e discos de freio) //
 

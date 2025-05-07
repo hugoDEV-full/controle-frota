@@ -61,13 +61,17 @@
       <!-- Foto -->
       <div class="mb-3">
         <label for="foto" class="form-label">Foto do Motorista</label>
-        <% if (motorista.foto) { %>
+        <% if (fotoCNH) { %>
           <div class="mb-2">
-            <a href="/uploads/<%= motorista.foto %>" target="_blank">
-              <img src="/uploads/<%= motorista.foto %>" class="img-thumbnail" style="max-width:150px;">
-            </a>
+            <img
+              src="data:image/jpeg;base64,<%= fotoCNH %>"
+              class="img-thumbnail"
+              style="max-width:150px;"
+              alt="Foto da CNH"
+            >
           </div>
         <% } %>
+        
         <input type="file" class="form-control" id="foto" name="foto" accept="image/*">
       </div>
 

@@ -47,11 +47,52 @@
                   Editar
                 </a>
               </td>
+              <td>
+               
+                <button 
+                  class="btn btn-sm btn-danger btn-excluir" 
+                  data-id="<%= m.id %>"
+                >
+                  Excluir
+                </button>
+              </td>
+              
             </tr>
           <% }) %>
         </tbody>
       </table>
     </div>
   </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.btn-excluir').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const id = btn.dataset.id;
+          if (!confirm('Deseja realmente excluir este motorista? Esta ação não pode ser desfeita.')) {
+            return;
+          }
+  
+          try {
+            const res = await fetch(`/api/deletar-motorista/${id}`, {
+              method: 'DELETE',
+              headers: {
+                'CSRF-Token': '<%= csrfToken %>'
+              }
+            });
+            const data = await res.json();
+            alert(data.message);
+            if (data.success) {
+              // recarrega a página para atualizar a lista
+              window.location.reload();
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Erro ao excluir o motorista.');
+          }
+        });
+      });
+    });
+  </script>
+  
 </body>
 </html>
