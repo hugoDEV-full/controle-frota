@@ -358,6 +358,43 @@ app.use(
     express.static(path.join(__dirname, 'uploads'))
 );
 
+// middleware de auditoria
+app.use(async (req, res, next) => {
+    try {
+      
+      if (!req.path.startsWith('/public') && req.user) {
+        const usuario = req.user.email;
+        const rota    = req.originalUrl;
+        const metodo  = req.method;
+        // detalhes do body/query:
+        const detalhes = JSON.stringify({ body: req.body, query: req.query });
+        await query(
+          'INSERT INTO auditoria (usuario, rota, metodo, detalhes) VALUES (?, ?, ?, ?)',
+          [usuario, rota, metodo, detalhes]
+        );
+      }
+    } catch (err) {
+      console.error('Erro ao gravar auditoria', err);
+    }
+    next();
+  });
+
+  // somente admin pode ver
+app.get('/auditoria', isAuthenticated, isAdmin, csrfProtection, async (req, res) => {
+    try {
+      // buscar últimos 100 logs
+      const logs = await query(
+        'SELECT usuario, rota, metodo, detalhes, DATE_FORMAT(criado_em, "%d/%m/%Y %H:%i:%s") AS criado_em ' +
+        'FROM auditoria ORDER BY criado_em DESC LIMIT 100'
+      );
+      res.render('auditoria', { layout: 'layout', activePage: 'auditoria', logs,  csrfToken: req.csrfToken(), user: req.user });
+    } catch (err) {
+      console.error(err);
+      res.status(500).send('Erro ao carregar auditoria');
+    }
+  });
+  
+  
 // GET /login — gera e envia o token para a view
 app.get('/login',
     csrfProtection,
@@ -370,42 +407,77 @@ app.get('/login',
 );
 
 
-// POST /login — valida o token depois do body-parser e do rate limiter
+async function salvarAuditoriaManual({ usuario, rota, metodo, descricao }) {
+    try {
+      await query(
+        'INSERT INTO auditoria (usuario, rota, metodo, detalhes) VALUES (?, ?, ?, ?)',
+        [usuario, rota, metodo, descricao]
+      );
+    } catch (err) {
+      console.error('Erro ao salvar auditoria manual:', err);
+    }
+  }
+  
+
+// POST /login
 app.post('/login',
     authLimiter,
-    express.urlencoded({ extended: true }), // garante que req.body._csrf exista
-    csrfProtection,                         //  valida o token
+    express.urlencoded({ extended: true }),
+    csrfProtection,
     [
-        body('email').isEmail().normalizeEmail(),
-        body('password').isLength({ min: 8 })
+      body('email').isEmail().normalizeEmail(),
+      body('password').isLength({ min: 8 })
     ],
     (req, res, next) => {
-        passport.authenticate('local', (err, user, info) => {
-            if (err) return next(err);
-            if (!user) return res.redirect('/login');
-            req.session.regenerate((err) => {
-                if (err) return next(err);
-                req.logIn(user, (err) => {
-                    if (err) return next(err);
-                    return res.redirect('/');
-                });
-            });
-        })(req, res, next);
-    }
-);
-
-
-// Rota de logout que destrói a sessão
-app.get('/logout', (req, res, next) => {
-    req.logout((err) => {
+      passport.authenticate('local', (err, user, info) => {
         if (err) return next(err);
-        req.session.destroy(() => {
-            console.log("Sessão encerrada. Usuário deslogado.");
-            authLimiter.resetKey(req.ip); //zera o contagem pro ip em authlimiter
-            res.redirect('/login');
+        if (!user) return res.redirect('/login');
+  
+        req.session.regenerate(async (err) => {
+          if (err) return next(err);
+  
+          req.logIn(user, async (err) => {
+            if (err) return next(err);
+  
+            // SALVA AUDITORIA LOGIN
+            await salvarAuditoriaManual({
+              usuario: user.email,
+              rota: '/login',
+              metodo: 'LOGIN',
+              descricao: 'Usuário entrou no sistema.'
+            });
+  
+            return res.redirect('/');
+          });
         });
+      })(req, res, next);
+    }
+  );
+  
+
+// GET /logout
+app.get('/logout', async (req, res, next) => {
+    const usuario = req.user?.email || 'Desconhecido';
+  
+    req.logout(async (err) => {
+      if (err) return next(err);
+  
+      // SALVA AUDITORIA LOGOUT
+      await salvarAuditoriaManual({
+        usuario,
+        rota: '/logout',
+        metodo: 'LOGOUT',
+        descricao: 'Usuário saiu do sistema.'
+      });
+  
+      req.session.destroy(() => {
+        console.log("Sessão encerrada. Usuário deslogado.");
+        authLimiter.resetKey(req.ip);
+        res.redirect('/login');
+      });
     });
-});
+  });
+  
 /* Funções de notificação */
 
 // Manda um email avisando que o veículo precisa de troca de óleo

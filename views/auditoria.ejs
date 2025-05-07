@@ -1,0 +1,46 @@
+<div class="container py-4">
+    <h1 class="mb-4">Logs de Auditoria</h1>
+  
+    <div class="table-responsive">
+      <table class="table table-striped table-bordered align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>Usuário</th>
+            <th>Rota</th>
+            <th>Método</th>
+            <th>Data/Hora</th>
+            <th>Detalhes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% logs.forEach(log => { %>
+            <tr>
+              <td><%= log.usuario %></td>
+              <td><%= log.rota %></td>
+              <td>
+                <% if (log.metodo === 'GET') { %>
+                  <span class="badge bg-info">Visualização</span>
+                <% } else if (log.metodo === 'POST') { %>
+                  <span class="badge bg-success">Criação</span>
+                <% } else if (log.metodo === 'PUT' || log.metodo === 'PATCH') { %>
+                  <span class="badge bg-warning text-dark">Edição</span>
+                <% } else if (log.metodo === 'DELETE') { %>
+                  <span class="badge bg-danger">Exclusão</span>
+                <% } else if (log.metodo === 'LOGIN') { %>
+                  <span class="badge bg-primary">Login</span>
+                <% } else if (log.metodo === 'LOGOUT') { %>
+                  <span class="badge bg-secondary">Logout</span>
+                <% } else { %>
+                  <span class="badge bg-dark"><%= log.metodo %></span>
+                <% } %>
+              </td>
+              <td><%= log.criado_em.toLocaleString() %></td>
+              <td style="max-width:300px; overflow:auto;"><%= log.detalhes %></td>
+              
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  
