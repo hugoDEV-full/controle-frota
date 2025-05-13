@@ -502,28 +502,49 @@ app.post('/login',
   );
   
 
-// GET /logout
-app.get('/logout', async (req, res, next) => {
-    const usuario = req.user?.email || 'Desconhecido';
-  
+// GET /logout — só para quem está autenticado
+app.get(
+  '/logout',
+  isAuthenticated,    // só entra se req.user existir
+  async (req, res, next) => {
+    const usuario = req.user.email;
+
+    // Descreve claramente que foi logout manual
+    await salvarAuditoriaManual({
+      usuario,
+      rota: '/logout',
+      metodo: 'LOGOUT',
+      descricao: 'Logout manual pelo usuário.'
+    });
+
     req.logout(async (err) => {
       if (err) return next(err);
-  
-      // SALVA AUDITORIA LOGOUT
-      await salvarAuditoriaManual({
-        usuario,
-        rota: '/logout',
-        metodo: 'LOGOUT',
-        descricao: 'Usuário saiu do sistema.'
-      });
-  
+
       req.session.destroy(() => {
-        console.log("Sessão encerrada. Usuário deslogado.");
+        console.log("Sessão encerrada. Usuário deslogado manualmente.");
         authLimiter.resetKey(req.ip);
         res.redirect('/login');
       });
     });
+  }
+);
+
+// Rota que captura tentativa de logout quando não autenticado (sessão inválida/expirada)
+app.get('/logout', async (req, res, next) => {
+  // Se chegou aqui, isAuthenticated falhou — sessão ausente/expirada
+  const usuario = 'Desconhecido';
+  await salvarAuditoriaManual({
+    usuario,
+    rota: '/logout',
+    metodo: 'LOGOUT',
+    descricao: 'Logout automático: sessão ausente ou expirada.'
   });
+
+  // Não há req.logout nem destroy de sessão — simplesmente redireciona
+  console.log("Tentativa de logout sem sessão ativa.");
+  res.redirect('/login?expired=1');
+});
+
   
 /* Funções de notificação */
 
