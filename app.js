@@ -46,7 +46,7 @@ if (HTTPS_ENABLED) {
 
 const { Server } = require('socket.io');
 
-const TRUSTED_ORIGINS = ["http://localhost:3000"];
+const TRUSTED_ORIGINS = ["*"];
 const io = new Server(server, {
     cors: {
         origin: (origin, callback) => {
@@ -545,6 +545,80 @@ app.get('/logout', async (req, res, next) => {
   res.redirect('/login?expired=1');
 });
 
+// --- NOVA ROTA: SESSION INFO ---
+app.get('/session-info', isAuthenticated,csrfProtection, (req, res) => {
+  const now = Date.now();
+  const start = req.session.startTime || now;
+  const elapsedMs = now - start;
+  const remainingMs = req.session.cookie.maxAge;
+
+  res.render('session-info', {
+    csrfToken: req.csrfToken(),
+    user: req.user,
+    activePage: 'session-info',
+    elapsed: {
+      minutes: Math.floor(elapsedMs / 60000),
+      seconds: Math.floor((elapsedMs % 60000) / 1000),
+    },
+    remaining: {
+      minutes: Math.floor(remainingMs / 60000),
+      seconds: Math.floor((remainingMs % 60000) / 1000),
+    }
+  });
+});
+
+app.get(
+  '/active-sessions',
+  isAuthenticated,
+  isAdmin,
+  csrfProtection,
+  async (req, res) => {
+    const now = Date.now();
+
+    // Agora pool.query() retorna Promise e pode ser usado com await
+    const [rows] = await pool.query('SELECT session_id, expires, data FROM sessions');
+    const sessions = [];
+
+    for (let row of rows) {
+      let sess;
+      try {
+        sess = JSON.parse(row.data);
+      } catch {
+        continue;
+      }
+      const userId = sess.passport?.user;
+      const start  = sess.startTime;
+      if (!userId || !start) continue;
+      sessions.push({ userId, start, expires: row.expires });
+    }
+
+    // Busca e-mails dos usuários em batch
+    const userIds = [...new Set(sessions.map(s => s.userId))];
+    const [users] = await pool.query(
+      'SELECT id, email FROM usuarios WHERE id IN (?)',
+      [userIds]
+    );
+    const lookup = Object.fromEntries(users.map(u => [u.id, u.email]));
+
+    // Monta o array de dados para a view
+    const data = sessions.map(s => {
+      const elapsedMs   = now - s.start;
+      const remainingMs = Math.max(0, s.expires - now);
+      return {
+        email:     lookup[s.userId] || `#${s.userId}`,
+        elapsed:   `${Math.floor(elapsedMs/60000)}m ${Math.floor((elapsedMs%60000)/1000)}s`,
+        remaining: `${Math.floor(remainingMs/60000)}m ${Math.floor((remainingMs%60000)/1000)}s`
+      };
+    });
+
+    res.render('active-sessions', {
+      csrfToken:  req.csrfToken(),
+      user:       req.user,
+      activePage: 'active-sessions',
+      sessions:   data
+    });
+  }
+);
   
 /* Funções de notificação */
 
@@ -3559,22 +3633,75 @@ app.get(
 io.on("connection", (socket) => {
     console.log("Cliente conectado via Socket.IO.");
 });
-/*
-// GPS - Configura CORS e rota pra atualizar localização
-const cors = require('cors');
-app.use(cors({
-    origin: ['https://rococo-kangaroo-21ce36.netlify.app', 'http://localhost:3000', 'http://127.0.0.1:5500']
-}));
+////-----------------GPS   --------------------------
+const jwt = require('jsonwebtoken');
+const deviceSecrets = {
+  'DIEGO-DEVICE-001': process.env.DEVICE_SECRET
+};
 
-app.post('/update-location', (req, res) => {
-    const { vehicleId, latitude, longitude } = req.body;
-    console.log(`Veículo ${vehicleId}: Latitude ${latitude}, Longitude ${longitude}`);
-    // Emite o evento 'locationUpdate' para todos os clientes conectados
-    io.emit('locationUpdate', { vehicleId, latitude, longitude });
-    res.json({ status: 'ok', received: req.body });
+// ====== 1) Endpoint de autenticação do dispositivo ======
+app.post('/auth-device', (req, res) => {
+  const { deviceId, deviceSecret } = req.body;
+  const expected = deviceSecrets[deviceId];
+
+  if (!expected || expected !== deviceSecret) {
+    return res.status(401).json({ error: 'Credenciais do dispositivo inválidas' });
+  }
+
+  // gera um JWT de 24h para o dispositivo
+  const accessToken = jwt.sign(
+    { deviceId },
+    process.env.JWT_SECRET,
+    { expiresIn: '24h' }
+  );
+
+  res.json({ accessToken });
 });
 
-*/
+// ====== 2) Middleware de validação do JWT de acesso ======
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader?.split(' ')[1];
+  if (!token) 
+    return res.status(401).json({ error: 'Token não fornecido' });
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, payload) => {
+    if (err) 
+      return res.status(403).json({ error: 'Token inválido ou expirado' });
+    req.deviceId = payload.deviceId;
+    next();
+  });
+}
+
+// ====== 3) Rota protegida que recebe dados de GPS ======
+app.post('/update-location', authenticateToken, (req, res) => {
+  const { vehicleId, latitude, longitude } = req.body;
+
+  // Emite via Socket.IO para todos inscritos
+  io.emit('locationUpdate', { vehicleId, latitude, longitude });
+
+  // Gera um token de operação para registro/auditoria
+  const operationToken = jwt.sign(
+    {
+      deviceId: req.deviceId,
+      vehicleId,
+      latitude,
+      longitude,
+      ts: Date.now()
+    },
+    process.env.JWT_SECRET,
+    // opcional: expiresIn: '1h'
+  );
+
+  res.json({
+    status: 'ok',
+    received: { vehicleId, latitude, longitude },
+    operationToken
+  });
+
+  console.log(`GPS de ${req.deviceId}: veículo ${vehicleId} → ${latitude},${longitude}`);
+});
+
 
 // Rotas pra servir o manifest e o service worker (PWA)
 //app.get('/manifest.json', (req, res) => {
