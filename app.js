@@ -2845,71 +2845,89 @@ app.get('/relatorio-consumo', isAuthenticated, csrfProtection, async (req, res) 
 ////////////////////////////////////////////////////////////////////////////////////
 
 app.get('/search', isAuthenticated, csrfProtection, async (req, res) => {
-    const q = req.query.q || '';
-    // Se não houver consulta, renderiza a view sem resultados
-    if (!q.trim()) {
-        return res.render('searchResults', {
-            q,
-            results: {},
-            user: req.user
-        });
-    }
+  const q = (req.query.q || '').trim();
 
-    try {
-        // Busca em veículos (id, nome e placa)
-        const veiculos = await query(
-            `SELECT id, nome, placa 
-             FROM veiculos 
-             WHERE id = ? 
-               OR nome LIKE ? 
-               OR placa LIKE ?`,
-            [q, `%${q}%`, `%${q}%`]
-        );
+  //  o que a busca abrange, para exibir no front
+  const searchInfo = [
+    { name: 'Veículos', fields: ['id', 'nome', 'placa'] },
+    { name: 'Usos de Veículos', fields: ['id', 'motorista', 'km_inicial', 'km_final'] },
+    { name: 'Multas', fields: ['id', 'multa', 'motorista', 'email'] },
+    { name: 'Motoristas', fields: ['id', 'nome', 'email'] },
+  ];
 
-        // Busca em usos de veículos (id e motorista)
-        const usos = await query(
-            `SELECT id, motorista, km_inicial, km_final 
-             FROM uso_veiculos 
-             WHERE id = ? 
-               OR motorista LIKE ?`,
-            [q, `%${q}%`]
-        );
+  // Se não digitar nada, renderiza apenas a ajuda
+  if (!q) {
+    return res.render('searchResults', {
+      q,
+      results: {},
+      user: req.user,
+      csrfToken: req.csrfToken(),
+      searchInfo
+    });
+  }
 
-        // Busca em multas (id e descrição)
-        const multas = await query(
-            `SELECT id, multa, motorista 
-             FROM multas 
-             WHERE id = ? 
-               OR multa LIKE ?`,
-            [q, `%${q}%`]
-        );
+  try {
+    // Busca em Veículos
+    const veiculos = await query(
+      `SELECT id, nome, placa
+       FROM veiculos
+       WHERE id = ?
+         OR nome LIKE ?
+         OR placa LIKE ?`,
+      [q, `%${q}%`, `%${q}%`]
+    );
 
-        // Busca em motoristas (id, nome e CPF)
-        const motoristas = await query(
-            `SELECT id, nome, cpf 
-             FROM motoristas 
-             WHERE id = ? 
-               OR nome LIKE ? 
-               OR cpf LIKE ?`,
-            [q, `%${q}%`, `%${q}%`]
-        );
+    // Busca em Usos de Veículos
+    const usos = await query(
+      `SELECT id, motorista, km_inicial, km_final
+       FROM uso_veiculos
+       WHERE id = ?
+         OR motorista LIKE ?`,
+      [q, `%${q}%`]
+    );
 
-        const results = { veiculos, usos, multas, motoristas };
+    // Busca em Multas – com JOIN para trazer o email do motorista
+    const multas = await query(
+      `SELECT m.id,
+              m.multa,
+              m.motorista,
+              mot.email
+       FROM multas AS m
+       LEFT JOIN motoristas AS mot
+         ON mot.nome = m.motorista
+       WHERE m.id = ?
+         OR m.multa LIKE ?
+         OR m.motorista LIKE ?
+         OR mot.email LIKE ?`,
+      [q, `%${q}%`, `%${q}%`, `%${q}%`]
+    );
 
-        // Renderiza passando sempre o usuário autenticado
-        res.render('searchResults', {
-            q,
-            csrfToken: req.csrfToken(),
-            results,
-            user: req.user
-        });
+    // Busca em Motoristas
+    const motoristas = await query(
+      `SELECT id, nome, email
+       FROM motoristas
+       WHERE id = ?
+         OR nome LIKE ?
+         
+         OR email LIKE ?`,
+      [q, `%${q}%`, `%${q}%`, `%${q}%`]
+    );
 
-    } catch (err) {
-        console.error(err);
-        res.status(500).send("Erro no servidor ao realizar busca.");
-    }
+    const results = { veiculos, usos, multas, motoristas };
+
+    res.render('searchResults', {
+      q,
+      results,
+      user: req.user,
+      csrfToken: req.csrfToken(),
+      searchInfo
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Erro no servidor ao realizar busca.");
+  }
 });
-
 /*
 /// API FIPE
 const axios = require('axios');
