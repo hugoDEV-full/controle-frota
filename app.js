@@ -467,25 +467,33 @@ async function salvarAuditoriaManual({ usuario, rota, metodo, descricao }) {
   
 
 // POST /login
+// POST /login
 app.post('/login',
-    authLimiter,
-    express.urlencoded({ extended: true }),
-    csrfProtection,
-    [
-      body('email').isEmail().normalizeEmail(),
-      body('password').isLength({ min: 8 })
-    ],
-    (req, res, next) => {
-      passport.authenticate('local', (err, user, info) => {
+  authLimiter,
+  express.urlencoded({ extended: true }),
+  csrfProtection,
+  [
+    body('email').isEmail().normalizeEmail(),
+    body('password').isLength({ min: 8 })
+  ],
+  (req, res, next) => {
+    passport.authenticate('local', (err, user, info) => {
+      if (err) return next(err);
+      if (!user) return res.redirect('/login');
+
+      req.session.regenerate(async (err) => {
         if (err) return next(err);
-        if (!user) return res.redirect('/login');
-  
-        req.session.regenerate(async (err) => {
+
+        req.logIn(user, async (err) => {
           if (err) return next(err);
-  
-          req.logIn(user, async (err) => {
+
+          // Armazena o timestamp de início na sessão
+          req.session.startTime = Date.now();
+
+          // Garante que o session-store persista startTime antes do redirect
+          req.session.save(async (err) => {
             if (err) return next(err);
-  
+
             // SALVA AUDITORIA LOGIN
             await salvarAuditoriaManual({
               usuario: user.email,
@@ -493,13 +501,16 @@ app.post('/login',
               metodo: 'LOGIN',
               descricao: 'Usuário entrou no sistema.'
             });
-  
+
             return res.redirect('/');
           });
         });
-      })(req, res, next);
-    }
-  );
+      });
+    })(req, res, next);
+  }
+);
+
+
   
 
 // GET /logout — só para quem está autenticado
@@ -545,14 +556,16 @@ app.get('/logout', async (req, res, next) => {
   res.redirect('/login?expired=1');
 });
 
-// --- NOVA ROTA: SESSION INFO ---
-app.get('/session-info', isAuthenticated,csrfProtection, (req, res) => {
+// --- SESSION INFO ---
+// Nova rota /session-info, que calcula e renderiza tempo decorrido e restante
+app.get('/session-info', isAuthenticated, csrfProtection, (req, res) => {
   const now = Date.now();
   const start = req.session.startTime || now;
   const elapsedMs = now - start;
-  const remainingMs = req.session.cookie.maxAge;
+  const remainingMs = req.session.cookie.maxAge - elapsedMs;
 
   res.render('session-info', {
+    
     csrfToken: req.csrfToken(),
     user: req.user,
     activePage: 'session-info',
@@ -567,59 +580,65 @@ app.get('/session-info', isAuthenticated,csrfProtection, (req, res) => {
   });
 });
 
+
 app.get(
   '/active-sessions',
   isAuthenticated,
   isAdmin,
   csrfProtection,
-  async (req, res) => {
-    const now = Date.now();
+  async (req, res, next) => {
+    try {
+      const now = Date.now();
 
-    // Agora pool.query() retorna Promise e pode ser usado com await
-    const [rows] = await pool.query('SELECT session_id, expires, data FROM sessions');
-    const sessions = [];
+      // Usa o wrapper de promises
+      const [rows] = await pool.promise().query(
+        'SELECT session_id, expires, data FROM sessions'
+      );
 
-    for (let row of rows) {
-      let sess;
-      try {
-        sess = JSON.parse(row.data);
-      } catch {
-        continue;
+      const sessions = [];
+      for (let row of rows) {
+        let sess;
+        try {
+          sess = JSON.parse(row.data);
+        } catch {
+          continue;
+        }
+        const userId = sess.passport?.user;
+        const start  = sess.startTime;
+        if (!userId || !start) continue;
+        sessions.push({ userId, start, expires: row.expires });
       }
-      const userId = sess.passport?.user;
-      const start  = sess.startTime;
-      if (!userId || !start) continue;
-      sessions.push({ userId, start, expires: row.expires });
+
+      // Busca e-mails dos usuários em batch
+      const userIds = [...new Set(sessions.map(s => s.userId))];
+      const [users] = await pool.promise().query(
+        'SELECT id, email FROM usuarios WHERE id IN (?)',
+        [userIds]
+      );
+      const lookup = Object.fromEntries(users.map(u => [u.id, u.email]));
+
+      // Monta o array de dados para a view
+      const data = sessions.map(s => {
+        const elapsedMs   = now - s.start;
+        const remainingMs = Math.max(0, s.expires - now);
+        return {
+          email:     lookup[s.userId] || `#${s.userId}`,
+          elapsed:   `${Math.floor(elapsedMs/60000)}m ${Math.floor((elapsedMs%60000)/1000)}s`,
+          remaining: `${Math.floor(remainingMs/60000)}m ${Math.floor((remainingMs%60000)/1000)}s`
+        };
+      });
+
+      return res.render('active-sessions', {
+        csrfToken:  req.csrfToken(),
+        user:       req.user,
+        activePage: 'active-sessions',
+        sessions:   data
+      });
+    } catch (err) {
+      next(err);
     }
-
-    // Busca e-mails dos usuários em batch
-    const userIds = [...new Set(sessions.map(s => s.userId))];
-    const [users] = await pool.query(
-      'SELECT id, email FROM usuarios WHERE id IN (?)',
-      [userIds]
-    );
-    const lookup = Object.fromEntries(users.map(u => [u.id, u.email]));
-
-    // Monta o array de dados para a view
-    const data = sessions.map(s => {
-      const elapsedMs   = now - s.start;
-      const remainingMs = Math.max(0, s.expires - now);
-      return {
-        email:     lookup[s.userId] || `#${s.userId}`,
-        elapsed:   `${Math.floor(elapsedMs/60000)}m ${Math.floor((elapsedMs%60000)/1000)}s`,
-        remaining: `${Math.floor(remainingMs/60000)}m ${Math.floor((remainingMs%60000)/1000)}s`
-      };
-    });
-
-    res.render('active-sessions', {
-      csrfToken:  req.csrfToken(),
-      user:       req.user,
-      activePage: 'active-sessions',
-      sessions:   data
-    });
   }
 );
-  
 /* Funções de notificação */
 
 // Manda um email avisando que o veículo precisa de troca de óleo
@@ -932,14 +951,25 @@ app.get('/', isAuthenticated, csrfProtection, async (req, res) => {
     ORDER BY ano DESC
   `);
 
-
-
+// session info
+ const now       = Date.now();
+  const start     = req.session.startTime || now;
+  const elapsedMs = now - start;
+  const remainingMs = Math.max(0, req.session.cookie.maxAge - elapsedMs);
 
         res.render('dashboard', {
             title: 'Dashboard',
             csrfToken: req.csrfToken(),
             layout: 'layout',
             activePage: 'dashboard',
+                elapsed: {
+      minutes: Math.floor(elapsedMs / 60000),
+      seconds: Math.floor((elapsedMs % 60000) / 1000)
+    },
+    remaining: {
+      minutes: Math.floor(remainingMs / 60000),
+      seconds: Math.floor((remainingMs % 60000) / 1000)
+    },
             veiculos: veiculosResult,
             user: req.user,
             totalVeiculos: totalVeiculosResult[0].totalVeiculos,
