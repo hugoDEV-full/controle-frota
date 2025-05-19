@@ -6,7 +6,7 @@
 
 4- Rate limit : ``` ingrateLimit({ windowMs:..., max:... }) ``` Limita tentativas de acesso.
 
-5- Cabeçalhos: ``` HTTPapp.use(helmet({ contentSecurityPolicy: false })); ```Define políticas de segurança.
+5- Cabeçalhos: ``` HTTPapp.use... ```Define políticas de segurança.
 
 6- Sanitização: ``` globalreq.body[field] = validator.escape(val); ```Previne execução de scripts.
 

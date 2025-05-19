@@ -557,28 +557,25 @@ app.get('/logout', async (req, res, next) => {
 });
 
 // --- SESSION INFO ---
-// Nova rota /session-info, que calcula e renderiza tempo decorrido e restante
-app.get('/session-info', isAuthenticated, csrfProtection, (req, res) => {
-  const now = Date.now();
-  const start = req.session.startTime || now;
-  const elapsedMs = now - start;
-  const remainingMs = req.session.cookie.maxAge - elapsedMs;
+// rota GET que devolve JSON com elapsed e remaining
+app.get('/session-info/json', isAuthenticated, (req, res) => {
+  const now        = Date.now();
+  const start      = req.session.startTime || now;
+  const elapsedMs  = now - start;
+  const remainingMs = Math.max(0, req.session.cookie.maxAge - elapsedMs);
 
-  res.render('session-info', {
-    
-    csrfToken: req.csrfToken(),
-    user: req.user,
-    activePage: 'session-info',
+  return res.json({
     elapsed: {
       minutes: Math.floor(elapsedMs / 60000),
-      seconds: Math.floor((elapsedMs % 60000) / 1000),
+      seconds: Math.floor((elapsedMs % 60000) / 1000)
     },
     remaining: {
       minutes: Math.floor(remainingMs / 60000),
-      seconds: Math.floor((remainingMs % 60000) / 1000),
+      seconds: Math.floor((remainingMs % 60000) / 1000)
     }
   });
 });
+
 
 
 app.get(

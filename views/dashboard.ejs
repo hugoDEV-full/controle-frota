@@ -85,26 +85,19 @@
           <%= user ? user.email : 'Usuário' %> - <%= user ? user.role : 'Sem Permissão' %>
         </span>
       </div>
-      <!-- Card de sessão  -->
-
+      <!-- Card de sessão (mesmo HTML anterior, com IDs) -->
       <div class="d-flex justify-content-end">
-
         <div class="card shadow-sm rounded-lg my-3" style="max-width: 350px;">
           <div class="card-body p-2">
             <h5 class="card-title mb-2">Sessão</h5>
             <p class="mb-1">
               <small><strong>Logado:</strong></small>
-              <span class="badge bg-primary badge-sm">
-                <%= elapsed.minutes %>m <%= elapsed.seconds %>s
-              </span>
+              <span id="sess-elapsed" class="badge bg-primary badge-sm">--m --s</span>
             </p>
             <p class="mb-2">
               <small><strong>Restante:</strong></small>
-              <span class="badge bg-warning text-dark badge-sm">
-                <%= remaining.minutes %>m <%= remaining.seconds %>s
-              </span>
+              <span id="sess-remaining" class="badge bg-warning text-dark badge-sm">--m --s</span>
             </p>
-            <a href="/" class="btn btn-outline-secondary btn-sm">Atualizar</a>
           </div>
         </div>
       </div>
@@ -855,6 +848,62 @@
       setInterval(updateDateTime, 1000);
       updateDateTime();
     </script>
+
+
+   <script>
+document.addEventListener('DOMContentLoaded', () => {
+  let elapsed, remaining;
+  let localTimer, syncInterval;
+
+  function updateDOM() {
+    document.getElementById('sess-elapsed').textContent =
+      `${elapsed.minutes}m ${elapsed.seconds}s`;
+    document.getElementById('sess-remaining').textContent =
+      `${remaining.minutes}m ${remaining.seconds}s`;
+  }
+
+  function tickLocal() {
+    elapsed.seconds++;
+    if (elapsed.seconds === 60) {
+      elapsed.minutes++;
+      elapsed.seconds = 0;
+    }
+    if (remaining.minutes > 0 || remaining.seconds > 0) {
+      remaining.seconds--;
+      if (remaining.seconds < 0) {
+        remaining.minutes--;
+        remaining.seconds = 59;
+      }
+    }
+    updateDOM();
+  }
+
+  async function syncSession() {
+    try {
+      const res = await fetch('/session-info/json');
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      elapsed   = data.elapsed;
+      remaining = data.remaining;
+      updateDOM();
+    } catch (err) {
+      console.error('Erro ao buscar sessão:', err);
+    }
+  }
+
+  (async () => {
+    await syncSession();                          // 1. busca inicial
+    localTimer    = setInterval(tickLocal, 1000); // 2. contagem local
+    syncInterval  = setInterval(syncSession, 10000); // 3. sincroniza a cada 10s
+  })();
+
+  window.addEventListener('beforeunload', () => {
+    clearInterval(localTimer);
+    clearInterval(syncInterval);
+  });
+});
+</script>
+
 </body>
 
 </html>
