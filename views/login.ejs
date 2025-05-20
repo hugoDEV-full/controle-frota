@@ -3,98 +3,112 @@
 
 <head>
   <meta charset="UTF-8">
+  <!-- ESSENCIAL: meta viewport para responsividade -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <title>Login</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
-  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+
   <style>
-    
-    body {
-      background-image: url('/images/frota.webp');
-      background-size: cover;
-      background-position: center;
-      background-attachment: fixed;
-      height: 100vh;
+    html, body {
+      height: 100%;
       margin: 0;
+    }
+    body {
+      /* Fundo responsivo: cover + centralizado + sem fixed */
+      background: url('/images/frota.webp') no-repeat center center/cover;
       display: flex;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
       color: #fff;
     }
-
-    .container {
-      background-color: rgba(0, 0, 0, 0.6);
-      padding: 30px;
-      border-radius: 10px;
-      width: 100%;
-      max-width: 400px;
-    }
-
-    .logo-inova {
-      max-width: 100%;
-      width: 200px;
-      height: auto;
-      background-color: #ffffff;
-      border-radius: 10px;
-      padding: 10px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-    
-    .btn-eye {
-      background: transparent;
+    .card-login {
+      background: rgba(0, 0, 0, 0.6);
       border: none;
+      border-radius: .75rem;
+      width: 100%;
     }
-    .btn-eye:focus {
-      box-shadow: none;
-    }
-    .btn-eye i {
-      font-size: 1.2rem;
-      color: #fff;
+    .logo-inova {
+      max-width: 150px;
+      background: #fff;
+      padding: .5rem;
+      border-radius: .5rem;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
   </style>
 </head>
 
 <body>
-  <div class="container text-center">
-    <img src="https://www.inova.in/tmp/inova/logomarca.png" 
-         alt="Inova Comunicações Inteligentes" 
-         class="logo-inova mb-3">
-    <h1>Login</h1>
-    <form action="/login" method="POST">
-      <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+  <div class="container px-3">
+    <div class="row justify-content-center">
+      <div class="col-12 col-sm-9 col-md-7 col-lg-5 col-xl-4">
+        <div class="card-login p-4 shadow-lg">
+          <div class="text-center mb-4">
+            <img src="https://www.inova.in/tmp/inova/logomarca.png"
+                 alt="Inova Comunicações Inteligentes"
+                 class="logo-inova img-fluid">
+          </div>
 
-      <div class="mb-3">
-        <label for="email" class="form-label">Email:</label>
-        <input type="email" name="email" class="form-control" id="email" required>
-      </div>
-      <div class="mb-3 position-relative">
-        <label for="password" class="form-label">Senha:</label>
-        <div class="input-group">
-          <input type="password" name="password" class="form-control" id="password" required>
-          <button class="btn btn-eye" type="button" id="togglePassword">
-            <i class="bi bi-eye"></i>
-          </button>
+
+          <form action="/login" method="POST" novalidate>
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+            <div class="mb-3">
+              <label for="email" class="form-label text-white">Email</label>
+              <input type="email"
+                     name="email"
+                     id="email"
+                     class="form-control"
+                     placeholder="seu@exemplo.com"
+                     required>
+            </div>
+
+            <div class="mb-3">
+              <label for="password" class="form-label text-white">Senha</label>
+              <div class="input-group">
+                <input type="password"
+                       name="password"
+                       id="password"
+                       class="form-control"
+                       placeholder="••••••••"
+                       required>
+                <button class="btn btn-outline-light"
+                        type="button"
+                        id="togglePassword"
+                        aria-label="Mostrar senha">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 mb-2">
+              Entrar
+            </button>
+          </form>
+
+          <div class="text-center">
+            <a href="/forgot-password" class="text-white small">
+              Esqueceu a senha?
+            </a>
+          </div>
         </div>
       </div>
-      <button type="submit" class="btn btn-primary">Entrar</button>
-    </form>
-    <a href="/forgot-password" class="text-white">Esqueceu a senha?</a>
+    </div>
   </div>
 
+  <!-- Bootstrap JS Bundle (Popper incluído) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Toggle de visibilidade da senha -->
   <script>
-    document.getElementById('togglePassword').addEventListener('click', function () {
-      const passwordField = document.getElementById('password');
-      const passwordToggle = this.querySelector('i');
-      if (passwordField.type === 'password') {
-        passwordField.type = 'text';
-        passwordToggle.classList.remove('bi-eye');
-        passwordToggle.classList.add('bi-eye-slash');
-      } else {
-        passwordField.type = 'password';
-        passwordToggle.classList.remove('bi-eye-slash');
-        passwordToggle.classList.add('bi-eye');
-      }
+    const toggleBtn = document.getElementById('togglePassword');
+    const pwdField  = document.getElementById('password');
+    toggleBtn.addEventListener('click', () => {
+      const isPwd = pwdField.type === 'password';
+      pwdField.type = isPwd ? 'text' : 'password';
+      toggleBtn.firstElementChild.classList.toggle('bi-eye-slash', isPwd);
+      toggleBtn.firstElementChild.classList.toggle('bi-eye', !isPwd);
     });
   </script>
 </body>
