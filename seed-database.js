@@ -161,22 +161,23 @@ async function seedDatabase() {
     // 3) Inserir motoristas de exemplo
     console.log('👨‍✈️ Inserindo motoristas de exemplo...');
     const motoristas = [
-      ['João Silva', '123.456.789-00', 'CNH123456', '2025-12-31', 'B', null],
-      ['Maria Santos', '987.654.321-00', 'CNH654321', '2024-06-30', 'C', null],
-      ['Carlos Oliveira', '456.789.123-00', 'CNH789123', '2025-08-15', 'AB', null],
-      ['Ana Costa', '789.123.456-00', 'CNH321654', '2026-01-20', 'D', null],
-      ['Pedro Lima', '321.654.987-00', 'CNH987321', '2024-11-10', 'B', null]
+      ['João Silva', 'joao.silva@email.com', '123.456.789-00', 'CNH123456', '2025-12-31', 'B', null],
+      ['Maria Santos', 'maria.santos@email.com', '987.654.321-00', 'CNH654321', '2024-06-30', 'C', null],
+      ['Carlos Oliveira', 'carlos.oliveira@email.com', '456.789.123-00', 'CNH789123', '2025-08-15', 'AB', null],
+      ['Ana Costa', 'ana.costa@email.com', '789.123.456-00', 'CNH321654', '2026-01-20', 'D', null],
+      ['Pedro Lima', 'pedro.lima@email.com', '321.654.987-00', 'CNH987321', '2024-11-10', 'B', null]
     ];
 
-    for (const [nome, cpf, cnh, validade, categoria, foto_cnh] of motoristas) {
+    for (const [nome, email, cpf, cnh, validade, categoria, foto_cnh] of motoristas) {
       await connection.execute(`
-        INSERT INTO motoristas (nome, cpf, cnh, data_validade, categoria, foto_cnh, created_at) 
-        VALUES (?, ?, ?, ?, ?, ?, NOW())
+        INSERT INTO motoristas (nome, email, cpf, cnh, data_validade, categoria, foto_cnh, created_at) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
         ON DUPLICATE KEY UPDATE 
           nome = VALUES(nome), 
+          email = VALUES(email),
           data_validade = VALUES(data_validade), 
           categoria = VALUES(categoria)
-      `, [nome, cpf, cnh, validade, categoria, foto_cnh]);
+      `, [nome, email, cpf, cnh, validade, categoria, foto_cnh]);
     }
 
     // 4) Inserir alguns registros de uso de exemplo
