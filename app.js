@@ -20,6 +20,10 @@ const https = require('https');
 
 const app = express();
 
+// Railway/Heroku-style proxies terminate TLS before the app.
+// This allows secure cookies to work when the external connection is HTTPS.
+app.set('trust proxy', 1);
+
 let server;
 
 const HTTPS_ENABLED = process.env.HTTPS_ENABLED === 'true';
@@ -28,15 +32,23 @@ if (HTTPS_ENABLED) {
   const sslKeyPath = process.env.SSL_KEY_PATH || '/certs/privkey.pem';
   const sslCertPath = process.env.SSL_CERT_PATH || '/certs/fullchain.pem';
 
-  const privateKey = fs.readFileSync(sslKeyPath, 'utf8');
-  const certificate = fs.readFileSync(sslCertPath, 'utf8');
+  try {
+    const privateKey = fs.readFileSync(sslKeyPath, 'utf8');
+    const certificate = fs.readFileSync(sslCertPath, 'utf8');
 
-  const credentials = { key: privateKey, cert: certificate };
+    const credentials = { key: privateKey, cert: certificate };
 
-  const https = require('https');
-  server = https.createServer(credentials, app);
+    const https = require('https');
+    server = https.createServer(credentials, app);
 
-  console.log("Servidor HTTPS configurado.");
+    console.log("Servidor HTTPS configurado.");
+  } catch (err) {
+    const http = require('http');
+    server = http.createServer(app);
+    console.warn(
+      `Falha ao configurar HTTPS (certificados não encontrados ou inválidos). Iniciando em HTTP. Erro: ${err.message}`
+    );
+  }
 } else {
   const http = require('http');
   server = http.createServer(app);
@@ -71,6 +83,7 @@ if (!fs.existsSync('uploads')) {
 // Cria um pool de conexões
 const pool = mysql.createPool({
     host: process.env.DB_HOST,
+    port: process.env.DB_PORT ? Number(process.env.DB_PORT) : undefined,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
@@ -99,7 +112,7 @@ app.listen(PORT, () => {
 }); */
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`App rodando na porta ${PORT}`);
 });
 
@@ -251,14 +264,15 @@ app.use(
  
   
   app.use(session({
+    proxy: isProduction,
     secret: process.env.SECRET_SESSION,
     resave: false,
     saveUninitialized: false,
     cookie: {
       maxAge: 30 * 60 * 1000, // 30 minutos
-      secure: HTTPS_ENABLED, // Se HTTPS, cookie só via HTTPS
+      secure: isProduction ? true : HTTPS_ENABLED, // Em produção (Railway) roda atrás de proxy HTTPS
       httpOnly: true,
-      sameSite: HTTPS_ENABLED ? 'none' : 'lax'
+      sameSite: isProduction ? 'none' : (HTTPS_ENABLED ? 'none' : 'lax')
     }
   }));
   

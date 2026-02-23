@@ -1,6 +1,6 @@
 # Ignorar a pasta node_modules e packagejson-lock
 node_modules/
-package-lock.json
+
 
 # pasta backup
 backup/
@@ -34,3 +34,7 @@ build/
 *.iml
 
 certs/
+
+controle_frota_estrutura-06-02-2026.sql
+mysql SHOW TABLES;.txt
+show create table -banco-gps.txt
