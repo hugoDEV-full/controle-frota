@@ -97,8 +97,24 @@ if (!fs.existsSync('uploads')) {
     fs.mkdirSync('uploads');
 }
 
-// Cria um pool de conexões
-const pool = mysql.createPool({
+// Cria um pool de conexões usando MYSQL_PUBLIC_URL (como no seed-database)
+let pool;
+if (process.env.MYSQLURL || process.env.MYSQL_PUBLIC_URL) {
+  const mysqlUrl = process.env.MYSQLURL || process.env.MYSQL_PUBLIC_URL;
+  const url = new URL(mysqlUrl);
+  pool = mysql.createPool({
+    host: url.hostname,
+    port: url.port || 3306,
+    user: url.username,
+    password: url.password,
+    database: url.pathname.substring(1),
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0
+  });
+} else {
+  // Fallback para variáveis individuais
+  pool = mysql.createPool({
     host: process.env.DB_HOST,
     port: process.env.DB_PORT ? Number(process.env.DB_PORT) : undefined,
     user: process.env.DB_USER,
@@ -107,7 +123,8 @@ const pool = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
-});
+  });
+}
 
 
 // compatibilidade nas requisições
