@@ -413,8 +413,7 @@ app.get(
   '/auditoria',
   isAuthenticated,
   isAdmin,
-  // csrfProtection,
-  async (req, res) => {
+    async (req, res) => {
     try {
       const { usuario, data, rota, metodo } = req.query;
       const filtros = [];
@@ -472,11 +471,10 @@ app.get(
   
 // GET /login — gera e envia o token para a view
 app.get('/login',
-    // csrfProtection,
-    (req, res) => {
+        (req, res) => {
         res.render('login', {
             layout: 'login',
-            csrfToken: req.csrfToken()    // passa o token aqui
+            csrfToken: 'disabled'    // passa o token aqui
         });
     }
 );
@@ -499,8 +497,7 @@ async function salvarAuditoriaManual({ usuario, rota, metodo, descricao }) {
 app.post('/login',
   authLimiter,
   express.urlencoded({ extended: true }),
-  // csrfProtection,
-  [
+    [
     body('email').isEmail().normalizeEmail(),
     body('password').isLength({ min: 8 })
   ],
@@ -610,8 +607,7 @@ app.get(
   '/active-sessions',
   isAuthenticated,
   isAdmin,
-  // csrfProtection,
-  async (req, res, next) => {
+    async (req, res, next) => {
     try {
       const now = Date.now();
 
@@ -654,7 +650,7 @@ app.get(
       });
 
       return res.render('active-sessions', {
-        csrfToken:  req.csrfToken(),
+        csrfToken: 'disabled',
         user:       req.user,
         activePage: 'active-sessions',
         sessions:   data
@@ -729,7 +725,7 @@ app.use(passport.session());
 //const util = require('util');
 //const query = util.promisify(db.query).bind(db);
 
-app.get('/', isAuthenticated, // csrfProtection, async (req, res) => {
+app.get('/', isAuthenticated, async (req, res) => {
     try {
         // Consultas para motoristas (contagem e dados)
         const validosResult = await query(
@@ -1041,10 +1037,10 @@ app.get('/', isAuthenticated, // csrfProtection, async (req, res) => {
 
 
 // Tela de esqueci minha senha
-app.get('/forgot-password', // csrfProtection, (req, res) => {
-    res.render('forgot-password', { layout: 'forgot-password', csrfToken: req.csrfToken() });
+app.get('/forgot-password',  (req, res) => {
+    res.render('forgot-password', { layout: 'forgot-password', csrfToken: 'disabled' });
 });
-app.post('/forgot-password', authLimiter, // csrfProtection, (req, res) => {
+app.post('/forgot-password', authLimiter,  (req, res) => {
     const email = validator.normalizeEmail(req.body.email || '');
     if (!email) return res.status(400).send("Email é obrigatório.");
 
@@ -1084,12 +1080,12 @@ app.post('/forgot-password', authLimiter, // csrfProtection, (req, res) => {
 });
 
 // Tela de reset de senha
-app.get('/reset-password/:token', // csrfProtection, (req, res) => {
+app.get('/reset-password/:token',  (req, res) => {
     const { token } = req.params;
     db.query("SELECT * FROM usuarios WHERE password_reset_token = ? AND password_reset_expires > ?", [token, Date.now()], (err, results) => {
         if (err) return res.status(500).send("Erro no servidor.");
         if (results.length === 0) return res.status(400).send("Token inválido ou expirado.");
-        res.render('reset-password', { layout: 'reset-password', token, csrfToken: req.csrfToken() });
+        res.render('reset-password', { layout: 'reset-password', token, csrfToken: 'disabled' });
     });
 });
 
@@ -1100,7 +1096,7 @@ function validatePasswordStrength(password) {
     return regex.test(password);
 }
 
-app.post('/reset-password/:token', // csrfProtection, (req, res) => {
+app.post('/reset-password/:token',  (req, res) => {
     const { token } = req.params;
     const { password } = req.body;
     if (!password) return res.status(400).send("Senha é obrigatória.");
@@ -1163,7 +1159,7 @@ app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
 });
 */
 
-app.get('/relatorio-uso', isAuthenticated, // csrfProtection, async (req, res) => {
+app.get('/relatorio-uso', isAuthenticated,  async (req, res) => {
     try {
         let usoData;
         if (req.user.role === 'user') {
@@ -1193,7 +1189,7 @@ app.get('/relatorio-uso', isAuthenticated, // csrfProtection, async (req, res) =
     }
 });
 
-app.get('/api/relatorio-uso', isAuthenticated, // csrfProtection, (req, res) => {
+app.get('/api/relatorio-uso', isAuthenticated,  (req, res) => {
     // Parâmetros do DataTables
     let draw = req.query.draw || 0;
     let start = parseInt(req.query.start) || 0;
@@ -1331,8 +1327,7 @@ app.get(
     '/registrar-veiculo',
     isAuthenticated,
     isAdmin,
-    // csrfProtection,
-    (req, res) => {
+        (req, res) => {
         res.render('registrar-veiculo', {
             title: 'Registrar veículo',
             user: req.user,
@@ -1347,7 +1342,7 @@ app.get(
     }
 );
 
-app.post('/registrar-veiculo', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
+app.post('/registrar-veiculo', isAuthenticated, isAdmin,  (req, res) => {
     const { nome, placa, km, ultimaTrocaOleo, emUsoPor, modelo, ano, cor } = req.body;
     if (!nome || !placa || !km || !ultimaTrocaOleo || !modelo || !ano || !cor) {
         return res.status(400).send('Todos os campos são obrigatórios');
@@ -1365,7 +1360,7 @@ app.post('/registrar-veiculo', isAuthenticated, isAdmin, // csrfProtection, (req
     );
 });
 
-app.post('/multar/:uso_id', isAuthenticated, // csrfProtection, (req, res) => {
+app.post('/multar/:uso_id', isAuthenticated,  (req, res) => {
     const { uso_id } = req.params;
     const multa = validator.escape(req.body.multa || '');
 
@@ -1403,7 +1398,7 @@ app.post('/multar/:uso_id', isAuthenticated, // csrfProtection, (req, res) => {
 });
 
 // Rota pra mostrar o form de multa pra um veículo
-app.get('/registrar-multa/:veiculo_id', isAuthenticated, // csrfProtection, (req, res) => {
+app.get('/registrar-multa/:veiculo_id', isAuthenticated,  (req, res) => {
     const { veiculo_id } = req.params;
     // Busca os dados do veículo
     db.query("SELECT * FROM veiculos WHERE id = ?", [veiculo_id], (err, veiculoResult) => {
@@ -1431,8 +1426,7 @@ app.get('/registrar-multa/:veiculo_id', isAuthenticated, // csrfProtection, (req
 app.post('/registrar-multa/:veiculo_id',
     isAuthenticated,
     isAdmin,
-    // csrfProtection,
-    (req, res) => {
+        (req, res) => {
         const { veiculo_id } = req.params;
         const { data_multa, multa } = req.body;
 
@@ -1492,7 +1486,7 @@ app.post('/registrar-multa/:veiculo_id',
 );
 
 
-app.get('/relatorio-multas', isAuthenticated, // csrfProtection, (req, res) => {
+app.get('/relatorio-multas', isAuthenticated,  (req, res) => {
     const query = `
       SELECT m.*, v.placa, u.data_hora_inicial, u.data_hora_final
       FROM multas m
@@ -1516,7 +1510,7 @@ app.get('/relatorio-multas', isAuthenticated, // csrfProtection, (req, res) => {
     });
 });
 
-app.get('/editar-uso/:id', isAuthenticated, // csrfProtection, (req, res) => {
+app.get('/editar-uso/:id', isAuthenticated,  (req, res) => {
     const { id } = req.params;
     db.query('SELECT * FROM uso_veiculos WHERE id = ?', [id], (err, usoResult) => {
         if (err) {
@@ -1541,14 +1535,14 @@ app.get('/editar-uso/:id', isAuthenticated, // csrfProtection, (req, res) => {
                 layout: 'layout',
                 activePage: 'editarUso',
                 user: req.user,
-                csrfToken: req.csrfToken()
+                csrfToken: 'disabled'
             });
         });
     });
 });
 
 
-app.get('/usar/:id', isAuthenticated, // csrfProtection, (req, res) => {
+app.get('/usar/:id', isAuthenticated,  (req, res) => {
     const { id } = req.params;
     const userId = req.user.id; // Pega o ID do usuário autenticado
 
@@ -1673,7 +1667,7 @@ const uploadSingleFoto = multer({
     }
 }).single('foto_km');
 
-app.post('/usar/:id', isAuthenticated, uploadSingleFoto, // csrfProtection, (req, res) => {
+app.post('/usar/:id', isAuthenticated, uploadSingleFoto,  (req, res) => {
     const { id } = req.params; // ID do veículo
 
     const { km_inicial, km_final, data_hora_inicial, data_hora_final, finalidade, descricao } = req.body;
@@ -1798,7 +1792,7 @@ app.post(
     '/editar-uso/:id',
     isAuthenticated,
     uploadOptionalFoto,   // Multer parseia multipart/form-data
-    // csrfProtection,      // depois valida CSRF
+          // depois valida CSRF
     (req, res) => {
         const { id } = req.params;
         const {
@@ -1831,7 +1825,7 @@ app.post(
                 res.render('editarUso', {
                     uso,
                     errorMessage: message,
-                    csrfToken: req.csrfToken()
+                    csrfToken: 'disabled'
                 });
             });
         }
@@ -2015,7 +2009,7 @@ app.post(
 
 
 // Rota pra marcar que a troca de óleo foi feita
-app.post('/troca-feita/:id', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
+app.post('/troca-feita/:id', isAuthenticated, isAdmin,  (req, res) => {
     const { id } = req.params;
     // Atualiza a última troca com o km atual
     db.query('UPDATE veiculos SET ultimaTrocaOleo = km WHERE id = ?', [id], (err, result) => {
@@ -2029,7 +2023,7 @@ app.post('/troca-feita/:id', isAuthenticated, isAdmin, // csrfProtection, (req, 
 });
 
 // Rota pra excluir uma multa
-app.post('/excluir-multa/:id', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
+app.post('/excluir-multa/:id', isAuthenticated, isAdmin,  (req, res) => {
     const { id } = req.params;
     db.query("DELETE FROM multas WHERE id = ?", [id], (err, result) => {
         if (err) {
@@ -2041,7 +2035,7 @@ app.post('/excluir-multa/:id', isAuthenticated, isAdmin, // csrfProtection, (req
 });
 
 // Rota pra excluir uso e suas multas
-app.post('/excluir-uso/:id', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
+app.post('/excluir-uso/:id', isAuthenticated, isAdmin,  (req, res) => {
     const { id } = req.params;
     db.query("DELETE FROM multas WHERE uso_id = ?", [id], (err, result) => {
         if (err) {
@@ -2058,7 +2052,7 @@ app.post('/excluir-uso/:id', isAuthenticated, isAdmin, // csrfProtection, (req, 
     });
 });
 
-app.post('/excluir-multiplos-usos', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
+app.post('/excluir-multiplos-usos', isAuthenticated, isAdmin,  (req, res) => {
     let { ids } = req.body;
 
     if (!ids) {
@@ -2140,7 +2134,7 @@ app.post('/excluir-multiplos-usos', isAuthenticated, isAdmin, // csrfProtection,
 
 
 // Rota para exibir a tela de edição do veículo
-app.get('/editar-veiculo/:id', isAuthenticated, // csrfProtection, (req, res) => {
+app.get('/editar-veiculo/:id', isAuthenticated,  (req, res) => {
     const id = req.params.id;
     db.query("SELECT * FROM veiculos WHERE id = ?", [id], (err, results) => {
         if (err || results.length === 0) {
@@ -2158,7 +2152,7 @@ app.get('/editar-veiculo/:id', isAuthenticated, // csrfProtection, (req, res) =>
 });
 
 // Rota para atualizar dados do veículo
-app.post('/editar-veiculo/:id', isAuthenticated, // csrfProtection, (req, res) => {
+app.post('/editar-veiculo/:id', isAuthenticated,  (req, res) => {
     const id = req.params.id;
     const { nome, placa, km, ultimaTrocaOleo, modelo, ano, cor, justificativaKm } = req.body;
 
@@ -2243,8 +2237,7 @@ app.post(
     '/excluir-veiculo/:id',
     isAuthenticated,
     isAdmin,
-    // csrfProtection,
-    async (req, res) => {
+        async (req, res) => {
         const id = req.params.id;
         try {
             // 1) Exclui manutenções
@@ -2271,7 +2264,7 @@ app.post(
 
 
 // Rota de notificações: mostra veículos que precisam trocar óleo e notificações de alteração de quilometragem
-app.get('/notificacoes', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
+app.get('/notificacoes', isAuthenticated, isAdmin,  (req, res) => {
     // Query para veículos que precisam trocar óleo
     const oilQuery = `
       SELECT *, (km - ultimaTrocaOleo) AS kmDesdeUltimaTroca 
@@ -2306,7 +2299,7 @@ app.get('/notificacoes', isAuthenticated, isAdmin, // csrfProtection, (req, res)
     });
 });
 
-app.post('/excluir-notificacao-alteracao-km/:id', isAuthenticated, isAdmin, // csrfProtection, async (req, res) => {
+app.post('/excluir-notificacao-alteracao-km/:id', isAuthenticated, isAdmin,  async (req, res) => {
     const { id } = req.params;
     db.query('DELETE FROM notificacoes WHERE id = ?', [id], (err, results) => {
         if (err) {
@@ -2365,7 +2358,7 @@ const uploadFotoBanco = multer({
 }).single('foto');
 
 
-app.get('/registro-motorista', isAuthenticated, // csrfProtection, async (req, res) => {
+app.get('/registro-motorista', isAuthenticated,  async (req, res) => {
     try {
       // Busca dados do motorista pelo email
       const resultados = await query(
@@ -2415,8 +2408,7 @@ app.post(
     '/api/cadastro-motorista',
     isAuthenticated,
     uploadFotoBanco,
-    // csrfProtection,
-    async (req, res) => {
+        async (req, res) => {
       try {
         const { nome, cpf, cnh, dataValidade, categoria } = req.body;
         const bufferFoto = req.file ? req.file.buffer : null;
@@ -2495,8 +2487,7 @@ app.get(
     '/motoristas/fotos-cnh',
     isAuthenticated,
     isAdmin,
-    // csrfProtection,
-    async (req, res) => {
+        async (req, res) => {
       try {
         const motoristas = await query(
           `SELECT
@@ -2529,8 +2520,7 @@ app.get(
 app.delete(
     '/api/deletar-motorista/:id',
     isAuthenticated,
-    // csrfProtection,
-    async (req, res) => {
+        async (req, res) => {
       try {
         const { id } = req.params;
         // verificar que o motorista existe antes de apagar
@@ -2626,7 +2616,7 @@ function checkMaintenanceForVehicle(veiculo_id) {
 /* Rotas para manutenção */
 
 // Rota para exibir formulário de cadastro de manutenção para um veículo
-app.get('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
+app.get('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin,  (req, res) => {
     const { veiculo_id } = req.params;
     db.query("SELECT * FROM veiculos WHERE id = ?", [veiculo_id], (err, results) => {
         if (err || results.length === 0) {
@@ -2645,7 +2635,7 @@ app.get('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin, // csrfPr
 });
 
 // Rota para processar cadastro de manutenção
-app.post('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
+app.post('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin,  (req, res) => {
     const { veiculo_id } = req.params;
     const { tipo, descricao, km_agendado, data_agendada } = req.body;
     const query = `
@@ -2662,7 +2652,7 @@ app.post('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin, // csrfP
 });
 
 // Rota para listar todas as manutenções (de todos os veículos)
-app.get('/manutencoes', isAuthenticated, // csrfProtection, (req, res) => {
+app.get('/manutencoes', isAuthenticated,  (req, res) => {
     const query = `
       SELECT m.*, v.placa, v.nome as veiculo_nome 
       FROM manutencoes m
@@ -2686,7 +2676,7 @@ app.get('/manutencoes', isAuthenticated, // csrfProtection, (req, res) => {
 });
 
 // Rota para marcar uma manutenção como realizada
-app.post('/manutencoes/realizada/:id', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
+app.post('/manutencoes/realizada/:id', isAuthenticated, isAdmin,  (req, res) => {
     const { id } = req.params;
     const updateQuery = `
       UPDATE manutencoes 
@@ -2705,7 +2695,7 @@ app.post('/manutencoes/realizada/:id', isAuthenticated, isAdmin, // csrfProtecti
 /* Fim das funcionalidades de manutenção */
 
 // Rota para cadastro de novo reembolso
-app.post('/reembolsos', upload.single('comprovante'), isAuthenticated, // csrfProtection, async (req, res) => {
+app.post('/reembolsos', upload.single('comprovante'), isAuthenticated,  async (req, res) => {
     try {
         const { motorista_id, valor } = req.body;
         // Se um arquivo foi enviado, obtenha o caminho
@@ -2723,7 +2713,7 @@ app.post('/reembolsos', upload.single('comprovante'), isAuthenticated, // csrfPr
     }
 });
 // Rota para exibir o formulário, a lista de reembolsos detalhados, os dados para o gráfico e os reembolsos agregados
-app.get('/reembolsos', isAuthenticated, // csrfProtection, async (req, res) => {
+app.get('/reembolsos', isAuthenticated,  async (req, res) => {
     try {
         // Consulta para buscar os reembolsos detalhados com os dados do motorista
         const reembolsos = await query(`
@@ -2792,7 +2782,7 @@ app.get('/reembolsos', isAuthenticated, // csrfProtection, async (req, res) => {
 });
 
 
-app.get('/relatorio-consumo', isAuthenticated, // csrfProtection, async (req, res) => {
+app.get('/relatorio-consumo', isAuthenticated,  async (req, res) => {
     try {
         // 1) Parâmetros de busca
         const { motorista, startDate, endDate } = req.query;
@@ -2899,7 +2889,7 @@ app.get('/relatorio-consumo', isAuthenticated, // csrfProtection, async (req, re
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-app.get('/search', isAuthenticated, // csrfProtection, async (req, res) => {
+app.get('/search', isAuthenticated,  async (req, res) => {
   const q = (req.query.q || '').trim();
 
   //  o que a busca abrange, para exibir no front
@@ -3146,7 +3136,7 @@ const axios = require('axios');
 //
 // --- ROTA GET /conserto-viavel ---
 //  query tem que trazer os campos marca e marca_nome
-app.get('/conserto-viavel', isAuthenticated, // csrfProtection, async (req, res) => {
+app.get('/conserto-viavel', isAuthenticated,  async (req, res) => {
     try {
         const registros = await query(`
         SELECT 
@@ -3177,7 +3167,7 @@ app.get('/conserto-viavel', isAuthenticated, // csrfProtection, async (req, res)
 
 
 // --- ROTA POST /salvar-avaliacao ---
-app.post('/salvar-avaliacao', isAuthenticated, // csrfProtection, (req, res) => {
+app.post('/salvar-avaliacao', isAuthenticated,  (req, res) => {
     // Extração dos dados incluindo os dois campos para a marca
     const { marca, marca_nome, modelo, modelo_nome, ano, valor_fipe, custo_conserto, conserto_viavel } = req.body;
 
@@ -3198,7 +3188,7 @@ app.post('/salvar-avaliacao', isAuthenticated, // csrfProtection, (req, res) => 
 
 // --- ROTA POST /conserto-viavel (Avalia viabilidade sem salvar) ---
 
-app.post('/conserto-viavel', isAuthenticated, // csrfProtection, async (req, res) => {
+app.post('/conserto-viavel', isAuthenticated,  async (req, res) => {
     try {
         const { marca, modelo, ano: anoCodigo, custo_conserto } = req.body;
         if (!marca || !modelo || !anoCodigo || !custo_conserto) {
@@ -3237,7 +3227,7 @@ app.post('/conserto-viavel', isAuthenticated, // csrfProtection, async (req, res
 });
 
 // --- Rotas da API FIPE  ---
-app.get('/api/marcas', isAuthenticated, // csrfProtection, async (req, res) => {
+app.get('/api/marcas', isAuthenticated,  async (req, res) => {
     try {
         const { data } = await axios.get(
             'https://parallelum.com.br/fipe/api/v1/carros/marcas'
@@ -3249,7 +3239,7 @@ app.get('/api/marcas', isAuthenticated, // csrfProtection, async (req, res) => {
 });
 
 
-app.get('/api/modelos', isAuthenticated, // csrfProtection, async (req, res) => {
+app.get('/api/modelos', isAuthenticated,  async (req, res) => {
     const { marca } = req.query;
     if (!marca) {
         return res.status(400).json({ sucesso: false, error: 'Marca obrigatória.' });
@@ -3264,7 +3254,7 @@ app.get('/api/modelos', isAuthenticated, // csrfProtection, async (req, res) => 
     }
 });
 
-app.get('/api/anos', isAuthenticated, // csrfProtection, async (req, res) => {
+app.get('/api/anos', isAuthenticated,  async (req, res) => {
     const { marca, modelo } = req.query;
     if (!marca || !modelo) {
         return res
@@ -3281,7 +3271,7 @@ app.get('/api/anos', isAuthenticated, // csrfProtection, async (req, res) => {
     }
 });
 
-app.post('/excluir-avaliacao/:id', isAuthenticated, // csrfProtection, async (req, res) => {
+app.post('/excluir-avaliacao/:id', isAuthenticated,  async (req, res) => {
     const { id } = req.params;
     //console.log("Tentando excluir avaliação com id:", id);
     try {
@@ -3298,7 +3288,7 @@ app.post('/excluir-avaliacao/:id', isAuthenticated, // csrfProtection, async (re
     }
 });
 /////////////////////////////// registro do user
-app.get('/register', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
+app.get('/register', isAuthenticated, isAdmin,  (req, res) => {
     res.render('register', {
         erros: [],
         csrfToken: 'disabled',
@@ -3314,7 +3304,7 @@ app.get('/register', isAuthenticated, isAdmin, // csrfProtection, (req, res) => 
 });
 
 // ROTA POST - processar registro com validação de senha forte
-app.post('/register', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
+app.post('/register', isAuthenticated, isAdmin,  (req, res) => {
     const { email, senha, senha2, role = 'user' } = req.body;
     const erros = [];
     let success_msg = '';
@@ -3449,7 +3439,7 @@ app.post('/register', isAuthenticated, isAdmin, // csrfProtection, (req, res) =>
 //////////////////////////////////inicio editar usuasrios e motoristas
 
 // LISTAR USUÁRIOS
-app.get('/usuarios', isAuthenticated, // csrfProtection, (req, res) => {
+app.get('/usuarios', isAuthenticated,  (req, res) => {
     pool.query('SELECT id, email, role FROM usuarios ORDER BY id', (err, results) => {
         if (err) {
             console.error(err);
@@ -3465,7 +3455,7 @@ app.get('/usuarios', isAuthenticated, // csrfProtection, (req, res) => {
 });
 
 // LISTAR MOTORISTAS
-app.get('/motoristas', isAuthenticated, // csrfProtection, (req, res) => {
+app.get('/motoristas', isAuthenticated,  (req, res) => {
     pool.query(`
       SELECT 
         id, nome, email, cpf, cnh, DATE_FORMAT(data_validade, '%Y-%m-%d') AS data_validade, categoria
@@ -3488,8 +3478,7 @@ app.get('/motoristas', isAuthenticated, // csrfProtection, (req, res) => {
 app.delete(
     '/api/deletar-motorista/:id',
     isAuthenticated,
-    // csrfProtection,
-    async (req, res) => {
+        async (req, res) => {
         const { id } = req.params;
         try {
             // 1) Apaga todos os reembolsos desse motorista
@@ -3514,7 +3503,7 @@ app.delete(
 
 // === EDITAR USUÁRIO ===
 //  exibe formulário com email e role
-app.get('/usuarios/:id/edit', isAuthenticated, // csrfProtection, (req, res) => {
+app.get('/usuarios/:id/edit', isAuthenticated,  (req, res) => {
     const { id } = req.params;
     pool.query('SELECT id, email, role FROM usuarios WHERE id = ?', [id], (err, results) => {
         if (err || !results.length) {
@@ -3530,7 +3519,7 @@ app.get('/usuarios/:id/edit', isAuthenticated, // csrfProtection, (req, res) => 
 });
 
 //  valida e atualiza email e role
-app.post('/usuarios/:id/edit', isAuthenticated, // csrfProtection, (req, res) => {
+app.post('/usuarios/:id/edit', isAuthenticated,  (req, res) => {
     const { id } = req.params;
     const { email, role } = req.body;
     const erros = [];
@@ -3586,8 +3575,7 @@ app.post('/usuarios/:id/edit', isAuthenticated, // csrfProtection, (req, res) =>
 app.get(
     '/motoristas/:id/edit',
     isAuthenticated,
-    // csrfProtection,
-    async (req, res) => {
+        async (req, res) => {
       const { id } = req.params;
       try {
         const resultados = await query(
@@ -3637,8 +3625,7 @@ app.get(
     '/api/editar-motorista/:id',
     isAuthenticated,
     uploadFotoBanco,
-    // csrfProtection,
-    async (req, res) => {
+        async (req, res) => {
       const { id } = req.params;
       const { nome, cpf, cnh, dataValidade, categoria } = req.body;
       const bufferFoto = req.file ? req.file.buffer : null;
