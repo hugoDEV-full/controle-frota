@@ -144,10 +144,38 @@ async function seedDatabase() {
       CREATE TABLE IF NOT EXISTS auditoria (
         id INT AUTO_INCREMENT PRIMARY KEY,
         usuario VARCHAR(255) NOT NULL,
-        rota VARCHAR(255) NOT NULL,
+        rota TEXT NOT NULL,
         metodo VARCHAR(10) NOT NULL,
         detalhes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Tabela carro_reparo
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS carro_reparo (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        marca VARCHAR(255),
+        marca_nome VARCHAR(255),
+        modelo VARCHAR(255),
+        modelo_nome VARCHAR(255),
+        ano INT,
+        valor_fipe DECIMAL(10,2),
+        custo_conserto DECIMAL(10,2),
+        conserto_viavel ENUM('Sim', 'Não') DEFAULT 'Não',
+        dataCadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Tabela notificacoes
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS notificacoes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        mensagem TEXT NOT NULL,
+        tipo VARCHAR(50) DEFAULT 'info',
+        lida BOOLEAN DEFAULT FALSE,
+        data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        usuario_id INT
       )
     `);
     
