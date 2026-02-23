@@ -183,9 +183,9 @@ async function seedDatabase() {
     
     // 1) Criar usuário admin com bcrypt
     console.log('👤 Criando usuários admin...');
-    const hashedPassword = await bcrypt.hash('Bento1617@', 10);
-    const hashedPasswordAdmin = await bcrypt.hash('admin123', 10);
-    const hashedPasswordUser = await bcrypt.hash('user123', 10);
+    const hashedPassword = await bcrypt.hash('Hugo2026*', 10);
+    const hashedPasswordAdmin = await bcrypt.hash('Hugo2026*', 10);
+    const hashedPasswordUser = await bcrypt.hash('Hugo2026*', 10);
     
     // Primeiro, remove usuários existentes para evitar conflitos
     await connection.execute("DELETE FROM usuarios WHERE email IN ('hugo.leonardo.jobs@gmail.com', 'admin@frota.com', 'usuario@frota.com')");
@@ -207,9 +207,9 @@ async function seedDatabase() {
     `, [hashedPasswordUser]);
     
     console.log('✅ Usuários criados:');
-    console.log('   - hugo.leonardo.jobs@gmail.com / Bento1617@ (admin)');
-    console.log('   - admin@frota.com / admin123 (admin)');
-    console.log('   - usuario@frota.com / user123 (user)');
+    console.log('   - hugo.leonardo.jobs@gmail.com / Hugo2026* (admin)');
+    console.log('   - admin@frota.com / Hugo2026* (admin)');
+    console.log('   - usuario@frota.com / Hugo2026* (user)');
 
     // 2) Inserir veículos de exemplo
     console.log('🚗 Inserindo veículos de exemplo...');
