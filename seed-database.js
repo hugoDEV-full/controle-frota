@@ -46,6 +46,86 @@ async function seedDatabase() {
   }
 
   try {
+    // 0) Criar tabelas se não existirem
+    console.log('📋 Criando tabelas do banco...');
+    
+    // Tabela usuarios
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS usuarios (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nome VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        senha VARCHAR(255) NOT NULL,
+        role ENUM('user', 'admin') DEFAULT 'user',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Tabela veiculos
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS veiculos (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nome VARCHAR(255) NOT NULL,
+        placa VARCHAR(20) UNIQUE NOT NULL,
+        km INT DEFAULT 0,
+        ultimaTrocaOleo INT DEFAULT 0,
+        emUsoPor VARCHAR(255),
+        modelo VARCHAR(255),
+        ano INT,
+        cor VARCHAR(100),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Tabela uso_veiculos
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS uso_veiculos (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        veiculo_id INT NOT NULL,
+        motorista VARCHAR(255) NOT NULL,
+        km_inicial INT NOT NULL,
+        km_final INT,
+        data_hora_inicial TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        data_hora_final TIMESTAMP NULL,
+        foto_km VARCHAR(255),
+        finalidade TEXT,
+        descricao TEXT,
+        data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (veiculo_id) REFERENCES veiculos(id)
+      )
+    `);
+    
+    // Tabela multas
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS multas (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        uso_id INT,
+        veiculo_id INT NOT NULL,
+        multa TEXT NOT NULL,
+        data DATE DEFAULT CURRENT_DATE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (veiculo_id) REFERENCES veiculos(id),
+        FOREIGN KEY (uso_id) REFERENCES uso_veiculos(id)
+      )
+    `);
+    
+    // Tabela motoristas
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS motoristas (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nome VARCHAR(255) NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        cpf VARCHAR(20) UNIQUE NOT NULL,
+        cnh VARCHAR(50) NOT NULL,
+        data_validade DATE NOT NULL,
+        categoria VARCHAR(10) NOT NULL,
+        foto_cnh LONGBLOB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    console.log('✅ Tabelas criadas com sucesso!');
+    
     // 1) Criar usuário admin com bcrypt
     console.log('👤 Criando usuário admin...');
     const hashedPassword = await bcrypt.hash('Bento1617@', 10);
