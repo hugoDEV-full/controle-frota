@@ -124,6 +124,21 @@ async function seedDatabase() {
       )
     `);
     
+    // Tabela manutencoes
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS manutencoes (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        veiculo_id INT NOT NULL,
+        data_agendada DATE,
+        tipo VARCHAR(255) NOT NULL,
+        custo DECIMAL(10,2),
+        status ENUM('Pendente', 'Concluída', 'Cancelada') DEFAULT 'Pendente',
+        descricao TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (veiculo_id) REFERENCES veiculos(id)
+      )
+    `);
+    
     console.log('✅ Tabelas criadas com sucesso!');
     
     // 1) Criar usuário admin com bcrypt
