@@ -13,19 +13,19 @@ const session = require('express-session');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
-// Setup automático do banco em produção (Railway)
-if (process.env.NODE_ENV === 'production') {
-  const { setupDatabase } = require('./setup-db');
-  setupDatabase().then(() => {
-    console.log('✅ Banco pronto. Iniciando servidor...');
-    startServer();
-  }).catch(err => {
-    console.error('❌ Falha no setup do banco:', err);
-    process.exit(1);
-  });
-} else {
+// Setup automático do banco em produção (Railway) - DESABILITADO TEMPORARIAMENTE
+// if (process.env.NODE_ENV === 'production') {
+//   const { setupDatabase } = require('./setup-db');
+//   setupDatabase().then(() => {
+//     console.log('✅ Banco pronto. Iniciando servidor...');
+//     startServer();
+//   }).catch(err => {
+//     console.error('❌ Falha no setup do banco:', err);
+//     process.exit(1);
+//   });
+// } else {
   startServer();
-}
+// }
 
 function startServer() {
   //time zone
