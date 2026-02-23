@@ -326,7 +326,7 @@ const validator = require('validator');
 
 //app.use(multer().none());
 // CSRF - DESABILITADO TEMPORARIAMENTE PARA DEPLOY
-const csurf = require('csurf');
+// const csurf = require('csurf');
 // const csrfProtection = csurf();
 // app.use(csrfProtection);
 /* Em todas as views, expor req.csrfToken()
