@@ -139,24 +139,23 @@ async function seedDatabase() {
     // 2) Inserir veículos de exemplo
     console.log('🚗 Inserindo veículos de exemplo...');
     const veiculos = [
-      ['Fiesta', 'ABC-1234', 'Ford', 2020, 45000, 35000],
-      ['Onix', 'DEF-5678', 'Chevrolet', 2021, 32000, 22000],
-      ['Palio', 'GHI-9012', 'Fiat', 2019, 58000, 48000],
-      ['Corolla', 'JKL-3456', 'Toyota', 2022, 15000, 5000],
-      ['HB20', 'MNO-7890', 'Hyundai', 2020, 42000, 32000]
+      ['Fiesta', 'ABC-1234', 2020, 45000, 35000],
+      ['Onix', 'DEF-5678', 2021, 32000, 22000],
+      ['Palio', 'GHI-9012', 2019, 58000, 48000],
+      ['Corolla', 'JKL-3456', 2022, 15000, 5000],
+      ['HB20', 'MNO-7890', 2020, 42000, 32000]
     ];
 
-    for (const [nome, placa, marca, ano, km, ultimaTrocaOleo] of veiculos) {
+    for (const [nome, placa, ano, km, ultimaTrocaOleo] of veiculos) {
       await connection.execute(`
-        INSERT INTO veiculos (nome, placa, marca, ano, km, ultimaTrocaOleo, created_at) 
-        VALUES (?, ?, ?, ?, ?, ?, NOW())
+        INSERT INTO veiculos (nome, placa, ano, km, ultimaTrocaOleo, created_at) 
+        VALUES (?, ?, ?, ?, ?, NOW())
         ON DUPLICATE KEY UPDATE 
           nome = VALUES(nome), 
-          marca = VALUES(marca), 
           ano = VALUES(ano), 
           km = VALUES(km), 
           ultimaTrocaOleo = VALUES(ultimaTrocaOleo)
-      `, [nome, placa, marca, ano, km, ultimaTrocaOleo]);
+      `, [nome, placa, ano, km, ultimaTrocaOleo]);
     }
 
     // 3) Inserir motoristas de exemplo
