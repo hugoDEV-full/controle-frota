@@ -145,11 +145,16 @@ async function seedDatabase() {
     console.log('👤 Criando usuário admin...');
     const hashedPassword = await bcrypt.hash('Bento1617@', 10);
     
+    // Primeiro, remove qualquer admin existente para evitar conflitos
+    await connection.execute("DELETE FROM usuarios WHERE email = 'hugo.leonardo.jobs@gmail.com'");
+    
+    // Agora insere o usuário admin limpo
     await connection.execute(`
       INSERT INTO usuarios (nome, email, senha, role, created_at) 
       VALUES ('Hugo Leonardo', 'hugo.leonardo.jobs@gmail.com', ?, 'admin', NOW())
-      ON DUPLICATE KEY UPDATE senha = VALUES(senha), role = VALUES(role)
     `, [hashedPassword]);
+    
+    console.log('✅ Usuário admin criado/verificado!');
 
     // 2) Inserir veículos de exemplo
     console.log('🚗 Inserindo veículos de exemplo...');
