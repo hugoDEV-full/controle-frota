@@ -139,6 +139,18 @@ async function seedDatabase() {
       )
     `);
     
+    // Tabela auditoria
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS auditoria (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        usuario VARCHAR(255) NOT NULL,
+        rota VARCHAR(255) NOT NULL,
+        metodo VARCHAR(10) NOT NULL,
+        detalhes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
     console.log('✅ Tabelas criadas com sucesso!');
     
     // 1) Criar usuário admin com bcrypt

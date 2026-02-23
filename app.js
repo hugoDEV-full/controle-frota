@@ -829,11 +829,12 @@ app.get('/', isAuthenticated, async (req, res) => {
           ORDER BY ano DESC
         `);
 
-        // Relatório: Multas por Motorista
+        // Relatório: Multas por Motorista (corrigido - usa uso_veiculos)
         const multasMotoristaResult = await query(`
-          SELECT motorista, COUNT(*) AS totalMultasMotorista
-          FROM multas
-          GROUP BY motorista
+          SELECT uv.motorista, COUNT(*) AS totalMultasMotorista
+          FROM multas m
+          JOIN uso_veiculos uv ON m.uso_id = uv.id
+          GROUP BY uv.motorista
           ORDER BY totalMultasMotorista DESC
         `);
 
