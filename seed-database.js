@@ -2,7 +2,7 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 
-async function setupDatabase() {
+async function seedDatabase() {
   console.log('🌱 Iniciando carga inicial do banco...');
   
   // Railway fornece MYSQLURL automaticamente - vamos usar ela!
