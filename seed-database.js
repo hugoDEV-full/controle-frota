@@ -201,17 +201,17 @@ async function seedDatabase() {
     // 5) Inserir algumas multas de exemplo
     console.log('🚨 Inserindo multas de exemplo...');
     const multas = [
-      [1, 'João Silva', '2024-01-15', 'Estacionar em local proibido', 150.00, 'Pendente'],
-      [2, 'Maria Santos', '2024-01-16', 'Excesso de velocidade', 200.00, 'Paga'],
-      [3, 'Carlos Oliveira', '2024-01-17', 'Avanço de sinal', 180.50, 'Pendente']
+      [1, 1, '2024-01-15', 'Estacionar em local proibido'],
+      [2, 2, '2024-01-16', 'Excesso de velocidade'],
+      [3, 3, '2024-01-17', 'Avanço de sinal']
     ];
 
-    for (const [veiculo_id, motorista, data, descricao, valor, status] of multas) {
+    for (const [uso_id, veiculo_id, data, descricao] of multas) {
       await connection.execute(`
         INSERT INTO multas 
-        (veiculo_id, motorista, data, descricao, valor, status, created_at) 
-        VALUES (?, ?, ?, ?, ?, ?, NOW())
-      `, [veiculo_id, motorista, data, descricao, valor, status]);
+        (uso_id, veiculo_id, data, multa, created_at) 
+        VALUES (?, ?, ?, ?, NOW())
+      `, [uso_id, veiculo_id, data, descricao]);
     }
 
     // 6) Inserir manutenções de exemplo
