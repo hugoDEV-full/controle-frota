@@ -5,6 +5,11 @@ require('dotenv').config();
 async function seedDatabase() {
   console.log('🌱 Iniciando carga inicial do banco...');
   
+  // Debug: mostrar variáveis disponíveis
+  console.log('🔍 Variáveis de ambiente disponíveis:');
+  console.log('  MYSQLURL:', process.env.MYSQLURL ? '✅' : '❌');
+  console.log('  MYSQL_PUBLIC_URL:', process.env.MYSQL_PUBLIC_URL ? '✅' : '❌');
+  
   // Railway fornece MYSQLURL ou MYSQL_PUBLIC_URL automaticamente
   const mysqlUrl = process.env.MYSQLURL || process.env.MYSQL_PUBLIC_URL;
   
