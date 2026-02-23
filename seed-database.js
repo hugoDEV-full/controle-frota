@@ -27,14 +27,14 @@ async function seedDatabase() {
       multipleStatements: true
     });
   } else {
-    // Fallback para variáveis individuais
+    // Fallback para variáveis individuais (valores do Railway)
     console.log('🔧 Usando variáveis individuais...');
     connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT || 3306,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
+      host: process.env.DB_HOST || 'metro.proxy.rlwy.net',
+      port: process.env.DB_PORT || 50518,
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || 'GQIKnsNgyIuwilsskpKOfeCXMIZaKFbR',
+      database: process.env.DB_NAME || 'railway',
       multipleStatements: true
     });
   }
