@@ -198,21 +198,24 @@ async function seedDatabase() {
       `, [veiculo_id, motorista, data_hora_inicial, data_hora_final, km_inicial, km_final, finalidade]);
     }
 
-    // 5) Inserir algumas multas de exemplo - versão corrigida
+    // 5) Inserir multas - VERSAO FINAL CORRIGIDA
     console.log('🚨 Inserindo multas de exemplo...');
-    const multas = [
-      [1, 1, '2024-01-15', 'Estacionar em local proibido'],
-      [2, 2, '2024-01-16', 'Excesso de velocidade'],
-      [3, 3, '2024-01-17', 'Avanço de sinal']
-    ];
-
-    for (const [uso_id, veiculo_id, data, descricao] of multas) {
-      await connection.execute(`
-        INSERT INTO multas 
-        (uso_id, veiculo_id, data, multa, created_at) 
-        VALUES (?, ?, ?, ?, NOW())
-      `, [uso_id, veiculo_id, data, descricao]);
-    }
+    
+    // Inserir multas vinculadas aos usos existentes
+    await connection.execute(`
+      INSERT INTO multas (uso_id, veiculo_id, data, multa, created_at) 
+      VALUES (1, 1, '2024-01-15', 'Estacionar em local proibido')
+    `);
+    
+    await connection.execute(`
+      INSERT INTO multas (uso_id, veiculo_id, data, multa, created_at) 
+      VALUES (2, 2, '2024-01-16', 'Excesso de velocidade')
+    `);
+    
+    await connection.execute(`
+      INSERT INTO multas (uso_id, veiculo_id, data, multa, created_at) 
+      VALUES (3, 3, '2024-01-17', 'Avanço de sinal')
+    `);
 
     // 6) Inserir manutenções de exemplo
     console.log('🔧 Inserindo manutenções de exemplo...');
