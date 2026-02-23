@@ -326,7 +326,7 @@ const validator = require('validator');
 
 //app.use(multer().none());
 // CSRF - DESABILITADO TEMPORARIAMENTE PARA DEPLOY
-// const csurf = require('csurf');
+const csurf = require('csurf');
 // const csrfProtection = csurf();
 // app.use(csrfProtection);
 /* Em todas as views, expor req.csrfToken()
@@ -413,7 +413,8 @@ app.get(
   '/auditoria',
   isAuthenticated,
   isAdmin,
-    async (req, res) => {
+  // csrfProtection,
+  async (req, res) => {
     try {
       const { usuario, data, rota, metodo } = req.query;
       const filtros = [];
@@ -471,7 +472,8 @@ app.get(
   
 // GET /login — gera e envia o token para a view
 app.get('/login',
-        (req, res) => {
+    // csrfProtection,
+    (req, res) => {
         res.render('login', {
             layout: 'login',
             csrfToken: req.csrfToken()    // passa o token aqui
@@ -480,45 +482,1356 @@ app.get('/login',
 );
 
 
-// Tela de esqueci minha senha
-app.get('/forgot-password', (req, res) => {
-    res.render('forgot-password', { layout: 'forgot-password', csrfToken: req.csrfToken(), });
+async function salvarAuditoriaManual({ usuario, rota, metodo, descricao }) {
+    try {
+      await query(
+        'INSERT INTO auditoria (usuario, rota, metodo, detalhes) VALUES (?, ?, ?, ?)',
+        [usuario, rota, metodo, descricao]
+      );
+    } catch (err) {
+      console.error('Erro ao salvar auditoria manual:', err);
+    }
+  }
+  
+
+// POST /login
+// POST /login
+app.post('/login',
+  authLimiter,
+  express.urlencoded({ extended: true }),
+  // csrfProtection,
+  [
+    body('email').isEmail().normalizeEmail(),
+    body('password').isLength({ min: 8 })
+  ],
+  (req, res, next) => {
+    passport.authenticate('local', (err, user, info) => {
+      if (err) return next(err);
+      if (!user) return res.redirect('/login');
+
+      req.session.regenerate(async (err) => {
+        if (err) return next(err);
+
+        req.logIn(user, async (err) => {
+          if (err) return next(err);
+
+          // Armazena o timestamp de início na sessão
+          req.session.startTime = Date.now();
+
+          // Garante que o session-store persista startTime antes do redirect
+          req.session.save(async (err) => {
+            if (err) return next(err);
+
+            // SALVA AUDITORIA LOGIN
+            await salvarAuditoriaManual({
+              usuario: user.email,
+              rota: '/login',
+              metodo: 'LOGIN',
+              descricao: 'Usuário entrou no sistema.'
+            });
+
+            return res.redirect('/');
+          });
+        });
+      });
+    })(req, res, next);
+  }
+);
+
+
+  
+
+// GET /logout — só para quem está autenticado
+app.get(
+  '/logout',
+  isAuthenticated,    // só entra se req.user existir
+  async (req, res, next) => {
+    const usuario = req.user.email;
+
+    // Descreve claramente que foi logout manual
+    await salvarAuditoriaManual({
+      usuario,
+      rota: '/logout',
+      metodo: 'LOGOUT',
+      descricao: 'Logout manual pelo usuário.'
+    });
+
+    req.logout(async (err) => {
+      if (err) return next(err);
+
+      req.session.destroy(() => {
+        console.log("Sessão encerrada. Usuário deslogado manualmente.");
+        authLimiter.resetKey(req.ip);
+        res.redirect('/login');
+      });
+    });
+  }
+);
+
+// Rota que captura tentativa de logout quando não autenticado (sessão inválida/expirada)
+app.get('/logout', async (req, res, next) => {
+  // Se chegou aqui, isAuthenticated falhou — sessão ausente/expirada
+  const usuario = 'Desconhecido';
+  await salvarAuditoriaManual({
+    usuario,
+    rota: '/logout',
+    metodo: 'LOGOUT',
+    descricao: 'Logout automático: sessão ausente ou expirada.'
+  });
+
+  // Não há req.logout nem destroy de sessão — simplesmente redireciona
+  console.log("Tentativa de logout sem sessão ativa.");
+  res.redirect('/login?expired=1');
 });
-app.post('/forgot-password', authLimiter,  (req, res) => {
+
+// --- SESSION INFO ---
+// rota GET que devolve JSON com elapsed e remaining
+app.get('/session-info/json', isAuthenticated, (req, res) => {
+  const now        = Date.now();
+  const start      = req.session.startTime || now;
+  const elapsedMs  = now - start;
+  const remainingMs = Math.max(0, req.session.cookie.maxAge - elapsedMs);
+
+  return res.json({
+    elapsed: {
+      minutes: Math.floor(elapsedMs / 60000),
+      seconds: Math.floor((elapsedMs % 60000) / 1000)
+    },
+    remaining: {
+      minutes: Math.floor(remainingMs / 60000),
+      seconds: Math.floor((remainingMs % 60000) / 1000)
+    }
+  });
+});
+
+
+
+app.get(
+  '/active-sessions',
+  isAuthenticated,
+  isAdmin,
+  // csrfProtection,
+  async (req, res, next) => {
+    try {
+      const now = Date.now();
+
+      // Usa o wrapper de promises
+      const [rows] = await pool.promise().query(
+        'SELECT session_id, expires, data FROM sessions'
+      );
+
+      const sessions = [];
+      for (let row of rows) {
+        let sess;
+        try {
+          sess = JSON.parse(row.data);
+        } catch {
+          continue;
+        }
+        const userId = sess.passport?.user;
+        const start  = sess.startTime;
+        if (!userId || !start) continue;
+        sessions.push({ userId, start, expires: row.expires });
+      }
+
+      // Busca e-mails dos usuários em batch
+      const userIds = [...new Set(sessions.map(s => s.userId))];
+      const [users] = await pool.promise().query(
+        'SELECT id, email FROM usuarios WHERE id IN (?)',
+        [userIds]
+      );
+      const lookup = Object.fromEntries(users.map(u => [u.id, u.email]));
+
+      // Monta o array de dados para a view
+      const data = sessions.map(s => {
+        const elapsedMs   = now - s.start;
+        const remainingMs = Math.max(0, s.expires - now);
+        return {
+          email:     lookup[s.userId] || `#${s.userId}`,
+          elapsed:   `${Math.floor(elapsedMs/60000)}m ${Math.floor((elapsedMs%60000)/1000)}s`,
+          remaining: `${Math.floor(remainingMs/60000)}m ${Math.floor((remainingMs%60000)/1000)}s`
+        };
+      });
+
+      return res.render('active-sessions', {
+        csrfToken:  req.csrfToken(),
+        user:       req.user,
+        activePage: 'active-sessions',
+        sessions:   data
+      });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+/* Funções de notificação */
+
+// Manda um email avisando que o veículo precisa de troca de óleo
+function sendOilChangeEmail(veiculo) {
+    const transporter = nodemailer.createTransport({
+        service: 'Gmail',
+        auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+        }
+    });
+    const mailOptions = {
+        to: process.env.NOTIFY_EMAIL || process.env.EMAIL_USER,
+        from: process.env.EMAIL_USER,
+        subject: `Troca de Óleo Necessária: ${veiculo.nome} - ${veiculo.placa}`,
+        text: `O veículo ${veiculo.nome} (Placa: ${veiculo.placa}) atingiu ${veiculo.km} km, com a última troca de óleo em ${veiculo.ultimaTrocaOleo}. Bora agendar a manutenção!`
+    };
+    transporter.sendMail(mailOptions, (err, info) => {
+        if (err) console.error("Erro ao enviar email:", err);
+        else console.log("Email troca de oleo enviado:", info.response);
+    });
+}
+
+// Checa se o veículo já rodou o suficiente pra precisar de troca de óleo
+function checkOilChangeForVehicle(veiculo_id) {
+    const query = `SELECT * FROM veiculos WHERE id = ?`;
+    db.query(query, [veiculo_id], (err, results) => {
+        if (err) {
+            console.error("Erro na checagem de óleo:", err);
+            return;
+        }
+        if (results.length > 0) {
+            const veiculo = results[0];
+            const km = Number(veiculo.km);
+            const ultimaTroca = Number(veiculo.ultimaTrocaOleo);
+           // console.log(`Checando veículo ${veiculo.id}: km=${km}, última troca=${ultimaTroca}, diff=${km - ultimaTroca}`);
+            if ((km - ultimaTroca) >= 10000) {
+                io.emit('oilChangeNotification', veiculo);
+                sendOilChangeEmail(veiculo);
+            }
+        }
+    });
+}
+
+
+
+// injetar active page global caso nao tenha 
+
+app.use((req, res, next) => {
+    res.locals.activePage = res.locals.activePage || '';
+    next();
+});
+
+
+app.use((req, res, next) => {
+    //  `user` fique disponível em todas as views EJS
+    res.locals.user = req.user;
+    next();
+});
+app.use(passport.initialize());
+app.use(passport.session());
+
+//const util = require('util');
+//const query = util.promisify(db.query).bind(db);
+
+app.get('/', isAuthenticated, // csrfProtection, async (req, res) => {
+    try {
+        // Consultas para motoristas (contagem e dados)
+        const validosResult = await query(
+            'SELECT COUNT(*) AS totalValidos FROM motoristas WHERE data_validade >= CURDATE()'
+        );
+        const invalidosResult = await query(
+            'SELECT COUNT(*) AS totalInvalidos FROM motoristas WHERE data_validade < CURDATE()'
+        );
+        const motoristasValidosList = await query(
+            'SELECT nome, email, DATE_FORMAT(data_validade, "%d/%m/%Y") AS validade FROM motoristas WHERE data_validade >= CURDATE()'
+        );
+        const motoristasInvalidosList = await query(
+            'SELECT nome, email, DATE_FORMAT(data_validade, "%d/%m/%Y") AS validade FROM motoristas WHERE data_validade < CURDATE()'
+        );
+
+        // Consultas para veículos e outras estatísticas
+        const veiculosResult = await query('SELECT * FROM veiculos');
+        const totalVeiculosResult = await query('SELECT COUNT(*) AS totalVeiculos FROM veiculos');
+        const totalMultasResult = await query('SELECT COUNT(*) AS totalMultas FROM multas');
+        const totalUsoResult = await query('SELECT COUNT(*) AS totalUso FROM uso_veiculos');
+        const totalMotoristasResult = await query(
+            'SELECT COUNT(DISTINCT motorista) AS totalMotoristasAtivos FROM uso_veiculos'
+        );
+
+        // Relatório: Uso por Dia
+        const usoDiaResult = await query(`
+          SELECT 
+            DATE(data_criacao) AS dia, 
+            COUNT(*) AS totalUsoDia,
+            MIN(TIME(data_criacao)) AS primeiroUso,
+            MAX(TIME(data_criacao)) AS ultimoUso
+          FROM uso_veiculos
+          GROUP BY DATE(data_criacao)
+          ORDER BY dia DESC
+        `);
+
+        // Relatório: Uso por Mês
+        const usoMesResult = await query(`
+          SELECT DATE_FORMAT(data_criacao, '%Y-%m') AS mes, COUNT(*) AS totalUsoMes
+          FROM uso_veiculos
+          GROUP BY DATE_FORMAT(data_criacao, '%Y-%m')
+          ORDER BY mes DESC
+        `);
+
+        // Relatório: Uso por Ano
+        const usoAnoResult = await query(`
+          SELECT YEAR(data_criacao) AS ano, COUNT(*) AS totalUsoAno
+          FROM uso_veiculos
+          GROUP BY YEAR(data_criacao)
+          ORDER BY ano DESC
+        `);
+
+        // Relatório: Total de Uso no Ano Corrente
+        const currentYear = new Date().getFullYear();
+        const usoAnoAtualResult = await query(
+            `SELECT COUNT(*) AS totalUsoAnoAtual FROM uso_veiculos WHERE YEAR(data_criacao) = ?`,
+            [currentYear]
+        );
+
+        // Relatório: Multas por Mês
+        const multasMesResult = await query(`
+          SELECT DATE_FORMAT(data, '%Y-%m') AS mes, COUNT(*) AS totalMultasMes
+          FROM multas
+          GROUP BY DATE_FORMAT(data, '%Y-%m')
+          ORDER BY mes DESC
+        `);
+
+        // Relatório: Multas por Ano
+        const multasAnoResult = await query(`
+          SELECT YEAR(data) AS ano, COUNT(*) AS totalMultasAno
+          FROM multas
+          GROUP BY YEAR(data)
+          ORDER BY ano DESC
+        `);
+
+        // Relatório: Multas por Motorista
+        const multasMotoristaResult = await query(`
+          SELECT motorista, COUNT(*) AS totalMultasMotorista
+          FROM multas
+          GROUP BY motorista
+          ORDER BY totalMultasMotorista DESC
+        `);
+
+        // Relatório: Tempo de Uso por Dia
+        const tempoUsoDiaResult = await query(`
+          SELECT 
+            DATE(data_hora_inicial) AS dia, 
+            SEC_TO_TIME(SUM(TIMESTAMPDIFF(SECOND, data_hora_inicial, data_hora_final))) AS totalTempoUsoDia
+          FROM uso_veiculos
+          GROUP BY DATE(data_hora_inicial)
+          ORDER BY dia DESC
+        `);
+
+        // Relatório: Tempo de Uso por Mês
+        const tempoUsoMesResult = await query(`
+          SELECT 
+            DATE_FORMAT(data_hora_inicial, '%Y-%m') AS mes, 
+            SEC_TO_TIME(SUM(TIMESTAMPDIFF(SECOND, data_hora_inicial, data_hora_final))) AS totalTempoUsoMes
+          FROM uso_veiculos
+          GROUP BY DATE_FORMAT(data_hora_inicial, '%Y-%m')
+          ORDER BY mes DESC
+        `);
+
+        // Relatório: Tempo de Uso por Ano
+        const tempoUsoAnoResult = await query(`
+          SELECT 
+            YEAR(data_hora_inicial) AS ano, 
+            SEC_TO_TIME(SUM(TIMESTAMPDIFF(SECOND, data_hora_inicial, data_hora_final))) AS totalTempoUsoAno
+          FROM uso_veiculos
+          GROUP BY YEAR(data_hora_inicial)
+          ORDER BY ano DESC
+        `);
+
+        // Relatório: Tempo de Uso por Motorista
+        const tempoUsoMotoristaResult = await query(`
+          SELECT 
+            motorista, 
+            SEC_TO_TIME(SUM(TIMESTAMPDIFF(SECOND, data_hora_inicial, data_hora_final))) AS totalTempoUsoMotorista
+          FROM uso_veiculos
+          GROUP BY motorista
+          ORDER BY totalTempoUsoMotorista DESC
+        `);
+
+        // Manutenções pendentes
+        const manutencoesPendentes = await query(`
+          SELECT m.*, v.placa, v.nome as veiculo_nome 
+          FROM manutencoes m
+          JOIN veiculos v ON m.veiculo_id = v.id
+          WHERE m.status = 'pendente'
+          ORDER BY m.data_agendada ASC
+        `);
+
+        // Estatísticas de viagens utilizando a tabela uso_veiculos e a coluna "finalidade"
+        // Agrupamento por Dia
+        const viagensTrabalhoDiaResult = await query(`
+          SELECT DATE(data_criacao) AS dia, COUNT(*) AS totalViagensTrabalho
+          FROM uso_veiculos
+          WHERE finalidade = 'trabalho'
+          GROUP BY DATE(data_criacao)
+          ORDER BY dia DESC
+        `);
+        const viagensPessoalDiaResult = await query(`
+          SELECT DATE(data_criacao) AS dia, COUNT(*) AS totalViagensPessoal
+          FROM uso_veiculos
+          WHERE finalidade = 'pessoal'
+          GROUP BY DATE(data_criacao)
+          ORDER BY dia DESC
+        `);
+
+        // Agrupamento por Mês
+        const viagensTrabalhoMesResult = await query(`
+          SELECT DATE_FORMAT(data_criacao, '%Y-%m') AS mes, COUNT(*) AS totalViagensTrabalho
+          FROM uso_veiculos
+          WHERE finalidade = 'trabalho'
+          GROUP BY DATE_FORMAT(data_criacao, '%Y-%m')
+          ORDER BY mes DESC
+        `);
+        const viagensPessoalMesResult = await query(`
+          SELECT DATE_FORMAT(data_criacao, '%Y-%m') AS mes, COUNT(*) AS totalViagensPessoal
+          FROM uso_veiculos
+          WHERE finalidade = 'pessoal'
+          GROUP BY DATE_FORMAT(data_criacao, '%Y-%m')
+          ORDER BY mes DESC
+        `);
+
+        // Agrupamento por Ano
+        const viagensTrabalhoAnoResult = await query(`
+          SELECT YEAR(data_criacao) AS ano, COUNT(*) AS totalViagensTrabalho
+          FROM uso_veiculos
+          WHERE finalidade = 'trabalho'
+          GROUP BY YEAR(data_criacao)
+          ORDER BY ano DESC
+        `);
+        const viagensPessoalAnoResult = await query(`
+          SELECT YEAR(data_criacao) AS ano, COUNT(*) AS totalViagensPessoal
+          FROM uso_veiculos
+          WHERE finalidade = 'pessoal'
+          GROUP BY YEAR(data_criacao)
+          ORDER BY ano DESC
+        `);
+
+        // Estatísticas de viagens por motorista, agrupando por finalidade
+        const viagensMotoristaResult = await query(`
+          SELECT motorista, finalidade, COUNT(*) AS totalViagens
+          FROM uso_veiculos
+          WHERE finalidade IN ('trabalho', 'pessoal')
+          GROUP BY motorista, finalidade
+          ORDER BY motorista, totalViagens DESC
+        `);
+
+
+
+        // KM Rodados por motorista (top 10)
+        const kmMotoristaResult = await query(`
+    SELECT 
+      motorista, 
+      SUM(km_final - km_inicial) AS totalKm
+    FROM uso_veiculos
+    GROUP BY motorista
+    ORDER BY totalKm DESC
+    LIMIT 10
+  `);
+
+        // KM Rodados por viagem (últimas 10 viagens)
+        const kmViagemResult = await query(`
+    SELECT 
+      id AS viagemId, 
+      (km_final - km_inicial) AS kmViagem
+    FROM uso_veiculos
+    ORDER BY data_criacao DESC
+    LIMIT 10
+  `);
+
+        // KM Rodados por dia (últimos 7 dias)
+        const kmDiaResult = await query(`
+    SELECT 
+      DATE(data_criacao) AS dia, 
+      SUM(km_final - km_inicial) AS totalKmDia
+    FROM uso_veiculos
+    WHERE data_criacao >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+    GROUP BY DATE(data_criacao)
+    ORDER BY dia DESC
+  `);
+
+        // KM Rodados por mês (últimos 6 meses)
+        const kmMesResult = await query(`
+    SELECT 
+      DATE_FORMAT(data_criacao, '%Y-%m') AS mes, 
+      SUM(km_final - km_inicial) AS totalKmMes
+    FROM uso_veiculos
+    WHERE data_criacao >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+    GROUP BY DATE_FORMAT(data_criacao, '%Y-%m')
+    ORDER BY mes DESC
+  `);
+
+        // KM Rodados por ano (últimos 5 anos)
+        const kmAnoResult = await query(`
+    SELECT 
+      YEAR(data_criacao) AS ano, 
+      SUM(km_final - km_inicial) AS totalKmAno
+    FROM uso_veiculos
+    WHERE data_criacao >= DATE_SUB(CURDATE(), INTERVAL 5 YEAR)
+    GROUP BY YEAR(data_criacao)
+    ORDER BY ano DESC
+  `);
+
+// session info
+ const now       = Date.now();
+  const start     = req.session.startTime || now;
+  const elapsedMs = now - start;
+  const remainingMs = Math.max(0, req.session.cookie.maxAge - elapsedMs);
+
+        res.render('dashboard', {
+            title: 'Dashboard',
+            csrfToken: 'disabled',
+            layout: 'layout',
+            activePage: 'dashboard',
+                elapsed: {
+      minutes: Math.floor(elapsedMs / 60000),
+      seconds: Math.floor((elapsedMs % 60000) / 1000)
+    },
+    remaining: {
+      minutes: Math.floor(remainingMs / 60000),
+      seconds: Math.floor((remainingMs % 60000) / 1000)
+    },
+            veiculos: veiculosResult,
+            user: req.user,
+            totalVeiculos: totalVeiculosResult[0].totalVeiculos,
+            totalMultas: totalMultasResult[0].totalMultas,
+            totalUso: totalUsoResult[0].totalUso,
+            totalMotoristasAtivos: totalMotoristasResult[0].totalMotoristasAtivos,
+            totalMotoristasValidos: validosResult[0].totalValidos,
+            totalMotoristasInvalidos: invalidosResult[0].totalInvalidos,
+            motoristasValidosList,   // Lista com nome e email dos motoristas com CNH válida
+            motoristasInvalidosList, // Lista com nome e email dos motoristas com CNH vencida
+            usoDia: usoDiaResult,
+            usoMes: usoMesResult,
+            usoAno: usoAnoResult,
+            totalUsoAnoAtual: usoAnoAtualResult[0].totalUsoAnoAtual,
+            multasMes: multasMesResult,
+            multasAno: multasAnoResult,
+            multasMotorista: multasMotoristaResult,
+            tempoUsoDia: tempoUsoDiaResult,             // Estatística: tempo de uso por dia
+            tempoUsoMes: tempoUsoMesResult,             // Estatística: tempo de uso por mês
+            tempoUsoAno: tempoUsoAnoResult,             // Estatística: tempo de uso por ano
+            tempoUsoMotorista: tempoUsoMotoristaResult, // Estatística: tempo de uso por motorista
+            manutencoesPendentes,   // Dados das manutenções pendentes
+            // Estatísticas de viagens (usando uso_veiculos e coluna "finalidade")
+            viagensTrabalhoDia: viagensTrabalhoDiaResult,
+            viagensPessoalDia: viagensPessoalDiaResult,
+            viagensTrabalhoMes: viagensTrabalhoMesResult,
+            viagensPessoalMes: viagensPessoalMesResult,
+            viagensTrabalhoAno: viagensTrabalhoAnoResult,
+            viagensPessoalAno: viagensPessoalAnoResult,
+            viagensMotorista: viagensMotoristaResult,
+            kmMotorista: kmMotoristaResult,
+            kmViagem: kmViagemResult,
+            kmDia: kmDiaResult,
+            kmMes: kmMesResult,
+            kmAno: kmAnoResult,
+
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Erro no servidor');
+    }
+});
+
+
+
+// Tela de esqueci minha senha
+app.get('/forgot-password', // csrfProtection, (req, res) => {
+    res.render('forgot-password', { layout: 'forgot-password', csrfToken: req.csrfToken() });
+});
+app.post('/forgot-password', authLimiter, // csrfProtection, (req, res) => {
     const email = validator.normalizeEmail(req.body.email || '');
     if (!email) return res.status(400).send("Email é obrigatório.");
 
+    crypto.randomBytes(20, (err, buffer) => {
+        if (err) return res.status(500).send("Erro ao gerar token.");
+        const token = buffer.toString('hex');
+        const expires = Date.now() + 3600000; // 1 hora
 
-app.get('/reset-password/:token',  (req, res) => {
+        db.query("UPDATE usuarios SET password_reset_token = ?, password_reset_expires = ? WHERE email = ?", [token, expires, email], (err, result) => {
+            if (err) return res.status(500).send("Erro no servidor.");
+            if (result.affectedRows === 0) return res.status(400).send("Usuário não encontrado.");
+
+            const transporter = nodemailer.createTransport({
+                service: 'Gmail',
+                auth: {
+                    user: process.env.EMAIL_USER,
+                    pass: process.env.EMAIL_PASS
+                }
+            });
+
+            const mailOptions = {
+                to: email,
+                from: process.env.EMAIL_USER,
+                subject: 'Redefinição de Senha',
+                text: `Você pediu pra resetar sua senha.\n\n` +
+                    `Clica ou copia esse link no seu navegador:\n\n` +
+                    `http://${req.headers.host}/reset-password/${token}\n\n` +
+                    `Se não foi você, ignora esse email.\n`
+            };
+
+            transporter.sendMail(mailOptions, (err) => {
+                if (err) return res.status(500).send("Erro ao enviar email.");
+                res.send("Email enviado com instruções pra resetar sua senha.");
+            });
+        });
+    });
+});
+
+// Tela de reset de senha
+app.get('/reset-password/:token', // csrfProtection, (req, res) => {
     const { token } = req.params;
     db.query("SELECT * FROM usuarios WHERE password_reset_token = ? AND password_reset_expires > ?", [token, Date.now()], (err, results) => {
         if (err) return res.status(500).send("Erro no servidor.");
         if (results.length === 0) return res.status(400).send("Token inválido ou expirado.");
-        res.render('reset-password', { layout: 'reset-password', token, csrfToken: req.csrfToken(), });
+        res.render('reset-password', { layout: 'reset-password', token, csrfToken: req.csrfToken() });
+    });
+});
+
+// Função para checar a força da senha
+function validatePasswordStrength(password) {
+    // A senha deve ter no mínimo 8 caracteres, ao menos uma letra minúscula, uma maiúscula, um dígito e um caractere especial.
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#()\-_=+{}[\]|;:'",.<>\/?])[A-Za-z\d@$!%*?&#()\-_=+{}[\]|;:'",.<>\/?]{8,}$/;
+    return regex.test(password);
+}
+
+app.post('/reset-password/:token', // csrfProtection, (req, res) => {
+    const { token } = req.params;
+    const { password } = req.body;
+    if (!password) return res.status(400).send("Senha é obrigatória.");
+
+    // Checagem de senha forte
+    if (!validatePasswordStrength(password)) {
+        return res.status(400).send("A senha deve ter pelo menos 8 caracteres, incluindo uma letra maiúscula, uma letra minúscula, um número e um caractere especial.");
+    }
+
+    db.query("SELECT * FROM usuarios WHERE password_reset_token = ? AND password_reset_expires > ?", [token, Date.now()], (err, results) => {
+        if (err) return res.status(500).send("Erro no servidor.");
+        if (results.length === 0) return res.status(400).send("Token inválido ou expirado.");
+        const user = results[0];
+
+        bcrypt.hash(password, 10, (err, hash) => {
+            if (err) return res.status(500).send("Erro ao atualizar senha.");
+            db.query("UPDATE usuarios SET senha = ?, password_reset_token = NULL, password_reset_expires = NULL WHERE id = ?", [hash, user.id], (err, result) => {
+                if (err) return res.status(500).send("Erro ao atualizar senha.");
+                res.send(`
+                    <!DOCTYPE html>
+                    <html lang="pt-br">
+                    <head>
+                      <meta charset="UTF-8">
+                      <title>Senha Atualizada</title>
+                      <script>
+                        setTimeout(function() {
+                          window.location.href = '/login';
+                        }, 3000); // Redireciona após 3 segundos
+                      </script>
+                    </head>
+                    <body style="background-color: #222; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;">
+                      <div>
+                        <h1>Senha atualizada! Já pode fazer login.</h1>
+                        <p>Você será redirecionado para a página de login em instantes.</p>
+                      </div>
+                    </body>
+                    </html>
+                  `);
+
+            });
+        });
     });
 });
 
 
-// Função para checar a força da senha
-function validatePasswordStrength(password) {
+/*
+app.get('/perfil', isAuthenticated, (req, res) => {
+    res.render('perfil', { user: req.user });
+});
+app.get('/index2', isAuthenticated, (req, res) => {
+    res.render('index2', { user: req.user });
+}); */
+
+/* Rotas de uso, veículos, multas, etc. */
+// (A rota pra registrar uso do veículo tá comentada aqui, mas fica aí como referência)
+
+/*
+app.post('/usar/:id', isAuthenticated, upload.single('foto_km'), (req, res) => {
+    // Código pra registrar uso do veículo...
+});
+*/
+
+app.get('/relatorio-uso', isAuthenticated, // csrfProtection, async (req, res) => {
+    try {
+        let usoData;
+        if (req.user.role === 'user') {
+            // Para usuários com role "user", filtra os registros pelo email ou outro identificador
+            usoData = await query(
+                'SELECT * FROM uso_veiculos WHERE motorista = ? ORDER BY data_criacao DESC',
+                [req.user.email]
+            );
+        } else {
+            // Para administradores, traz todos os registros
+            usoData = await query(
+                'SELECT * FROM uso_veiculos ORDER BY data_criacao DESC'
+            );
+        }
+
+        res.render('relatorio_uso', {
+            title: 'Relatório de uso de veículos',
+            csrfToken: 'disabled',
+            layout: 'layout',
+            activePage: 'relatorio_uso',
+            user: req.user,
+            usoData: usoData
+        });
+    } catch (err) {
+        console.error('Erro ao buscar registros de uso:', err);
+        res.status(500).send('Erro no servidor ao obter relatório de uso.');
+    }
+});
+
+app.get('/api/relatorio-uso', isAuthenticated, // csrfProtection, (req, res) => {
+    // Parâmetros do DataTables
+    let draw = req.query.draw || 0;
+    let start = parseInt(req.query.start) || 0;
+    let length = parseInt(req.query.length) || 10;
+    let searchValue = req.query.search ? req.query.search.value : '';
+
+    // Mapeamento dos índices para as colunas ordenáveis (conforme ordem visual)
+    let columns = [
+        null,
+        'veiculos.placa',
+        'uso_veiculos.motorista',
+        'uso_veiculos.km_inicial',
+        'uso_veiculos.km_final',
+        'uso_veiculos.finalidade', // novo campo
+        'uso_veiculos.descricao',  // novo campo
+        'data_hora_inicial',
+        'data_hora_final',
+        'data_criacao'
+    ];
+
+    // Parâmetros para ordenação
+    let orderColumnIndex = 1; // padrão
+    let orderDir = 'asc'; // padrão
+    if (req.query.order && req.query.order[0]) {
+        orderColumnIndex = parseInt(req.query.order[0].column);
+        orderDir = req.query.order[0].dir || 'asc';
+    }
+    if (orderColumnIndex < 1 || orderColumnIndex > 9) {
+        orderColumnIndex = 7; // padrão: data_hora_inicial
+    }
+    let orderColumn = columns[orderColumnIndex] || 'data_hora_inicial';
+
+    // Constrói a cláusula WHERE base:
+    // Se o usuário for "user", restringe os registros ao email do motorista (ou outro identificador)
+    let whereClause = '';
+    let params = [];
+    if (req.user.role === 'user') {
+        whereClause = 'WHERE uso_veiculos.motorista = ?';
+        params.push(req.user.email);
+    }
+
+    // Se existir termo de busca, adiciona à cláusula WHERE utilizando AND se já houver filtro
+    if (searchValue) {
+        const searchCondition = ` (veiculos.placa LIKE ? OR uso_veiculos.motorista LIKE ? OR uso_veiculos.km_inicial LIKE ? OR uso_veiculos.km_final LIKE ? OR uso_veiculos.finalidade LIKE ? OR uso_veiculos.descricao LIKE ? OR uso_veiculos.id LIKE ?)`;
+        if (whereClause) {
+            whereClause += ' AND' + searchCondition;
+        } else {
+            whereClause = 'WHERE' + searchCondition;
+        }
+        const searchParam = '%' + searchValue + '%';
+        // Adiciona os parâmetros de busca (7 vezes)
+        params.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
+    }
+
+    // Consulta principal (com joins e agrupamento)
+    let sql = `
+       SELECT uso_veiculos.*, 
+              veiculos.placa, 
+              uso_veiculos.data_criacao, 
+              GROUP_CONCAT(multas.multa SEPARATOR ", ") AS multas
+       FROM uso_veiculos
+       JOIN veiculos ON uso_veiculos.veiculo_id = veiculos.id
+       LEFT JOIN multas ON uso_veiculos.id = multas.uso_id
+       ${whereClause}
+       GROUP BY uso_veiculos.id
+       ORDER BY ${orderColumn} ${orderDir}
+       LIMIT ? OFFSET ?
+     `;
+    // Adiciona os parâmetros para LIMIT e OFFSET
+    params.push(length, start);
+
+    db.query(sql, params, (err, results) => {
+        if (err) {
+            console.error("Erro na consulta principal:", err);
+            return res.status(500).json({ error: "Erro na consulta principal" });
+        }
+
+        // Consulta para a contagem dos registros filtrados
+        let countSql = `
+         SELECT COUNT(DISTINCT uso_veiculos.id) AS total 
+         FROM uso_veiculos
+         JOIN veiculos ON uso_veiculos.veiculo_id = veiculos.id
+         LEFT JOIN multas ON uso_veiculos.id = multas.uso_id
+         ${whereClause}
+       `;
+        // Os parâmetros para contagem são os mesmos que os usados para a condição WHERE
+        let countParams = [];
+        if (req.user.role === 'user') {
+            countParams.push(req.user.email);
+        }
+        if (searchValue) {
+            const searchParam = '%' + searchValue + '%';
+            countParams.push(searchParam, searchParam, searchParam, searchParam, searchParam, searchParam, searchParam);
+        }
+
+        db.query(countSql, countParams, (err, countResult) => {
+            if (err) {
+                console.error("Erro na consulta de contagem filtrada:", err);
+                return res.status(500).json({ error: "Erro na consulta de contagem filtrada" });
+            }
+            let totalRecords = countResult[0].total;
+
+            // Consulta para o total de registros sem filtro:
+
+            let totalSql = '';
+            let totalParams = [];
+            if (req.user.role === 'user') {
+                totalSql = 'SELECT COUNT(*) AS total FROM uso_veiculos WHERE motorista = ?';
+                totalParams.push(req.user.email);
+            } else {
+                totalSql = 'SELECT COUNT(*) AS total FROM uso_veiculos';
+            }
+            db.query(totalSql, totalParams, (err, totalResult) => {
+                if (err) {
+                    console.error("Erro na consulta de contagem total:", err);
+                    return res.status(500).json({ error: "Erro na consulta de contagem total" });
+                }
+                let totalRecordsUnfiltered = totalResult[0].total;
+                res.json({
+                    draw: parseInt(draw),
+                    recordsTotal: totalRecordsUnfiltered,
+                    recordsFiltered: totalRecords,
+                    data: results
+                });
+            });
+        });
+    });
+});
+
+
+
+
+
+app.get(
+    '/registrar-veiculo',
+    isAuthenticated,
+    isAdmin,
+    // csrfProtection,
+    (req, res) => {
+        res.render('registrar-veiculo', {
+            title: 'Registrar veículo',
+            user: req.user,
+            csrfToken: 'disabled',
+            layout: 'layout',
+            activePage: 'registrar-veiculo',
+
+            errors: [],        // sem erros inicialmente
+            errorFields: [],   // nenhum campo marcado como inválido
+            data: {}           // nenhum valor pré-preenchido
+        });
+    }
+);
+
+app.post('/registrar-veiculo', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
+    const { nome, placa, km, ultimaTrocaOleo, emUsoPor, modelo, ano, cor } = req.body;
+    if (!nome || !placa || !km || !ultimaTrocaOleo || !modelo || !ano || !cor) {
+        return res.status(400).send('Todos os campos são obrigatórios');
+    }
+    db.query(
+        'INSERT INTO veiculos (nome, placa, km, ultimaTrocaOleo, emUsoPor, modelo, ano, cor) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [nome, placa, km, ultimaTrocaOleo, emUsoPor, modelo, ano, cor],
+        (err, result) => {
+            if (err) {
+                console.error('Erro ao registrar veículo:', err);
+                return res.status(500).send('Erro ao registrar veículo');
+            }
+            res.redirect('/');
+        }
+    );
+});
+
+app.post('/multar/:uso_id', isAuthenticated, // csrfProtection, (req, res) => {
+    const { uso_id } = req.params;
+    const multa = validator.escape(req.body.multa || '');
+
+    if (!multa) {
+        return res.status(400).send("Descrição da multa é obrigatória.");
+    }
+
+    // Busca o uso pra saber o motorista e o veículo
+    db.query("SELECT * FROM uso_veiculos WHERE id = ?", [uso_id], (err, usoResult) => {
+        if (err) {
+            console.error("Erro ao buscar uso:", err);
+            return res.status(500).send("Erro ao buscar o uso.");
+        }
+        if (usoResult.length === 0) {
+            return res.status(404).send("Uso não encontrado.");
+        }
+
+        const uso = usoResult[0];
+        const motoristaProvavel = uso.motorista;
+        const veiculo_id = uso.veiculo_id;
+
+        // Insere a multa associando o uso e o motorista
+        db.query(
+            "INSERT INTO multas (veiculo_id, motorista, multa, uso_id) VALUES (?, ?, ?, ?)",
+            [veiculo_id, motoristaProvavel, multa, uso_id],
+            (err, result) => {
+                if (err) {
+                    console.error("Erro ao registrar a multa:", err);
+                    return res.status(500).send("Erro ao registrar a multa.");
+                }
+                res.redirect("/relatorio-uso");
+            }
+        );
+    });
+});
+
+// Rota pra mostrar o form de multa pra um veículo
+app.get('/registrar-multa/:veiculo_id', isAuthenticated, // csrfProtection, (req, res) => {
+    const { veiculo_id } = req.params;
+    // Busca os dados do veículo
+    db.query("SELECT * FROM veiculos WHERE id = ?", [veiculo_id], (err, veiculoResult) => {
+        if (err) {
+            console.error("Erro ao buscar veículo:", err);
+            return res.status(500).send("Erro ao buscar o veículo.");
+        }
+        if (veiculoResult.length === 0) {
+            return res.status(404).send("Veículo não encontrado.");
+        }
+        const veiculo = veiculoResult[0];
+        res.render('registrarMulta', {
+            veiculo,
+            csrfToken: 'disabled',
+            mensagemErro: null,
+            title: 'Registro de Multa',
+            layout: 'layout',
+            activePage: 'registrarMulta',
+            user: req.user
+        });
+    });
+});
+
+
+app.post('/registrar-multa/:veiculo_id',
+    isAuthenticated,
+    isAdmin,
+    // csrfProtection,
+    (req, res) => {
+        const { veiculo_id } = req.params;
+        const { data_multa, multa } = req.body;
+
+        if (!data_multa || !multa) {
+            return res.status(400).send("Campos obrigatórios não preenchidos.");
+        }
+
+        const dataMulta = new Date(data_multa);
+        const queryUso = `
+        SELECT * FROM uso_veiculos 
+        WHERE veiculo_id = ? 
+          AND data_hora_inicial <= ? 
+          AND (data_hora_final IS NULL OR data_hora_final >= ?)
+        ORDER BY data_hora_inicial DESC 
+        LIMIT 1
+      `;
+
+        db.query(queryUso, [veiculo_id, dataMulta, dataMulta], (err, usoResult) => {
+            if (err) {
+                console.error("Erro ao buscar uso do veículo:", err);
+                return res.status(500).send("Erro ao buscar o uso.");
+            }
+
+            let uso_id = usoResult.length > 0 ? usoResult[0].id : null;
+
+            // Se não encontrou uso válido, renderiza mensagem de erro
+            if (!uso_id) {
+                return res.render('mensagemMulta', {
+                    mensagem: "Não rolou associar um motorista. Cadastre um uso pra esse período.",
+                    csrfToken: 'disabled',
+                    layout: 'layout',
+                    activePage: 'registrar-multa',
+                    user: req.user
+                });
+            }
+
+            // Agora insere a multa
+            const insertQuery = `
+          INSERT INTO multas (veiculo_id, motorista, data, multa, uso_id)
+          VALUES (?, ?, ?, ?, ?)
+        `;
+            const motoristaProvavel = usoResult[0].motorista;
+
+            db.query(
+                insertQuery,
+                [veiculo_id, motoristaProvavel, data_multa, multa, uso_id],
+                (insertErr) => {
+                    if (insertErr) {
+                        console.error("Erro ao registrar a multa:", insertErr);
+                        return res.status(500).send("Erro ao registrar a multa.");
+                    }
+                    res.redirect("/relatorio-multas");
+                }
+            );
+        });
+    }
+);
+
+
+app.get('/relatorio-multas', isAuthenticated, // csrfProtection, (req, res) => {
+    const query = `
+      SELECT m.*, v.placa, u.data_hora_inicial, u.data_hora_final
+      FROM multas m
+      JOIN veiculos v ON m.veiculo_id = v.id
+      LEFT JOIN uso_veiculos u ON m.uso_id = u.id
+      ORDER BY m.data DESC
+    `;
+    db.query(query, (err, multasResult) => {
+        if (err) {
+            console.error("Erro ao buscar multas:", err);
+            return res.status(500).send("Erro ao buscar multas.");
+        }
+        res.render('relatorioMultas', {
+            multas: multasResult,
+            csrfToken: 'disabled',
+            title: 'Relatório de Multas',
+            layout: 'layout',
+            activePage: 'relatorio-multas',
+            user: req.user
+        });
+    });
+});
+
+app.get('/editar-uso/:id', isAuthenticated, // csrfProtection, (req, res) => {
+    const { id } = req.params;
+    db.query('SELECT * FROM uso_veiculos WHERE id = ?', [id], (err, usoResult) => {
+        if (err) {
+            console.error('Erro ao buscar uso:', err);
+            return res.status(500).send('Erro ao buscar dados do uso');
+        }
+        if (usoResult.length === 0) {
+            return res.status(404).send('Uso não encontrado');
+        }
+        const uso = usoResult[0];
+        // Pega as multas relacionadas a esse uso
+        db.query('SELECT * FROM multas WHERE uso_id = ?', [id], (err, multasResult) => {
+            if (err) {
+                console.error('Erro ao buscar multas:', err);
+                return res.status(500).send('Erro ao buscar multas');
+            }
+            res.render('editarUso', {
+                uso,
+                csrfToken: 'disabled',
                 multas: multasResult,
                 title: 'Editar Uso',
                 layout: 'layout',
                 activePage: 'editarUso',
                 user: req.user,
-                csrfToken: req.csrfToken(),
+                csrfToken: req.csrfToken()
             });
         });
     });
-);
+});
 
 
+app.get('/usar/:id', isAuthenticated, // csrfProtection, (req, res) => {
+    const { id } = req.params;
+    const userId = req.user.id; // Pega o ID do usuário autenticado
+
+    // Busca o email do usuário autenticado
+    db.query('SELECT email FROM usuarios WHERE id = ?', [userId], (err, userResult) => {
+        if (err) {
+            console.error("Erro ao buscar usuário:", err);
+            return res.status(500).send("Erro ao buscar usuário.");
+        }
+        if (userResult.length === 0) {
+            return res.status(404).send("Usuário não encontrado");
+        }
+
+        const motoristaEmail = userResult[0].email; // Email do usuário autenticado
+
+        // Busca os dados do veículo
+        db.query('SELECT * FROM veiculos WHERE id = ?', [id], (err, veiculoResult) => {
+            if (err) {
+                console.error("Erro ao buscar veículo:", err);
+                return res.status(500).send("Erro ao buscar o veículo.");
+            }
+            if (veiculoResult.length === 0) {
+                return res.status(404).send("Veículo não encontrado");
+            }
+
+            const veiculo = veiculoResult[0];
+            const kmInicial = veiculo.km || 0;
+
+            res.render('usar', {
+                veiculo,
+                csrfToken: 'disabled',
+                kmInicial,
+                motoristaEmail, // Passa o email do usuário autenticado
+                title: 'Usar Veículo',
+                layout: 'layout',
+                activePage: 'usar',
+                user: req.user
+            });
+        });
+    });
+});
+
+//rota para auto gerar manutenção
+
+function autoGenerateMaintenance(veiculo) {
+   // console.log(`🔍 Verificando manutenção para veículo ${veiculo.id} (${veiculo.placa}) com KM=${veiculo.km}`);
+
+    const regrasManutencao = [
+        { tipo: 'Troca de Pneus', kmIntervalo: 100 },
+        { tipo: 'Rodízio de Pneus', kmIntervalo: 100 },
+        { tipo: 'Troca de Pastilhas', kmIntervalo: 100 },
+        { tipo: 'Troca de Discos de Freio', kmIntervalo: 100 },
+        { tipo: 'Troca da Correia Dentada', kmIntervalo: 100 },
+        { tipo: 'Troca do Óleo do Motor', kmIntervalo: 100 },
+        { tipo: 'Troca do Filtro de Óleo', kmIntervalo: 100 },
+        { tipo: 'Troca do Filtro de Ar', kmIntervalo: 100 },
+        { tipo: 'Troca do Filtro de Combustível', kmIntervalo: 100 },
+        { tipo: 'Alinhamento e Balanceamento', kmIntervalo: 100 },
+        { tipo: 'Verificação do Sistema de Arrefecimento', kmIntervalo: 100 },
+        { tipo: 'Revisão do Sistema Elétrico', kmIntervalo: 100 },
+        { tipo: 'Inspeção dos Níveis (água, freio, etc.)', kmIntervalo: 100 },
+        { tipo: 'Troca do Líquido de Arrefecimento', kmIntervalo: 100 },
+        { tipo: 'Troca do Líquido de Freio', kmIntervalo: 100 },
+        { tipo: 'Troca do Líquido da Direção Hidráulica', kmIntervalo: 100 },
+        { tipo: 'Troca das Velas de Ignição', kmIntervalo: 100 },
+        { tipo: 'Inspeção da Suspensão e Amortecedores', kmIntervalo: 100 },
+        { tipo: 'Inspeção da Bateria', kmIntervalo: 100 },
+        { tipo: 'Inspeção do Sistema de Escape', kmIntervalo: 100 },
+        { tipo: 'Verificação dos Cabos e Correias', kmIntervalo: 100 }
+    ];
+
+
+
+    regrasManutencao.forEach(regra => {
+        if (Number(veiculo.km) >= regra.kmIntervalo) {
+            //console.log(`⚠️ Veículo ${veiculo.id} ultrapassou ${regra.kmIntervalo} km para ${regra.tipo}`);
+
+            const queryVerifica = `
+              SELECT * FROM manutencoes 
+              WHERE veiculo_id = ? AND tipo = ? AND status = 'pendente'
+            `;
+            db.query(queryVerifica, [veiculo.id, regra.tipo], (err, results) => {
+                if (err) {
+                    console.error(`Erro ao verificar manutenção ${regra.tipo}:`, err);
+                    return;
+                }
+                //console.log(`Resultado da verificação para ${regra.tipo}: ${results.length} registros encontrados.`);
+                if (results.length === 0) {
+                    const descricao = `Manutenção automática disparada ao atingir ${veiculo.km} km.`;
+                    const queryInsert = `
+                       INSERT INTO manutencoes (veiculo_id, tipo, descricao, km_agendado, status)
+                       VALUES (?, ?, ?, ?, 'pendente')
+                    `;
+                    //console.log(`Tentando inserir manutenção "${regra.tipo}" para o veículo ${veiculo.placa}.`);
+                    db.query(queryInsert, [veiculo.id, regra.tipo, descricao, regra.kmIntervalo], (err, result) => {
+                        if (err) {
+                            console.error(`Erro ao inserir manutenção ${regra.tipo}:`, err);
+                        } else {
+                            //console.log(`✅ Manutenção "${regra.tipo}" gerada para o veículo ${veiculo.placa}.`);
+                            sendMaintenanceNotification(veiculo, { tipo: regra.tipo, descricao });
+                        }
+                    });
+                } else {
+                    //console.log(`✅ Já existe manutenção pendente para ${regra.tipo} no veículo ${veiculo.placa}.`);
+                }
+            });
+        } else {
+           // console.log(`Veículo ${veiculo.id} com KM=${veiculo.km} não atingiu ${regra.kmIntervalo} para ${regra.tipo}.`);
+        }
+    });
+}
+
+// Parser Multer para um único arquivo foto_km
+const uploadSingleFoto = multer({
+    storage,
+    limits: { fileSize: 1000 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (!file.mimetype.startsWith('image/')) {
+            return cb(new Error('Só imagens são permitidas'), false);
+        }
+        cb(null, true);
+    }
+}).single('foto_km');
+
+app.post('/usar/:id', isAuthenticated, uploadSingleFoto, // csrfProtection, (req, res) => {
+    const { id } = req.params; // ID do veículo
+
+    const { km_inicial, km_final, data_hora_inicial, data_hora_final, finalidade, descricao } = req.body;
+    const foto_km = req.file ? req.file.filename : null;
+    const motoristaEmail = req.user.email; // Email do usuário autenticado
+
+    if (!km_inicial) {
+        return res.status(400).send('Campos obrigatórios faltando');
+    }
+
+    // Busca os dados do veículo
+    db.query('SELECT * FROM veiculos WHERE id = ?', [id], (err, veiculoResult) => {
+        if (err) {
+            console.error("Erro ao buscar veículo:", err);
+            return res.status(500).send("Erro ao buscar o veículo.");
+        }
+        if (veiculoResult.length === 0) {
+            return res.status(404).send("Veículo não encontrado");
+        }
+        const veiculo = veiculoResult[0];
+
+        // Valida o km_inicial
+        const expectedKmInicial = veiculo.km;
+        const kmInicialParsed = parseInt(km_inicial, 10);
+        if (kmInicialParsed !== expectedKmInicial) {
+            return res.status(400).send("Erro: O km inicial deve ser igual ao km atual do veículo.");
+        }
+
+        // Converte e valida o km_final
+        const kmFinalParsed = parseInt(km_final, 10);
+        const kmFinalValue = (km_final === '' || isNaN(kmFinalParsed)) ? null : kmFinalParsed;
+        if (kmFinalValue !== null && kmFinalValue < kmInicialParsed) {
+            return res.status(400).send("Erro: km final não pode ser menor que km inicial");
+        }
+
+        const dataHoraInicial = new Date(data_hora_inicial);
+        const dataHoraFinal = data_hora_final ? new Date(data_hora_final) : null;
+        const newEnd = dataHoraFinal ? dataHoraFinal : new Date('9999-12-31');
+
+        // Verifica o cadastro de motoristas
+        db.query('SELECT * FROM motoristas WHERE email = ?', [motoristaEmail], (err, motoristaResult) => {
+            if (err) {
+                console.error("Erro ao buscar motorista:", err);
+                return res.status(500).send("Erro ao buscar o motorista.");
+            }
+            if (motoristaResult.length === 0) {
+                return res.status(400).send("Erro: Usuário não possui cadastro de motorista.");
+            }
+            const motoristasComCNHValida = motoristaResult.filter(motorista => {
+                return new Date(motorista.data_validade) >= new Date();
+            });
+            if (motoristasComCNHValida.length === 0) {
+                return res.status(400).send("Erro: A CNH do motorista está vencida.");
+            }
+
+            // Verifica sobreposição de uso
+            db.query(
+                `SELECT * FROM uso_veiculos 
+                 WHERE (veiculo_id = ? OR motorista = ?)
+                   AND (data_hora_inicial < ?)
+                   AND ((data_hora_final IS NULL) OR (data_hora_final > ?))`,
+                [id, motoristaEmail, newEnd, dataHoraInicial],
+                (err, overlapResult) => {
+                    if (err) {
+                        console.error("Erro na verificação de sobreposição:", err);
+                        return res.status(500).send("Erro interno");
+                    }
+                    if (overlapResult.length > 0) {
+                        return res.status(400).send("Erro: Já existe um uso nesse período.");
+                    }
+
+                    // Insere o registro de uso incluindo os novos campos
+                    db.query(
+                        'INSERT INTO uso_veiculos (veiculo_id, motorista, km_inicial, km_final, data_hora_inicial, data_hora_final, foto_km, finalidade, descricao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        [id, motoristaEmail, km_inicial, kmFinalValue, dataHoraInicial, dataHoraFinal, foto_km, finalidade, descricao],
+                        (err, result) => {
+                            if (err) throw err;
+
+                            // Se km_final for informado, atualiza o km do veículo e dispara verificações
+                            if (kmFinalValue !== null) {
+                                db.query('UPDATE veiculos SET km = ? WHERE id = ?', [kmFinalValue, id], (err, result2) => {
+                                    if (err) {
+                                        console.error("Erro ao atualizar km:", err);
+                                    } else {
+                                       // console.log(` Veículo ${id} atualizado para km=${kmFinalValue}`);
+                                        // Verifica troca de óleo
+                                        checkOilChangeForVehicle(id);
+                                        // Busca dados atualizados do veículo e chama autoGenerateMaintenance
+                                        db.query('SELECT * FROM veiculos WHERE id = ?', [id], (err, updatedResult) => {
+                                            if (err) {
+                                                console.error("Erro ao buscar veículo atualizado:", err);
+                                            } else if (updatedResult.length > 0) {
+                                                //console.log(" Dados atualizados do veículo:", updatedResult[0]);
+                                                autoGenerateMaintenance(updatedResult[0]);
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                            res.redirect('/');
+                        }
+                    );
+                }
+            );
+        });
+    });
+});
+
+
+const uploadOptionalFoto = multer({
+    storage,
+    limits: { fileSize: 1000 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        if (!file.mimetype.startsWith('image/')) {
+            return cb(new Error('Só imagens são permitidas'), false);
+        }
+        cb(null, true);
+    }
+}).single('foto_km');
+
+app.post(
+    '/editar-uso/:id',
+    isAuthenticated,
+    uploadOptionalFoto,   // Multer parseia multipart/form-data
+    // csrfProtection,      // depois valida CSRF
+    (req, res) => {
+        const { id } = req.params;
+        const {
+            motorista,
+            km_final,
+            data_hora_final,
+            multas_id,
+            multas_descricao,
+            finalidade,
+            descricao
+        } = req.body;
+
+        // 1) Permissão: só o próprio motorista
+        if (req.user && req.user.email !== motorista) {
+            return res.status(403).send('Você não tem permissão para editar este uso.');
+        }
+
+        // 2) Novas multas em array
+        const novasMultas = req.body.novasMultas
+            ? [].concat(req.body.novasMultas).filter(m => m.trim().length > 0)
+            : [];
+
+        // 3) Função auxiliar de render de erro
+        function renderError(message) {
+            db.query("SELECT * FROM uso_veiculos WHERE id = ?", [id], (err, results) => {
+                if (err || results.length === 0) {
+                    return res.status(500).send("Erro ao carregar dados para exibição de erro.");
                 }
                 const uso = results[0];
                 res.render('editarUso', {
                     uso,
                     errorMessage: message,
-                    csrfToken: req.csrfToken(),
+                    csrfToken: req.csrfToken()
                 });
             });
         }
@@ -702,7 +2015,7 @@ function validatePasswordStrength(password) {
 
 
 // Rota pra marcar que a troca de óleo foi feita
-app.post('/troca-feita/:id', isAuthenticated, isAdmin,  (req, res) => {
+app.post('/troca-feita/:id', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
     const { id } = req.params;
     // Atualiza a última troca com o km atual
     db.query('UPDATE veiculos SET ultimaTrocaOleo = km WHERE id = ?', [id], (err, result) => {
@@ -716,7 +2029,7 @@ app.post('/troca-feita/:id', isAuthenticated, isAdmin,  (req, res) => {
 });
 
 // Rota pra excluir uma multa
-app.post('/excluir-multa/:id', isAuthenticated, isAdmin,  (req, res) => {
+app.post('/excluir-multa/:id', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
     const { id } = req.params;
     db.query("DELETE FROM multas WHERE id = ?", [id], (err, result) => {
         if (err) {
@@ -728,7 +2041,7 @@ app.post('/excluir-multa/:id', isAuthenticated, isAdmin,  (req, res) => {
 });
 
 // Rota pra excluir uso e suas multas
-app.post('/excluir-uso/:id', isAuthenticated, isAdmin,  (req, res) => {
+app.post('/excluir-uso/:id', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
     const { id } = req.params;
     db.query("DELETE FROM multas WHERE uso_id = ?", [id], (err, result) => {
         if (err) {
@@ -745,7 +2058,7 @@ app.post('/excluir-uso/:id', isAuthenticated, isAdmin,  (req, res) => {
     });
 });
 
-app.post('/excluir-multiplos-usos', isAuthenticated, isAdmin,  (req, res) => {
+app.post('/excluir-multiplos-usos', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
     let { ids } = req.body;
 
     if (!ids) {
@@ -827,7 +2140,7 @@ app.post('/excluir-multiplos-usos', isAuthenticated, isAdmin,  (req, res) => {
 
 
 // Rota para exibir a tela de edição do veículo
-app.get('/editar-veiculo/:id', isAuthenticated,  (req, res) => {
+app.get('/editar-veiculo/:id', isAuthenticated, // csrfProtection, (req, res) => {
     const id = req.params.id;
     db.query("SELECT * FROM veiculos WHERE id = ?", [id], (err, results) => {
         if (err || results.length === 0) {
@@ -845,7 +2158,7 @@ app.get('/editar-veiculo/:id', isAuthenticated,  (req, res) => {
 });
 
 // Rota para atualizar dados do veículo
-app.post('/editar-veiculo/:id', isAuthenticated,  (req, res) => {
+app.post('/editar-veiculo/:id', isAuthenticated, // csrfProtection, (req, res) => {
     const id = req.params.id;
     const { nome, placa, km, ultimaTrocaOleo, modelo, ano, cor, justificativaKm } = req.body;
 
@@ -930,7 +2243,8 @@ app.post(
     '/excluir-veiculo/:id',
     isAuthenticated,
     isAdmin,
-        async (req, res) => {
+    // csrfProtection,
+    async (req, res) => {
         const id = req.params.id;
         try {
             // 1) Exclui manutenções
@@ -957,7 +2271,7 @@ app.post(
 
 
 // Rota de notificações: mostra veículos que precisam trocar óleo e notificações de alteração de quilometragem
-app.get('/notificacoes', isAuthenticated, isAdmin,  (req, res) => {
+app.get('/notificacoes', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
     // Query para veículos que precisam trocar óleo
     const oilQuery = `
       SELECT *, (km - ultimaTrocaOleo) AS kmDesdeUltimaTroca 
@@ -992,7 +2306,7 @@ app.get('/notificacoes', isAuthenticated, isAdmin,  (req, res) => {
     });
 });
 
-app.post('/excluir-notificacao-alteracao-km/:id', isAuthenticated, isAdmin,  async (req, res) => {
+app.post('/excluir-notificacao-alteracao-km/:id', isAuthenticated, isAdmin, // csrfProtection, async (req, res) => {
     const { id } = req.params;
     db.query('DELETE FROM notificacoes WHERE id = ?', [id], (err, results) => {
         if (err) {
@@ -1051,7 +2365,7 @@ const uploadFotoBanco = multer({
 }).single('foto');
 
 
-app.get('/registro-motorista', isAuthenticated,  async (req, res) => {
+app.get('/registro-motorista', isAuthenticated, // csrfProtection, async (req, res) => {
     try {
       // Busca dados do motorista pelo email
       const resultados = await query(
@@ -1101,7 +2415,8 @@ app.post(
     '/api/cadastro-motorista',
     isAuthenticated,
     uploadFotoBanco,
-        async (req, res) => {
+    // csrfProtection,
+    async (req, res) => {
       try {
         const { nome, cpf, cnh, dataValidade, categoria } = req.body;
         const bufferFoto = req.file ? req.file.buffer : null;
@@ -1180,7 +2495,8 @@ app.get(
     '/motoristas/fotos-cnh',
     isAuthenticated,
     isAdmin,
-        async (req, res) => {
+    // csrfProtection,
+    async (req, res) => {
       try {
         const motoristas = await query(
           `SELECT
@@ -1213,7 +2529,8 @@ app.get(
 app.delete(
     '/api/deletar-motorista/:id',
     isAuthenticated,
-        async (req, res) => {
+    // csrfProtection,
+    async (req, res) => {
       try {
         const { id } = req.params;
         // verificar que o motorista existe antes de apagar
@@ -1309,7 +2626,7 @@ function checkMaintenanceForVehicle(veiculo_id) {
 /* Rotas para manutenção */
 
 // Rota para exibir formulário de cadastro de manutenção para um veículo
-app.get('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin,  (req, res) => {
+app.get('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
     const { veiculo_id } = req.params;
     db.query("SELECT * FROM veiculos WHERE id = ?", [veiculo_id], (err, results) => {
         if (err || results.length === 0) {
@@ -1328,7 +2645,7 @@ app.get('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin,  (req, re
 });
 
 // Rota para processar cadastro de manutenção
-app.post('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin,  (req, res) => {
+app.post('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
     const { veiculo_id } = req.params;
     const { tipo, descricao, km_agendado, data_agendada } = req.body;
     const query = `
@@ -1345,7 +2662,7 @@ app.post('/registrar-manutencao/:veiculo_id', isAuthenticated, isAdmin,  (req, r
 });
 
 // Rota para listar todas as manutenções (de todos os veículos)
-app.get('/manutencoes', isAuthenticated,  (req, res) => {
+app.get('/manutencoes', isAuthenticated, // csrfProtection, (req, res) => {
     const query = `
       SELECT m.*, v.placa, v.nome as veiculo_nome 
       FROM manutencoes m
@@ -1369,7 +2686,7 @@ app.get('/manutencoes', isAuthenticated,  (req, res) => {
 });
 
 // Rota para marcar uma manutenção como realizada
-app.post('/manutencoes/realizada/:id', isAuthenticated, isAdmin,  (req, res) => {
+app.post('/manutencoes/realizada/:id', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
     const { id } = req.params;
     const updateQuery = `
       UPDATE manutencoes 
@@ -1388,7 +2705,7 @@ app.post('/manutencoes/realizada/:id', isAuthenticated, isAdmin,  (req, res) => 
 /* Fim das funcionalidades de manutenção */
 
 // Rota para cadastro de novo reembolso
-app.post('/reembolsos', upload.single('comprovante'), isAuthenticated,  async (req, res) => {
+app.post('/reembolsos', upload.single('comprovante'), isAuthenticated, // csrfProtection, async (req, res) => {
     try {
         const { motorista_id, valor } = req.body;
         // Se um arquivo foi enviado, obtenha o caminho
@@ -1406,7 +2723,7 @@ app.post('/reembolsos', upload.single('comprovante'), isAuthenticated,  async (r
     }
 });
 // Rota para exibir o formulário, a lista de reembolsos detalhados, os dados para o gráfico e os reembolsos agregados
-app.get('/reembolsos', isAuthenticated,  async (req, res) => {
+app.get('/reembolsos', isAuthenticated, // csrfProtection, async (req, res) => {
     try {
         // Consulta para buscar os reembolsos detalhados com os dados do motorista
         const reembolsos = await query(`
@@ -1475,7 +2792,7 @@ app.get('/reembolsos', isAuthenticated,  async (req, res) => {
 });
 
 
-app.get('/relatorio-consumo', isAuthenticated,  async (req, res) => {
+app.get('/relatorio-consumo', isAuthenticated, // csrfProtection, async (req, res) => {
     try {
         // 1) Parâmetros de busca
         const { motorista, startDate, endDate } = req.query;
@@ -1582,7 +2899,7 @@ app.get('/relatorio-consumo', isAuthenticated,  async (req, res) => {
 
 ////////////////////////////////////////////////////////////////////////////////////
 
-app.get('/search', isAuthenticated,  async (req, res) => {
+app.get('/search', isAuthenticated, // csrfProtection, async (req, res) => {
   const q = (req.query.q || '').trim();
 
   //  o que a busca abrange, para exibir no front
@@ -1829,7 +3146,7 @@ const axios = require('axios');
 //
 // --- ROTA GET /conserto-viavel ---
 //  query tem que trazer os campos marca e marca_nome
-app.get('/conserto-viavel', isAuthenticated,  async (req, res) => {
+app.get('/conserto-viavel', isAuthenticated, // csrfProtection, async (req, res) => {
     try {
         const registros = await query(`
         SELECT 
@@ -1860,7 +3177,7 @@ app.get('/conserto-viavel', isAuthenticated,  async (req, res) => {
 
 
 // --- ROTA POST /salvar-avaliacao ---
-app.post('/salvar-avaliacao', isAuthenticated,  (req, res) => {
+app.post('/salvar-avaliacao', isAuthenticated, // csrfProtection, (req, res) => {
     // Extração dos dados incluindo os dois campos para a marca
     const { marca, marca_nome, modelo, modelo_nome, ano, valor_fipe, custo_conserto, conserto_viavel } = req.body;
 
@@ -1881,7 +3198,7 @@ app.post('/salvar-avaliacao', isAuthenticated,  (req, res) => {
 
 // --- ROTA POST /conserto-viavel (Avalia viabilidade sem salvar) ---
 
-app.post('/conserto-viavel', isAuthenticated,  async (req, res) => {
+app.post('/conserto-viavel', isAuthenticated, // csrfProtection, async (req, res) => {
     try {
         const { marca, modelo, ano: anoCodigo, custo_conserto } = req.body;
         if (!marca || !modelo || !anoCodigo || !custo_conserto) {
@@ -1920,7 +3237,7 @@ app.post('/conserto-viavel', isAuthenticated,  async (req, res) => {
 });
 
 // --- Rotas da API FIPE  ---
-app.get('/api/marcas', isAuthenticated,  async (req, res) => {
+app.get('/api/marcas', isAuthenticated, // csrfProtection, async (req, res) => {
     try {
         const { data } = await axios.get(
             'https://parallelum.com.br/fipe/api/v1/carros/marcas'
@@ -1932,7 +3249,7 @@ app.get('/api/marcas', isAuthenticated,  async (req, res) => {
 });
 
 
-app.get('/api/modelos', isAuthenticated,  async (req, res) => {
+app.get('/api/modelos', isAuthenticated, // csrfProtection, async (req, res) => {
     const { marca } = req.query;
     if (!marca) {
         return res.status(400).json({ sucesso: false, error: 'Marca obrigatória.' });
@@ -1947,7 +3264,7 @@ app.get('/api/modelos', isAuthenticated,  async (req, res) => {
     }
 });
 
-app.get('/api/anos', isAuthenticated,  async (req, res) => {
+app.get('/api/anos', isAuthenticated, // csrfProtection, async (req, res) => {
     const { marca, modelo } = req.query;
     if (!marca || !modelo) {
         return res
@@ -1964,7 +3281,7 @@ app.get('/api/anos', isAuthenticated,  async (req, res) => {
     }
 });
 
-app.post('/excluir-avaliacao/:id', isAuthenticated,  async (req, res) => {
+app.post('/excluir-avaliacao/:id', isAuthenticated, // csrfProtection, async (req, res) => {
     const { id } = req.params;
     //console.log("Tentando excluir avaliação com id:", id);
     try {
@@ -1981,7 +3298,7 @@ app.post('/excluir-avaliacao/:id', isAuthenticated,  async (req, res) => {
     }
 });
 /////////////////////////////// registro do user
-app.get('/register', isAuthenticated, isAdmin,  (req, res) => {
+app.get('/register', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
     res.render('register', {
         erros: [],
         csrfToken: 'disabled',
@@ -1997,7 +3314,7 @@ app.get('/register', isAuthenticated, isAdmin,  (req, res) => {
 });
 
 // ROTA POST - processar registro com validação de senha forte
-app.post('/register', isAuthenticated, isAdmin,  (req, res) => {
+app.post('/register', isAuthenticated, isAdmin, // csrfProtection, (req, res) => {
     const { email, senha, senha2, role = 'user' } = req.body;
     const erros = [];
     let success_msg = '';
@@ -2132,7 +3449,7 @@ app.post('/register', isAuthenticated, isAdmin,  (req, res) => {
 //////////////////////////////////inicio editar usuasrios e motoristas
 
 // LISTAR USUÁRIOS
-app.get('/usuarios', isAuthenticated,  (req, res) => {
+app.get('/usuarios', isAuthenticated, // csrfProtection, (req, res) => {
     pool.query('SELECT id, email, role FROM usuarios ORDER BY id', (err, results) => {
         if (err) {
             console.error(err);
@@ -2148,7 +3465,7 @@ app.get('/usuarios', isAuthenticated,  (req, res) => {
 });
 
 // LISTAR MOTORISTAS
-app.get('/motoristas', isAuthenticated,  (req, res) => {
+app.get('/motoristas', isAuthenticated, // csrfProtection, (req, res) => {
     pool.query(`
       SELECT 
         id, nome, email, cpf, cnh, DATE_FORMAT(data_validade, '%Y-%m-%d') AS data_validade, categoria
@@ -2171,7 +3488,8 @@ app.get('/motoristas', isAuthenticated,  (req, res) => {
 app.delete(
     '/api/deletar-motorista/:id',
     isAuthenticated,
-        async (req, res) => {
+    // csrfProtection,
+    async (req, res) => {
         const { id } = req.params;
         try {
             // 1) Apaga todos os reembolsos desse motorista
@@ -2196,7 +3514,7 @@ app.delete(
 
 // === EDITAR USUÁRIO ===
 //  exibe formulário com email e role
-app.get('/usuarios/:id/edit', isAuthenticated,  (req, res) => {
+app.get('/usuarios/:id/edit', isAuthenticated, // csrfProtection, (req, res) => {
     const { id } = req.params;
     pool.query('SELECT id, email, role FROM usuarios WHERE id = ?', [id], (err, results) => {
         if (err || !results.length) {
@@ -2212,7 +3530,7 @@ app.get('/usuarios/:id/edit', isAuthenticated,  (req, res) => {
 });
 
 //  valida e atualiza email e role
-app.post('/usuarios/:id/edit', isAuthenticated,  (req, res) => {
+app.post('/usuarios/:id/edit', isAuthenticated, // csrfProtection, (req, res) => {
     const { id } = req.params;
     const { email, role } = req.body;
     const erros = [];
@@ -2268,7 +3586,8 @@ app.post('/usuarios/:id/edit', isAuthenticated,  (req, res) => {
 app.get(
     '/motoristas/:id/edit',
     isAuthenticated,
-        async (req, res) => {
+    // csrfProtection,
+    async (req, res) => {
       const { id } = req.params;
       try {
         const resultados = await query(
@@ -2318,7 +3637,8 @@ app.get(
     '/api/editar-motorista/:id',
     isAuthenticated,
     uploadFotoBanco,
-        async (req, res) => {
+    // csrfProtection,
+    async (req, res) => {
       const { id } = req.params;
       const { nome, cpf, cnh, dataValidade, categoria } = req.body;
       const bufferFoto = req.file ? req.file.buffer : null;
