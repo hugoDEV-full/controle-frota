@@ -3776,6 +3776,29 @@ app.post('/update-location', authenticateToken, (req, res) => {
   console.log(`GPS de ${req.deviceId}: veículo ${vehicleId} → ${latitude},${longitude}`);
 });
 
+// Endpoint temporário para carga inicial (só em produção)
+if (process.env.NODE_ENV === 'production') {
+  const { seedDatabase } = require('./seed-database');
+  
+  app.get('/seed-database', async (req, res) => {
+    try {
+      console.log('🌱 Executando carga inicial via endpoint...');
+      await seedDatabase();
+      res.json({ 
+        success: true, 
+        message: 'Carga inicial concluída com sucesso!',
+        usuario: 'hugo.leonardo.jobs@gmail.com / Bento1617@'
+      });
+    } catch (err) {
+      console.error('❌ Erro na carga inicial:', err);
+      res.status(500).json({ 
+        success: false, 
+        error: err.message 
+      });
+    }
+  });
+}
+
 
 // Rotas pra servir o manifest e o service worker (PWA)
 //app.get('/manifest.json', (req, res) => {
@@ -3800,29 +3823,6 @@ if ('serviceWorker' in navigator) {
 } */
 
 // Fecha a função startServer
-}
-
-// Endpoint temporário para carga inicial (só em produção)
-if (process.env.NODE_ENV === 'production') {
-  const { seedDatabase } = require('./seed-database');
-  
-  app.get('/seed-database', async (req, res) => {
-    try {
-      console.log('🌱 Executando carga inicial via endpoint...');
-      await seedDatabase();
-      res.json({ 
-        success: true, 
-        message: 'Carga inicial concluída com sucesso!',
-        usuario: 'hugo.leonardo.jobs@gmail.com / Bento1617@'
-      });
-    } catch (err) {
-      console.error('❌ Erro na carga inicial:', err);
-      res.status(500).json({ 
-        success: false, 
-        error: err.message 
-      });
-    }
-  });
 }
 
 /*
