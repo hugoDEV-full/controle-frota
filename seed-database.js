@@ -102,7 +102,7 @@ async function seedDatabase() {
         uso_id INT,
         veiculo_id INT NOT NULL,
         multa TEXT NOT NULL,
-        data DATE DEFAULT CURRENT_DATE,
+        data DATE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (veiculo_id) REFERENCES veiculos(id),
         FOREIGN KEY (uso_id) REFERENCES uso_veiculos(id)
