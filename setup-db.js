@@ -10,31 +10,37 @@ async function setupDatabase() {
     port: process.env.DB_PORT || 3306,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME, // Conecta direto no banco existente
     multipleStatements: true
   });
 
   try {
-    // 1) Criar banco controle_frota (se não existir)
-    console.log('📦 Criando banco controle_frota (se não existir)...');
-    await connection.execute(`CREATE DATABASE IF NOT EXISTS \`controle_frota\`;`);
-    await connection.execute(`USE \`controle_frota\`;`);
+    console.log(`📦 Usando banco existente: ${process.env.DB_NAME}`);
 
-    // 2) Importar estrutura
+    // 1) Importar estrutura
     const estruturaPath = './controle_frota_estrutura.sql';
     if (fs.existsSync(estruturaPath)) {
       console.log('📋 Importando estrutura...');
-      const estruturaSQL = fs.readFileSync(estruturaPath, 'utf8');
+      // Remove CREATE DATABASE e USE do SQL para evitar erro
+      let estruturaSQL = fs.readFileSync(estruturaPath, 'utf8');
+      estruturaSQL = estruturaSQL.replace(/CREATE DATABASE[^;]*;/gi, '');
+      estruturaSQL = estruturaSQL.replace(/USE `[^`]*`;/gi, '');
+      
       await connection.query(estruturaSQL);
       console.log('✅ Estrutura importada com sucesso.');
     } else {
       console.warn('⚠️ Arquivo de estrutura não encontrado:', estruturaPath);
     }
 
-    // 3) Importar dados (se tiver dump completo)
+    // 2) Importar dados (se tiver dump completo)
     const dadosPath = './controle_frota_dump.sql';
     if (fs.existsSync(dadosPath)) {
       console.log('💾 Importando dados...');
-      const dadosSQL = fs.readFileSync(dadosPath, 'utf8');
+      // Remove CREATE DATABASE e USE do SQL para evitar erro
+      let dadosSQL = fs.readFileSync(dadosPath, 'utf8');
+      dadosSQL = dadosSQL.replace(/CREATE DATABASE[^;]*;/gi, '');
+      dadosSQL = dadosSQL.replace(/USE `[^`]*`;/gi, '');
+      
       await connection.query(dadosSQL);
       console.log('✅ Dados importados com sucesso.');
     } else {
