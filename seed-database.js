@@ -142,19 +142,34 @@ async function seedDatabase() {
     console.log('✅ Tabelas criadas com sucesso!');
     
     // 1) Criar usuário admin com bcrypt
-    console.log('👤 Criando usuário admin...');
+    console.log('👤 Criando usuários admin...');
     const hashedPassword = await bcrypt.hash('Bento1617@', 10);
+    const hashedPasswordAdmin = await bcrypt.hash('admin123', 10);
+    const hashedPasswordUser = await bcrypt.hash('user123', 10);
     
-    // Primeiro, remove qualquer admin existente para evitar conflitos
-    await connection.execute("DELETE FROM usuarios WHERE email = 'hugo.leonardo.jobs@gmail.com'");
+    // Primeiro, remove usuários existentes para evitar conflitos
+    await connection.execute("DELETE FROM usuarios WHERE email IN ('hugo.leonardo.jobs@gmail.com', 'admin@frota.com', 'usuario@frota.com')");
     
-    // Agora insere o usuário admin limpo
+    // Insere múltiplos usuários admin
     await connection.execute(`
       INSERT INTO usuarios (nome, email, senha, role, created_at) 
       VALUES ('Hugo Leonardo', 'hugo.leonardo.jobs@gmail.com', ?, 'admin', NOW())
     `, [hashedPassword]);
     
-    console.log('✅ Usuário admin criado/verificado!');
+    await connection.execute(`
+      INSERT INTO usuarios (nome, email, senha, role, created_at) 
+      VALUES ('Admin Sistema', 'admin@frota.com', ?, 'admin', NOW())
+    `, [hashedPasswordAdmin]);
+    
+    await connection.execute(`
+      INSERT INTO usuarios (nome, email, senha, role, created_at) 
+      VALUES ('Usuario Teste', 'usuario@frota.com', ?, 'user', NOW())
+    `, [hashedPasswordUser]);
+    
+    console.log('✅ Usuários criados:');
+    console.log('   - hugo.leonardo.jobs@gmail.com / Bento1617@ (admin)');
+    console.log('   - admin@frota.com / admin123 (admin)');
+    console.log('   - usuario@frota.com / user123 (user)');
 
     // 2) Inserir veículos de exemplo
     console.log('🚗 Inserindo veículos de exemplo...');
