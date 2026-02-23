@@ -13,19 +13,19 @@ const session = require('express-session');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
-// Setup automático do banco em produção (Railway) - CARGA INICIAL
-if (process.env.NODE_ENV === 'production') {
-  const { seedDatabase } = require('./seed-database');
-  seedDatabase().then(() => {
-    console.log('✅ Banco pronto. Iniciando servidor...');
-    startServer();
-  }).catch(err => {
-    console.error('❌ Falha na carga inicial do banco:', err);
-    process.exit(1);
-  });
-} else {
+// Setup automático do banco em produção (Railway) - DESABILITADO ATÉ CORRIGIR SENHA
+// if (process.env.NODE_ENV === 'production') {
+//   const { seedDatabase } = require('./seed-database');
+//   seedDatabase().then(() => {
+//     console.log('✅ Banco pronto. Iniciando servidor...');
+//     startServer();
+//   }).catch(err => {
+//     console.error('❌ Falha na carga inicial do banco:', err);
+//     process.exit(1);
+//   });
+// } else {
   startServer();
-}
+// }
 
 function startServer() {
   //time zone
@@ -3800,6 +3800,29 @@ if ('serviceWorker' in navigator) {
 } */
 
 // Fecha a função startServer
+}
+
+// Endpoint temporário para carga inicial (só em produção)
+if (process.env.NODE_ENV === 'production') {
+  const { seedDatabase } = require('./seed-database');
+  
+  app.get('/seed-database', async (req, res) => {
+    try {
+      console.log('🌱 Executando carga inicial via endpoint...');
+      await seedDatabase();
+      res.json({ 
+        success: true, 
+        message: 'Carga inicial concluída com sucesso!',
+        usuario: 'hugo.leonardo.jobs@gmail.com / Bento1617@'
+      });
+    } catch (err) {
+      console.error('❌ Erro na carga inicial:', err);
+      res.status(500).json({ 
+        success: false, 
+        error: err.message 
+      });
+    }
+  });
 }
 
 /*
