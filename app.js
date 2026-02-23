@@ -360,14 +360,25 @@ app.use(passport.session());
 passport.use(new LocalStrategy(
     { usernameField: 'email', passwordField: 'password' },
     (email, password, done) => {
+        console.log('🔐 Tentativa de login - Email:', email);
         db.query("SELECT * FROM usuarios WHERE email = ?", [email], (err, results) => {
-            if (err) return done(err);
+            if (err) {
+                console.error('❌ Erro no banco:', err);
+                return done(err);
+            }
+            console.log('📊 Resultados da consulta:', results.length, 'usuários encontrados');
             if (results.length === 0) {
+                console.log('❌ Usuário não encontrado');
                 return done(null, false, { message: 'Usuário não encontrado.' });
             }
             const user = results[0];
+            console.log('👤 Usuário encontrado:', user.email, 'Role:', user.role);
             bcrypt.compare(password, user.senha, (err, isMatch) => {
-                if (err) return done(err);
+                if (err) {
+                    console.error('❌ Erro no bcrypt:', err);
+                    return done(err);
+                }
+                console.log('🔑 Senha', isMatch ? 'correta' : 'incorreta');
                 if (isMatch) return done(null, user);
                 return done(null, false, { message: 'Senha incorreta.' });
             });
