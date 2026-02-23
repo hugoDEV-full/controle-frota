@@ -198,7 +198,7 @@ async function seedDatabase() {
       `, [veiculo_id, motorista, data_hora_inicial, data_hora_final, km_inicial, km_final, finalidade]);
     }
 
-    // 5) Inserir algumas multas de exemplo
+    // 5) Inserir algumas multas de exemplo - versão corrigida
     console.log('🚨 Inserindo multas de exemplo...');
     const multas = [
       [1, 1, '2024-01-15', 'Estacionar em local proibido'],
