@@ -5,12 +5,12 @@ require('dotenv').config();
 async function seedDatabase() {
   console.log('🌱 Iniciando carga inicial do banco...');
   
-  // Railway fornece MYSQLURL automaticamente - vamos usar ela!
+  // Railway fornece MYSQLURL ou MYSQL_PUBLIC_URL automaticamente
   const mysqlUrl = process.env.MYSQLURL || process.env.MYSQL_PUBLIC_URL;
   
   let connection;
   if (mysqlUrl) {
-    console.log('🔗 Usando MYSQLURL do Railway...');
+    console.log(`🔗 Usando ${process.env.MYSQLURL ? 'MYSQLURL' : 'MYSQL_PUBLIC_URL'} do Railway...`);
     // Parse da URL do Railway: mysql://user:password@host:port/database
     const url = new URL(mysqlUrl);
     connection = await mysql.createConnection({
