@@ -13,19 +13,21 @@ const session = require('express-session');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
-// Setup automático do banco em produção (Railway) - DESABILITADO ATÉ CORRIGIR SENHA
-// if (process.env.NODE_ENV === 'production') {
-//   const { seedDatabase } = require('./seed-database');
-//   seedDatabase().then(() => {
-//     console.log('✅ Banco pronto. Iniciando servidor...');
-//     startServer();
-//   }).catch(err => {
-//     console.error('❌ Falha na carga inicial do banco:', err);
-//     process.exit(1);
-//   });
-// } else {
+// Setup automático do banco em produção (Railway) - CARGA INICIAL AUTOMÁTICA
+if (process.env.NODE_ENV === 'production') {
+  const { seedDatabase } = require('./seed-database');
+  seedDatabase().then(() => {
+    console.log('✅ Banco pronto. Iniciando servidor...');
+    startServer();
+  }).catch(err => {
+    console.error('❌ Falha na carga inicial do banco:', err);
+    // Não fecha o app - tenta iniciar mesmo assim
+    console.log('⚠️ Iniciando servidor mesmo sem carga inicial...');
+    startServer();
+  });
+} else {
   startServer();
-// }
+}
 
 function startServer() {
   //time zone

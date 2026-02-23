@@ -2,17 +2,37 @@ const mysql = require('mysql2/promise');
 const bcrypt = require('bcrypt');
 require('dotenv').config();
 
-async function seedDatabase() {
+async function setupDatabase() {
   console.log('🌱 Iniciando carga inicial do banco...');
   
-  const connection = await mysql.createConnection({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 3306,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    multipleStatements: true
-  });
+  // Railway fornece MYSQLURL automaticamente - vamos usar ela!
+  const mysqlUrl = process.env.MYSQLURL || process.env.MYSQL_PUBLIC_URL;
+  
+  let connection;
+  if (mysqlUrl) {
+    console.log('🔗 Usando MYSQLURL do Railway...');
+    // Parse da URL do Railway: mysql://user:password@host:port/database
+    const url = new URL(mysqlUrl);
+    connection = await mysql.createConnection({
+      host: url.hostname,
+      port: url.port || 3306,
+      user: url.username,
+      password: url.password,
+      database: url.pathname.substring(1), // Remove o '/' inicial
+      multipleStatements: true
+    });
+  } else {
+    // Fallback para variáveis individuais
+    console.log('🔧 Usando variáveis individuais...');
+    connection = await mysql.createConnection({
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT || 3306,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      multipleStatements: true
+    });
+  }
 
   try {
     // 1) Criar usuário admin com bcrypt
