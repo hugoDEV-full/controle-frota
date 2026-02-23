@@ -193,7 +193,7 @@ async function seedDatabase() {
     for (const [veiculo_id, motorista, data_hora_inicial, data_hora_final, km_inicial, km_final, finalidade] of usos) {
       await connection.execute(`
         INSERT INTO uso_veiculos 
-        (veiculo_id, motorista, data_hora_inicial, data_hora_final, km_inicial, km_final, finalidade, created_at) 
+        (veiculo_id, motorista, data_hora_inicial, data_hora_final, km_inicial, km_final, finalidade, data_criacao) 
         VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
       `, [veiculo_id, motorista, data_hora_inicial, data_hora_final, km_inicial, km_final, finalidade]);
     }
