@@ -9,9 +9,15 @@ async function seedDatabase() {
   console.log('🔍 Variáveis de ambiente disponíveis:');
   console.log('  MYSQLURL:', process.env.MYSQLURL ? '✅' : '❌');
   console.log('  MYSQL_PUBLIC_URL:', process.env.MYSQL_PUBLIC_URL ? '✅' : '❌');
+  console.log('  DATABASE_URL:', process.env.DATABASE_URL ? '✅' : '❌');
+  console.log('🔍 Variáveis individuais:');
+  console.log('  DB_HOST:', process.env.DB_HOST || '❌ não definido');
+  console.log('  DB_USER:', process.env.DB_USER || '❌ não definido');
+  console.log('  DB_PASSWORD:', process.env.DB_PASSWORD ? '✅' : '❌ não definido');
   
   // Railway fornece MYSQLURL ou MYSQL_PUBLIC_URL automaticamente
-  const mysqlUrl = process.env.MYSQLURL || process.env.MYSQL_PUBLIC_URL;
+  // Vamos tentar também DATABASE_URL que é comum em algumas plataformas
+  const mysqlUrl = process.env.MYSQLURL || process.env.MYSQL_PUBLIC_URL || process.env.DATABASE_URL;
   
   let connection;
   if (mysqlUrl) {
