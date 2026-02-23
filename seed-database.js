@@ -204,17 +204,17 @@ async function seedDatabase() {
     // Inserir multas vinculadas aos usos existentes
     await connection.execute(`
       INSERT INTO multas (uso_id, veiculo_id, data, multa, created_at) 
-      VALUES (1, 1, '2024-01-15', 'Estacionar em local proibido')
+      VALUES (1, 1, '2024-01-15', 'Estacionar em local proibido', NOW())
     `);
     
     await connection.execute(`
       INSERT INTO multas (uso_id, veiculo_id, data, multa, created_at) 
-      VALUES (2, 2, '2024-01-16', 'Excesso de velocidade')
+      VALUES (2, 2, '2024-01-16', 'Excesso de velocidade', NOW())
     `);
     
     await connection.execute(`
       INSERT INTO multas (uso_id, veiculo_id, data, multa, created_at) 
-      VALUES (3, 3, '2024-01-17', 'Avanço de sinal')
+      VALUES (3, 3, '2024-01-17', 'Avanço de sinal', NOW())
     `);
 
     // 6) Inserir manutenções de exemplo
