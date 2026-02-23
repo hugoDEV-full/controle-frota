@@ -38,3 +38,7 @@ certs/
 controle_frota_estrutura-06-02-2026.sql
 mysql SHOW TABLES;.txt
 show create table -banco-gps.txt
+
+# Permitir arquivos SQL de deploy no Railway
+!controle_frota_estrutura.sql
+!controle_frota_dump.sql

@@ -13,66 +13,81 @@ const session = require('express-session');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 
-//time zone
-process.env.TZ = 'America/Sao_Paulo';
-// servidor HTTP  , Socket.IO
-const https = require('https');
-
-const app = express();
-
-// Railway/Heroku-style proxies terminate TLS before the app.
-// This allows secure cookies to work when the external connection is HTTPS.
-app.set('trust proxy', 1);
-
-let server;
-
-const HTTPS_ENABLED = process.env.HTTPS_ENABLED === 'true';
-
-if (HTTPS_ENABLED) {
-  const sslKeyPath = process.env.SSL_KEY_PATH || '/certs/privkey.pem';
-  const sslCertPath = process.env.SSL_CERT_PATH || '/certs/fullchain.pem';
-
-  try {
-    const privateKey = fs.readFileSync(sslKeyPath, 'utf8');
-    const certificate = fs.readFileSync(sslCertPath, 'utf8');
-
-    const credentials = { key: privateKey, cert: certificate };
-
-    const https = require('https');
-    server = https.createServer(credentials, app);
-
-    console.log("Servidor HTTPS configurado.");
-  } catch (err) {
-    const http = require('http');
-    server = http.createServer(app);
-    console.warn(
-      `Falha ao configurar HTTPS (certificados não encontrados ou inválidos). Iniciando em HTTP. Erro: ${err.message}`
-    );
-  }
+// Setup automático do banco em produção (Railway)
+if (process.env.NODE_ENV === 'production') {
+  const { setupDatabase } = require('./setup-db');
+  setupDatabase().then(() => {
+    console.log('✅ Banco pronto. Iniciando servidor...');
+    startServer();
+  }).catch(err => {
+    console.error('❌ Falha no setup do banco:', err);
+    process.exit(1);
+  });
 } else {
-  const http = require('http');
-  server = http.createServer(app);
-
-  console.log("Servidor HTTP configurado.");
+  startServer();
 }
 
-const { Server } = require('socket.io');
+function startServer() {
+  //time zone
+  process.env.TZ = 'America/Sao_Paulo';
+  // servidor HTTP  , Socket.IO
+  const https = require('https');
 
-const TRUSTED_ORIGINS = ["*"];
-const io = new Server(server, {
-    cors: {
-        origin: (origin, callback) => {
-            if (!origin || TRUSTED_ORIGINS.includes(origin)) {
-                return callback(null, true);
-            }
-            callback(new Error("Origem não permitida"));
-        },
-        methods: ["GET", "POST"]
+  const app = express();
+
+  // Railway/Heroku-style proxies terminate TLS before the app.
+  // This allows secure cookies to work when the external connection is HTTPS.
+  app.set('trust proxy', 1);
+
+  let server;
+
+  const HTTPS_ENABLED = process.env.HTTPS_ENABLED === 'true';
+
+  if (HTTPS_ENABLED) {
+    const sslKeyPath = process.env.SSL_KEY_PATH || '/certs/privkey.pem';
+    const sslCertPath = process.env.SSL_CERT_PATH || '/certs/fullchain.pem';
+
+    try {
+      const privateKey = fs.readFileSync(sslKeyPath, 'utf8');
+      const certificate = fs.readFileSync(sslCertPath, 'utf8');
+
+      const credentials = { key: privateKey, cert: certificate };
+
+      const https = require('https');
+      server = https.createServer(credentials, app);
+
+      console.log("Servidor HTTPS configurado.");
+    } catch (err) {
+      const http = require('http');
+      server = http.createServer(app);
+      console.warn(
+        `Falha ao configurar HTTPS (certificados não encontrados ou inválidos). Iniciando em HTTP. Erro: ${err.message}`
+      );
     }
-});
+  } else {
+    const http = require('http');
+    server = http.createServer(app);
+
+    console.log("Servidor HTTP configurado.");
+  }
+
+  const { Server } = require('socket.io');
+
+  const TRUSTED_ORIGINS = ["*"];
+  const io = new Server(server, {
+      cors: {
+          origin: (origin, callback) => {
+              if (!origin || TRUSTED_ORIGINS.includes(origin)) {
+                  return callback(null, true);
+              }
+              callback(new Error("Origem não permitida"));
+          },
+          methods: ["GET", "POST"]
+      }
+  });
 
 
-const port = 3000;
+  const port = 3000;
 
 
 // Se a pasta 'uploads' não existir, cria ela
@@ -3783,6 +3798,9 @@ if ('serviceWorker' in navigator) {
        });
    });
 } */
+
+// Fecha a função startServer
+}
 
 /*
 // Código para iniciar o servidor com Socket.IO (opcional)
